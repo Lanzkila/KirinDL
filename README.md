@@ -172,85 +172,68 @@ English
 ## ⬇️ Download & Installation
 
 
-### 🚀 What's New in v2.9?
+### 🚀 What's New in v3.0?
 
 <details open>
-<summary><b>📱 Click to see latest updates - Cookies Overhaul, Download Docs, Anti-Bot Detection, MP4 Filter (July 9, 2026)</b></summary>
+<summary><b>📱 Click to see latest updates - More Tools Suite, Swipeable Details Sheet, Battery Re-Arming, Cookie Fix (July 30, 2026)</b></summary>
 
-## ✨ Seal Plus v2.9.0 - Cookies Overhaul, Download Documentation, Anti-Bot Detection, MP4 Filter
-
----
-
-### 🍪 Manual Cookie Paste Dialog
-
-* **Full Cookie Paste Interface** — New dialog to paste cookies manually in Netscape (.txt), JSON (Cookie-Editor), or Cookie Header (name=value) format
-* **Import** — Paste from clipboard or import from a .txt/.json file on your device
-* **Smart Validation** — Confirm button stays disabled until valid URL and non-empty cookie text are entered
-* **Priority** — Manually pasted cookies take priority over browser-generated cookies
-
-### ⚠️ Facebook/Instagram Account Ban Warning
-
-* **Safety Notice** — Red warning callout inside the paste dialog warns that using personal account cookies may get the account banned
-* **Recommendation** — Advises using a throwaway or secondary account for downloading
-
-### 🛡️ Anti-Bot Detection for Meta Login Pages
-
-* **Two-Layer Bypass** — Combines User-Agent client hint spoofing (Sec-CH-UA header) with JavaScript runtime shims to bypass Meta's bot detection
-* **Layer 1** — Rewrites "Android WebView" brand to "Google Chrome" in Sec-CH-UA headers via `UserAgentMetadata` API
-* **Layer 2** — Injects anti-detection script shimming `window.chrome`, disabling `navigator.webdriver`, patching `userAgentData.brands`
-
-### 🔄 Multi-Window Popup Support
-
-* **Login Popups** — `window.open()` and `target="_blank"` popups render inside the app as a closeable overlay
-* **Back Button** — Closes popup first, then navigates back, then dismisses page
-
-### 🔐 Cookie Management Rewrite
-
-* **Storage Rewrite** — Cookie reading switched from direct SQLite to `CookieManager.getCookie()` API
-* **HttpOnly & Expiry** — Cookie data class tracks `isHttpOnly` and expiry; expired cookies automatically skipped
-* **Auto-Refresh** — Cookies refresh automatically when screen resumes via lifecycle observer
-* **Deduplication** — Cross-profile cookie deduplication by `domain|name`
-
-### 📄 Download Documentation Feature
-
-* **Save Video Metadata** — New "Download Docs" option saves title, uploader, date, duration, URL, tags, and description as a .txt file
-* **Automatic** — File saved to `SealPlus/docs/` after download completes with success toast
-* **Smart Toggle** — Enable without selecting a format to save docs only (no video download)
-
-### 🔧 Download Resilience & Retry
-
-* **Enhanced Retry Settings** — `--retries=10`, `--fragment-retries=10`, `--extractor-retries=3`, `--file-access-retries=3`
-* **Exponential Backoff** — HTTP backoff `exp=1:120`, fragment backoff `exp=1:60` to prevent rate-limit issues
-* **Extended Timeouts** — Socket timeout 5s→15s, info-probe retries 1→3
-* **Aria2c Improvements** — Protocol scoping, `--file-allocation=none`, `--max-tries=5`, `--retry-wait=2`
-* **Concurrent Fragments** — Now works alongside aria2c
-
-### 🎬 Format Selection
-
-* **MP4-Only Filter** — Toggle to show only MP4 (video) / M4A (audio) formats; enabled by default
-* **Coil 3 OkHttp** — Desktop Chrome User-Agent for reliable thumbnail loading
-* **Implausible Size Filter** — Auto-removes formats with unrealistically low bitrates for their resolution
-
-### 🎨 UI Polish
-
-* **Download Dialog V2 Redesign** — `verticalScroll` layout, pill-shaped FilterChips (50dp), FlowRow additional settings, animated ExpandableTitle, redesigned SingleChoiceItem with check icons, segmented button download type selector, weighted action buttons
-* **Battery Optimization** — OEM-specific detection for 8 manufacturers, manufacturer-specific intent builders, dialog dismissal persisted permanently, Xiaomi HyperOS/MIUI targets added
+## ✨ Seal Plus v3.0.0 - Dedicated Tools Hub, Swipeable Details Sheet, Battery Re-Arming
 
 ---
 
-### ✨ Key Features (v2.9)
+### 🧰 Dedicated "More Tools" Section & Tool Suite
 
-* 🍪 **Manual Cookie Paste** - Paste cookies in 3 formats, import from clipboard/file
-* ⚠️ **Account Ban Warning** - Safety notice for Facebook/Instagram cookies
-* 🛡️ **Anti-Bot Detection** - Two-layer bypass for Meta login pages
-* 🔄 **Multi-Window Popups** - Login popups handled inside the app
-* 🔐 **Cookie Management Rewrite** - HttpOnly/expiry, auto-refresh, deduplication
-* 📄 **Download Docs** - Save video metadata as text file
-* 🔧 **Download Resilience** - Retry settings, exponential backoff, extended timeouts
-* 🎬 **MP4-Only Filter** - Filter formats by MP4 compatibility
-* 🎨 **Download Dialog Redesign** - Modern pill chips, animated sections
-* 🔋 **Battery Optimization** - OEM-specific handling, persistent dismissal
-* 🔄 **Retry failed downloads** - One-click recovery for failed downloads
+* **Dedicated "More Tools" Page** — Centralized tools hub accessible from the navigation drawer and quick-access toolbar on the home screen
+* **Home Screen Quick-Access Toolbar** — Added instant 1-tap shortcut icons on the main home screen to jump directly to dedicated utilities
+* **Batch URL Import (Custom Playlist)** — Download multiple YouTube videos & audios simultaneously as a custom playlist with quality selection, animated color transitions, live URL line counter, paste success animations, and haptic feedback
+* **Thumbnail Download Tool** — Dedicated tool to extract and download high-resolution video thumbnails with image format conversion options (PNG / WebP / JPG)
+* **Video Info Download Tool** — Download full video metadata (title, description, tags, view count, upload date) as structured `.txt` or `.json` files with saved metadata management
+* **Comment Download Tool** — Extract, download, and manage YouTube video comments as readable text or JSON files
+* **Interactive Tool Cards** — Added long-press action sheets, info dialogs, and reordered grid layouts for easier navigation
+
+### 👆 Swipeable Download Details Sheet
+
+* **Spotify-Style Swipeable Sheet** — Switch between downloaded item details seamlessly by swiping left or right on the details bottom sheet
+* **Smooth Pager Transitions** — Redesigned pager container to eliminate height flickering and improve item navigation responsiveness
+
+### 🧹 Streamlined Configure & Download Flow
+
+* **Removed Docs & Thumbnail Options from Dialogs** — Consolidated documentation and thumbnail downloads into their dedicated "More Tools" pages, cleaning up `DownloadDialogV2` and `FormatPage`
+* **Format Page Enhancements** — Added grid/list layout toggle, selection summary subtitle, M3 `SegmentedButton` controls, compact format cards, soft borders, and animated chip transitions
+
+### 🔋 Battery Optimization & Background Execution
+
+* **Battery Optimization Re-Arming** — Centralized OEM detection (MIUI/HyperOS, ColorOS, iQOO, Samsung, etc.) that automatically re-prompts for battery optimization exclusions on app resume to prevent killed background downloads
+* **Doze Mode Wake Lock Protection** — Prevents downloads from stalling in Deep Doze mode by maintaining CPU wake locks during active downloads
+* **Android 12+ Foreground Service Fix** — Resolved `ForegroundServiceStartNotAllowedException` during background execution on Android 12 and higher
+
+### 🍪 Cookie & Network Enhancements
+
+* **Cookie Domain Matching Fix** — Properly aligns dot-prefixed domains (`.youtube.com`) with `includeSubdomains` flag, fixing cookie parsing issues on subdomains
+* **Removed Legacy Proxy Feature** — Completely removed outdated Proxy settings and `ProxyManager` from Sealplus Extras, simplifying network handling
+
+### 💖 Crypto Donation Support & Sponsors
+
+* **Crypto Donations Page** — Added dedicated Crypto Donation page with Bitcoin (BTC) wallet support, QR codes, and updated UPI payment details
+* **Updated Sponsors List** — Added latest community supporters to `sponsors.json`
+
+### ⚡ Memory & Performance Optimization
+
+* **In-Memory State Pruning** — Added automatic pruning of completed and cancelled download tasks from the in-memory state map, preventing memory leaks during long download sessions
+
+---
+
+### ✨ Key Features (v3.0)
+
+* 🧰 **Dedicated "More Tools" Hub** - Centralized suite for batch imports, thumbnails, video info, and comments
+* 📋 **Batch URL Import** - Download multiple videos/audios as custom playlists with quality selection
+* 👆 **Swipeable Download Details** - Spotify-style swipe left/right to switch between item details
+* 🧹 **Streamlined Dialogs** - Cleaned up download dialogs by consolidating docs/thumbnail tools
+* 🔋 **Battery Optimization Re-Arming** - OEM-specific re-prompting on resume, Doze mode wake locks
+* 🍪 **Cookie Matching Fix** - Aligned dot-prefixed domains with subdomains flag
+* 🚫 **Proxy Cleanup** - Removed legacy proxy handling for cleaner network architecture
+* 💖 **Crypto Donations** - Bitcoin and crypto wallet support with QR codes
+* ⚡ **Task Memory Pruning** - Automatic in-memory state cleanup for long download sessions
 * 🌐 Download from 1000+ sites via yt-dlp
 
 ### 📜 Full Changelog
@@ -469,19 +452,17 @@ For most Android devices, install the **arm64-v8a** version for optimal performa
 ### 🚀 Latest Releases
 
 - **Latest Stable**: [Download from GitHub Releases](https://github.com/MaheshTechnicals/Sealplus/releases/latest)
-  - ✅ **Current Version**: v2.9.0 (July 2026)
-  - 🍪 **Manual Cookie Paste** - Paste cookies in 3 formats, import from clipboard/file
-  - ⚠️ **Account Ban Warning** - Safety notice for Facebook/Instagram personal cookies
-  - 🛡️ **Anti-Bot Detection** - Two-layer bypass for Meta login pages
-  - 🔄 **Multi-Window Popups** - Login popups handled inside the app
-  - 🔐 **Cookie Management Rewrite** - HttpOnly/expiry, auto-refresh, deduplication
-  - 📄 **Download Docs** - Save video metadata as text file alongside downloads
-  - 🔧 **Download Resilience** - Retry settings, exponential backoff, extended timeouts
-  - 🎬 **MP4-Only Filter** - Filter formats by MP4 compatibility
-  - 🎨 **Download Dialog Redesign** - Modern pill chips, animated sections
-  - 🔋 **Battery Optimization** - OEM-specific detection, persistent dismissal
+  - ✅ **Current Version**: v3.0.0 (July 2026)
+  - 🧰 **Dedicated "More Tools" Hub** - Centralized suite for batch imports, thumbnails, video info, and comments
+  - 📋 **Batch URL Import** - Download multiple videos/audios as custom playlists with quality selection
+  - 👆 **Swipeable Download Details** - Spotify-style swipe left/right to switch between item details
+  - 🧹 **Streamlined Dialogs** - Cleaned up download dialogs by consolidating docs/thumbnail tools
+  - 🔋 **Battery Optimization Re-Arming** - OEM-specific re-prompting on resume, Doze mode wake locks
+  - 🍪 **Cookie Matching Fix** - Aligned dot-prefixed domains with subdomains flag
+  - 🚫 **Proxy Cleanup** - Removed legacy proxy handling for cleaner network architecture
+  - 💖 **Crypto Donations** - Bitcoin and crypto wallet support with QR codes
+  - ⚡ **Task Memory Pruning** - Automatic in-memory state cleanup for long download sessions
   - 🌐 **1000+ Sites** - Download from YouTube, Instagram, TikTok & more
-  - 🔄 **Retry failed downloads** - One-click recovery for canceled/failed downloads
   - 🚀 **Auto-Update System** enabled for seamless updates
 
 - **Preview Builds**: [Download Pre-release Versions](https://github.com/MaheshTechnicals/Sealplus/releases) 
@@ -495,8 +476,8 @@ For most Android devices, install the **arm64-v8a** version for optimal performa
 |------------|---------------|
 | **Minimum Android** | Android 7.0 (API 24) |
 | **Target Android** | Android 17 (API 37) |
-| **Current Version** | 2.9.0 |
-| **Release Date** | July 9, 2026 |
+| **Current Version** | 3.0.0 |
+| **Release Date** | July 30, 2026 |
 
 ### 🏗️ Architecture Support
 

@@ -83,64 +83,49 @@ jobs:
         tag_name: v${{ steps.version.outputs.VERSION }}
         name: Seal Plus v${{ steps.version.outputs.VERSION }}
         body: |
-          ## ✨ Seal Plus v2.9.0 - Cookies Overhaul, Download Docs, Anti-Bot Detection, MP4 Filter
+          ## ✨ Seal Plus v3.0.0 - Dedicated Tools Hub, Swipeable Details Sheet, Battery Re-Arming
           
           ---
           
-          ### 🍪 Manual Cookie Paste Dialog
+          ### 🧰 Dedicated "More Tools" Section & Tool Suite
           
-          * **Full Cookie Paste Interface** — Paste cookies manually in Netscape (.txt), JSON (Cookie-Editor), or Cookie Header (name=value) format
-          * **Import Options** — Paste from clipboard or import from a local .txt/.json file
-          * **Smart Validation** — Confirm button disabled until valid URL and non-empty cookie text
-          * **Priority** — Manually pasted cookies used first, skipping CookieManager
+          * **Dedicated "More Tools" Page** — Centralized tools hub accessible from the navigation drawer and quick-access toolbar on the home screen
+          * **Home Screen Quick-Access Toolbar** — Instant 1-tap shortcut icons on the main home screen to jump directly to dedicated utilities
+          * **Batch URL Import (Custom Playlist)** — Download multiple YouTube videos & audios simultaneously as a custom playlist with quality selection, animated color transitions, live URL line counter, paste success animations, and haptic feedback
+          * **Thumbnail Download Tool** — Extract and download high-resolution video thumbnails with image format conversion options (PNG / WebP / JPG)
+          * **Video Info Download Tool** — Download full video metadata (title, description, tags, view count, upload date) as structured `.txt` or `.json` files
+          * **Comment Download Tool** — Extract, download, and manage YouTube video comments as readable text or JSON files
+          * **Interactive Tool Cards** — Long-press action sheets, info dialogs, and reordered grid layouts
           
-          ### ⚠️ Facebook/Instagram Account Ban Warning
+          ### 👆 Swipeable Download Details Sheet
           
-          * Red warning callout inside the paste dialog — warns personal account cookies may get banned
-          * Recommends using a throwaway/secondary account for downloading
+          * **Spotify-Style Swipeable Sheet** — Switch between downloaded item details seamlessly by swiping left or right on the details bottom sheet
+          * **Smooth Pager Transitions** — Redesigned pager container to eliminate height flickering and improve item navigation
           
-          ### 🛡️ Anti-Bot Detection for Meta Login Pages
+          ### 🧹 Streamlined Configure & Download Flow
           
-          * **Two-Layer Bypass** — Sec-CH-UA header spoofing + JavaScript runtime shims
-          * Replaces "Android WebView" brand with "Google Chrome" in browser hints
-          * Shims `window.chrome`, disables `navigator.webdriver`, patches `userAgentData.brands`
+          * **Removed Docs & Thumbnail Options from Dialogs** — Consolidated documentation and thumbnail downloads into their dedicated "More Tools" pages, cleaning up `DownloadDialogV2` and `FormatPage`
+          * **Format Page Enhancements** — Grid/list layout toggle, selection summary subtitle, M3 `SegmentedButton` controls, compact format cards, soft borders, and animated chip transitions
           
-          ### 🔄 Multi-Window Popup Support
+          ### 🔋 Battery Optimization & Background Execution
           
-          * `window.open()` / `target="_blank"` popups render as closeable overlay inside the app
-          * Back button closes popup first, then navigates WebView back
+          * **Battery Optimization Re-Arming** — Centralized OEM detection (MIUI/HyperOS, ColorOS, iQOO, Samsung) that automatically re-prompts for battery optimization exclusions on app resume
+          * **Doze Mode Wake Lock Protection** — Prevents downloads from stalling in Deep Doze mode by maintaining CPU wake locks
+          * **Android 12+ Foreground Service Fix** — Resolved `ForegroundServiceStartNotAllowedException` during background execution
           
-          ### 🔐 Cookie Management Rewrite
+          ### 🍪 Cookie & Network Enhancements
           
-          * **Storage Rewrite** — Switched from direct SQLite to `CookieManager.getCookie()` API
-          * **HttpOnly & Expiry** — Cookies track HttpOnly flag; expired cookies auto-skipped
-          * **Auto-Refresh** — Cookies refresh on screen resume via lifecycle observer
-          * **Deduplication** — Cross-profile deduplication by `domain|name`
+          * **Cookie Domain Matching Fix** — Aligned dot-prefixed domains (`.youtube.com`) with `includeSubdomains` flag
+          * **Removed Legacy Proxy Feature** — Completely removed outdated Proxy settings and `ProxyManager` from Sealplus Extras
           
-          ### 📄 Download Documentation Feature
+          ### 💖 Crypto Donation Support & Sponsors
           
-          * **Save Video Metadata** — New "Download Docs" saves title, uploader, date, duration, URL, tags, description as .txt
-          * Saved to `SealPlus/docs/` after download completes with success toast
-          * Toggle without selecting format to save docs only (no video download)
+          * **Crypto Donations Page** — Added dedicated Crypto Donation page with Bitcoin (BTC) wallet support, QR codes, and updated UPI payment details
+          * **Updated Sponsors List** — Added latest community supporters to `sponsors.json`
           
-          ### 🔧 Download Resilience & Retry
+          ### ⚡ Memory & Performance Optimization
           
-          * **Retry Settings** — `--retries=10`, `--fragment-retries=10`, `--extractor-retries=3`, `--file-access-retries=3`
-          * **Exponential Backoff** — HTTP `exp=1:120`, fragment `exp=1:60` to prevent rate-limit issues
-          * **Extended Timeouts** — Socket timeout 5s→15s, info-probe retries 1→3
-          * **Aria2c** — Protocol scoping, `--file-allocation=none`, `--max-tries=5`, `--retry-wait=2`
-          * **Concurrent Fragments** now works alongside aria2c
-          
-          ### 🎬 Format Selection
-          
-          * **MP4-Only Filter** — Show only MP4/M4A formats; enabled by default
-          * **Coil 3 OkHttp** — Desktop Chrome User-Agent for reliable thumbnail loading
-          * **Implausible Size Filter** — Removes formats with unrealistically low bitrates
-          
-          ### 🎨 UI Polish
-          
-          * **Download Dialog V2** — verticalScroll layout, pill-shaped FilterChips, FlowRow settings, animated ExpandableTitle, segmented download type selector
-          * **Battery Optimization** — OEM detection for 8 manufacturers, manufacturer-specific intents, persistent dialog dismissal, Xiaomi HyperOS/MIUI targets
+          * **In-Memory State Pruning** — Automatic pruning of completed/cancelled download tasks from memory map
           
           ---
           
@@ -153,17 +138,16 @@ jobs:
           - **x86_64**: For 64-bit x86 devices
           - **x86**: For 32-bit x86 devices
           
-          ### ✨ Key Features (v2.9)
-          - 🍪 **Manual Cookie Paste** - 3 formats, clipboard/file import, smart validation
-          - ⚠️ **Account Ban Warning** - Safety notice for Facebook/Instagram cookies
-          - 🛡️ **Anti-Bot Detection** - Two-layer bypass for Meta login pages
-          - 🔄 **Multi-Window Popups** - Login popups handled inside the app
-          - 🔐 **Cookie Management Rewrite** - HttpOnly/expiry, auto-refresh, deduplication
-          - 📄 **Download Docs** - Save video metadata as text file
-          - 🔧 **Download Resilience** - Retry settings, exponential backoff, extended timeouts
-          - 🎬 **MP4-Only Filter** - Filter formats by MP4 compatibility
-          - 🎨 **Download Dialog Redesign** - Modern pill chips, animated sections
-          - 🔋 **Battery Optimization** - OEM-specific handling, persistent dismissal
+          ### ✨ Key Features (v3.0)
+          - 🧰 **Dedicated "More Tools" Hub** - Centralized suite for batch imports, thumbnails, video info, and comments
+          - 📋 **Batch URL Import** - Download multiple videos/audios as custom playlists with quality selection
+          - 👆 **Swipeable Download Details** - Spotify-style swipe left/right to switch between item details
+          - 🧹 **Streamlined Dialogs** - Cleaned up download dialogs by consolidating docs/thumbnail tools
+          - 🔋 **Battery Optimization Re-Arming** - OEM-specific re-prompting on resume, Doze mode wake locks
+          - 🍪 **Cookie Matching Fix** - Aligned dot-prefixed domains with subdomains flag
+          - 🚫 **Proxy Cleanup** - Removed legacy proxy handling for cleaner network architecture
+          - 💖 **Crypto Donations** - Bitcoin and crypto wallet support with QR codes
+          - ⚡ **Task Memory Pruning** - Automatic in-memory state cleanup for long download sessions
           
           ### 📜 Full Changelog
           See [CHANGELOG.md](https://github.com/MaheshTechnicals/Sealplus/blob/main/CHANGELOG.md) for complete version history.
@@ -202,55 +186,43 @@ jobs:
         MESSAGE+="📱 <b>App Name:</b> Seal Plus\n\n"
         MESSAGE+="🏷️ <b>Version:</b> v${{ steps.version.outputs.VERSION }}\n\n"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        MESSAGE+="📋 <b>Changelog (v2.9):</b>\n\n"
-        MESSAGE+="<b>🍪 Manual Cookie Paste Dialog</b>\n"
-        MESSAGE+="  ➤ Paste cookies in 3 formats: Netscape, JSON, Cookie Header\n"
-        MESSAGE+="  ➤ Import from clipboard or from local file\n"
-        MESSAGE+="  ➤ Smart validation — confirm disabled until valid URL + non-empty text\n"
-        MESSAGE+="  ➤ Manual cookies take priority over browser cookies\n\n"
-        MESSAGE+="<b>⚠️ Account Ban Warning</b>\n"
-        MESSAGE+="  ➤ Warning callout for Facebook/Instagram personal cookies\n"
-        MESSAGE+="  ➤ Recommends using throwaway/secondary account\n\n"
-        MESSAGE+="<b>🛡️ Anti-Bot Detection (Meta Login)</b>\n"
-        MESSAGE+="  ➤ Two-layer bypass: Sec-CH-UA header spoofing + JS shims\n"
-        MESSAGE+="  ➤ Hides WebView identity from Facebook/Instagram\n\n"
-        MESSAGE+="<b>🔄 Multi-Window Popups</b>\n"
-        MESSAGE+="  ➤ Login popups render as closeable overlay inside app\n"
-        MESSAGE+="  ➤ Back button: popup → navigate → dismiss\n\n"
-        MESSAGE+="<b>🔐 Cookie Management Rewrite</b>\n"
-        MESSAGE+="  ➤ SQLite → CookieManager.getCookie() API\n"
-        MESSAGE+="  ➤ HttpOnly tracking, expired cookies auto-skipped\n"
-        MESSAGE+="  ➤ Auto-refresh on screen resume, deduplication\n\n"
-        MESSAGE+="<b>📄 Download Documentation</b>\n"
-        MESSAGE+="  ➤ Save video metadata (title, date, URL, tags, description) as .txt\n"
-        MESSAGE+="  ➤ Saved to SealPlus/docs/ after download\n\n"
-        MESSAGE+="<b>🔧 Download Resilience</b>\n"
-        MESSAGE+="  ➤ Retry settings: 10 retries, 3 extractor retries, exponential backoff\n"
-        MESSAGE+="  ➤ Socket timeout 5s→15s, info-probe retries 1→3\n"
-        MESSAGE+="  ➤ Aria2c protocol scoping, concurrent fragments support\n\n"
-        MESSAGE+="<b>🎬 Format Selection</b>\n"
-        MESSAGE+="  ➤ MP4-only filter (default on)\n"
-        MESSAGE+="  ➤ Coil 3 OkHttp with desktop Chrome UA for thumbnails\n"
-        MESSAGE+="  ➤ Implausible size filter for unrealistic bitrates\n\n"
-        MESSAGE+="<b>🎨 UI Polish</b>\n"
-        MESSAGE+="  ➤ Download dialog V2: pill FilterChips, FlowRow, animated sections\n"
-        MESSAGE+="  ➤ Battery: OEM detection for 8 brands, persistent dismissal\n"
-        MESSAGE+="  ➤ Xiaomi HyperOS/MIUI battery intent targets\n\n"
+        MESSAGE+="📋 <b>Changelog (v3.0):</b>\n\n"
+        MESSAGE+="<b>🧰 Dedicated More Tools Hub</b>\n"
+        MESSAGE+="  ➤ Batch URL import custom playlist with quality selection\n"
+        MESSAGE+="  ➤ Thumbnail download tool with PNG/WebP/JPG format conversion\n"
+        MESSAGE+="  ➤ Video info download tool for text/JSON metadata export\n"
+        MESSAGE+="  ➤ Comment download tool for video comments extraction\n\n"
+        MESSAGE+="<b>👆 Swipeable Download Details</b>\n"
+        MESSAGE+="  ➤ Spotify-style swipe left/right between item details\n"
+        MESSAGE+="  ➤ Smooth pager height transitions\n\n"
+        MESSAGE+="<b>🧹 Streamlined Download Flow</b>\n"
+        MESSAGE+="  ➤ Consolidated docs & thumbnail tools out of download dialogs\n"
+        MESSAGE+="  ➤ Format page grid/list toggle & SegmentedButtons\n\n"
+        MESSAGE+="<b>🔋 Battery Optimization Re-Arming</b>\n"
+        MESSAGE+="  ➤ Auto re-prompts for battery exclusions on app resume\n"
+        MESSAGE+="  ➤ Doze mode CPU wake locks during downloads\n"
+        MESSAGE+="  ➤ Android 12+ foreground service crash fix\n\n"
+        MESSAGE+="<b>🍪 Cookie &amp; Network Improvements</b>\n"
+        MESSAGE+="  ➤ Dot-prefixed domain matching aligned with subdomains flag\n"
+        MESSAGE+="  ➤ Removed legacy proxy feature for cleaner architecture\n\n"
+        MESSAGE+="<b>💖 Crypto Donations</b>\n"
+        MESSAGE+="  ➤ Bitcoin (BTC) wallet support with QR codes & updated UPI\n\n"
+        MESSAGE+="<b>⚡ Memory Optimization</b>\n"
+        MESSAGE+="  ➤ Automatic in-memory state pruning for completed tasks\n\n"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        MESSAGE+="✨ <b>Key Features (v2.9):</b>\n"
-        MESSAGE+="🍪 Manual Cookie Paste — 3 formats, clipboard/file import\n"
-        MESSAGE+="⚠️ Account Ban Warning — safety notice for personal cookies\n"
-        MESSAGE+="🛡️ Anti-Bot Detection — two-layer Meta login bypass\n"
-        MESSAGE+="🔄 Multi-Window Popups — login popups inside app\n"
-        MESSAGE+="🔐 Cookie Rewrite — HttpOnly, expiry, auto-refresh\n"
-        MESSAGE+="📄 Download Docs — save video metadata as .txt\n"
-        MESSAGE+="🔧 Download Resilience — retry settings, backoff, timeouts\n"
-        MESSAGE+="🎬 MP4-Only Filter — filter formats by compatibility\n"
-        MESSAGE+="🎨 Download Dialog Redesign — pill chips, animated sections\n"
-        MESSAGE+="🔋 Battery Optimization — OEM-specific, persistent dismiss\n"
+        MESSAGE+="✨ <b>Key Features (v3.0):</b>\n"
+        MESSAGE+="🧰 More Tools Hub — Batch import, thumbnail, info, comments\n"
+        MESSAGE+="📋 Batch URL Import — Download custom playlists with quality options\n"
+        MESSAGE+="👆 Swipeable Details — Spotify-style swipe left/right\n"
+        MESSAGE+="🧹 Streamlined Flow — Cleaned download dialogs\n"
+        MESSAGE+="🔋 Battery Optimization — OEM re-arm on resume, wake locks\n"
+        MESSAGE+="🍪 Cookie Domain Fix — Aligned dot-prefixed domains\n"
+        MESSAGE+="🚫 Proxy Cleanup — Removed legacy proxy settings\n"
+        MESSAGE+="💖 Crypto Donations — BTC & QR codes support\n"
+        MESSAGE+="⚡ Memory Pruning — Automatic state map cleanup\n"
         MESSAGE+="🌐 1000+ sites via yt-dlp — YouTube, TikTok, Instagram\n\n"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        MESSAGE+="💡 <b>Note:</b> v2.9 brings a full Cookies &amp; WebView overhaul with manual cookie paste dialog supporting 3 formats, two-layer anti-bot detection for Meta login pages, multi-window popup support, a rewritten cookie management system (SQLite→CookieManager API, HttpOnly/expiry), Download Documentation feature, enhanced download resilience with exponential backoff, MP4-only format filter, redesigned Download Dialog V2, and OEM-specific battery optimization.\n\n"
+        MESSAGE+="💡 <b>Note:</b> v3.0 introduces a dedicated More Tools section with 4 tools (Batch URL Import custom playlist, Thumbnail Download, Video Info Download, Comment Download), home screen quick-access toolbar, Spotify-style swipeable download details sheet, battery optimization re-arming, cookie subdomain matching fix, legacy proxy cleanup, and crypto donations.\n\n"
         MESSAGE+="🕐 <i>Released: $(date '+%B %d, %Y at %H:%M UTC')</i>"
         
         # URL encode the message to avoid HTML parsing issues

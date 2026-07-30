@@ -5,6 +5,48 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-07-30
+
+### 🧰 Dedicated "More Tools" Section & Tool Suite
+
+* **Dedicated "More Tools" Page** — Brand new centralized tools hub accessible from the navigation drawer and quick-access toolbar on the home screen
+* **Home Screen Quick-Access Toolbar** — Added instant 1-tap shortcut icons on the main home screen to jump directly to dedicated utilities
+* **Batch URL Import (Custom Playlist)** — Download multiple YouTube videos & audios simultaneously as a custom playlist with quality selection, animated color transitions, live URL line counter, paste success animations, and haptic feedback
+* **Thumbnail Download Tool** — Dedicated tool to extract and download high-resolution video thumbnails with image format conversion options (PNG / WebP / JPG)
+* **Video Info Download Tool** — Download full video metadata (title, description, tags, view count, upload date) as structured `.txt` or `.json` files with saved metadata management
+* **Comment Download Tool** — Extract, download, and manage YouTube video comments as readable text or JSON files
+* **Interactive Tool Cards** — Added long-press action sheets, info dialogs, and reordered grid layouts for easier navigation
+
+### 👆 Swipeable Download Details Sheet
+
+* **Spotify-Style Swipeable Sheet** — Switch between downloaded item details seamlessly by swiping left or right on the details bottom sheet
+* **Smooth Pager Transitions** — Redesigned pager container to eliminate height flickering and improve item navigation responsiveness
+
+### 🧹 Streamlined Configure & Download Flow
+
+* **Removed Docs & Thumbnail Options from Dialogs** — Consolidated documentation and thumbnail downloads into their dedicated "More Tools" pages, cleaning up `DownloadDialogV2` and `FormatPage`
+* **Format Page Enhancements** — Added grid/list layout toggle, selection summary subtitle, M3 `SegmentedButton` controls, compact format cards, soft borders, and animated chip transitions
+
+### 🔋 Battery Optimization & Background Execution
+
+* **Battery Optimization Re-Arming** — Centralized OEM detection (MIUI/HyperOS, ColorOS, iQOO, Samsung, etc.) that automatically re-prompts for battery optimization exclusions on app resume to prevent killed background downloads
+* **Doze Mode Wake Lock Protection** — Prevents downloads from stalling in Deep Doze mode by maintaining CPU wake locks during active downloads
+* **Android 12+ Foreground Service Fix** — Resolved `ForegroundServiceStartNotAllowedException` during background execution on Android 12 and higher
+
+### 🍪 Cookie & Network Enhancements
+
+* **Cookie Domain Matching Fix** — Properly aligns dot-prefixed domains (`.youtube.com`) with `includeSubdomains` flag, fixing cookie parsing issues on subdomains
+* **Removed Legacy Proxy Feature** — Completely removed outdated Proxy settings and `ProxyManager` from Sealplus Extras, simplifying network handling
+
+### 💖 Crypto Donation Support & Sponsors
+
+* **Crypto Donations Page** — Added dedicated Crypto Donation page with Bitcoin (BTC) wallet support, QR codes, and updated UPI payment details
+* **Updated Sponsors List** — Added latest community supporters to `sponsors.json`
+
+### ⚡ Memory & Performance Optimization
+
+* **In-Memory State Pruning** — Added automatic pruning of completed and cancelled download tasks from the in-memory state map, preventing memory leaks during long download sessions
+
 ## [2.9.0] - 2026-07-09
 
 ### 🍪 Manual Cookie Paste Dialog
