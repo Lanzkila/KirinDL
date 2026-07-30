@@ -94,6 +94,16 @@
       "id": 19,
       "name": "Alexandru Betco",
       "METHOD": "PAYPAL"
+    },
+    {
+      "id": 20,
+      "name": "Shahab Naei",
+      "METHOD": "PAYPAL"
+    },
+    {
+      "id": 21,
+      "name": "ahmetyasinakturk",
+      "METHOD": "GITHUB"
     }
   ]
 }
