@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalUriHandler
+import com.junkfood.seal.ui.common.AsyncImageImpl
 import com.junkfood.seal.ui.common.LocalDarkTheme
 import com.junkfood.seal.ui.common.LocalGradientDarkMode
 import com.junkfood.seal.ui.theme.GradientBrushes
@@ -29,6 +31,10 @@ import com.junkfood.seal.ui.theme.GradientDarkColors
 import com.junkfood.seal.util.makeToast
 
 private const val BEP20_ADDRESS = "0x8c857c0FaDc6B3d58678Af5F5A28905a75Cc0c16"
+private const val TRUST_WALLET_URL =
+    "https://link.trustwallet.com/send?coin=20000714&address=0x8c857c0FaDc6B3d58678Af5F5A28905a75Cc0c16&token_id=0x55d398326f99059fF775485246999027B3197955"
+private const val QR_CODE_API_URL =
+    "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https%3A%2F%2Flink.trustwallet.com%2Fsend%3Fcoin%3D20000714%26address%3D0x8c857c0FaDc6B3d58678Af5F5A28905a75Cc0c16%26token_id%3D0x55d398326f99059fF775485246999027B3197955"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +43,7 @@ fun CryptoDonationPage(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
     val isGradientDark = LocalGradientDarkMode.current
 
@@ -339,6 +346,108 @@ fun CryptoDonationPage(
                                 }
                             }
                         }
+
+                        // Pay via Trust Wallet Button
+                        OutlinedButton(
+                            onClick = {
+                                runCatching {
+                                    uriHandler.openUri(TRUST_WALLET_URL)
+                                }.onFailure {
+                                    context.makeToast("Could not open Trust Wallet link")
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.AccountBalanceWallet,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "Pay via Trust Wallet",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Icon(
+                                    imageVector = Icons.Outlined.OpenInNew,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // QR Code Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDarkTheme && isGradientDark) {
+                            GradientDarkColors.SurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Scan QR Code",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isDarkTheme && isGradientDark) {
+                                GradientDarkColors.OnSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .size(220.dp)
+                                .clip(RoundedCornerShape(16.dp)),
+                            color = Color.White,
+                            shadowElevation = 4.dp
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImageImpl(
+                                    model = QR_CODE_API_URL,
+                                    contentDescription = "Crypto Donation QR Code",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Scan with Trust Wallet or any crypto wallet app to auto-fill USDT (BEP20) donation details",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                            color = if (isDarkTheme && isGradientDark) {
+                                GradientDarkColors.OnSurface.copy(alpha = 0.7f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            }
+                        )
                     }
                 }
             }

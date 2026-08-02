@@ -402,9 +402,15 @@
           </div>
           <div class="method-value">USDT (BEP20)</div>
           <div class="method-value" style="font-size:.85rem; color:var(--accent-cyan); word-break:break-all; margin-top:-6px;">0x8c857c0FaDc6B3d58678Af5F5A28905a75Cc0c16</div>
-          <div class="method-note">BNB Smart Chain only. Sending via other networks may result in permanent loss.</div>
-          <div class="method-actions">
-            <button class="btn btn-primary" onclick="navigator.clipboard.writeText('0x8c857c0FaDc6B3d58678Af5F5A28905a75Cc0c16').then(()=>{const t=this.innerText;this.innerText='Copied!';setTimeout(()=>this.innerText=t,2000)});" aria-label="Copy crypto address">
+          <div style="text-align:center; margin:12px 0;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Flink.trustwallet.com%2Fsend%3Fcoin%3D20000714%26address%3D0x8c857c0FaDc6B3d58678Af5F5A28905a75Cc0c16%26token_id%3D0x55d398326f99059fF775485246999027B3197955" alt="Trust Wallet Crypto QR Code" style="border-radius:12px; background:#ffffff; padding:8px; width:160px; height:160px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" loading="lazy" />
+          </div>
+          <div class="method-note">BNB Smart Chain only. Scan with Trust Wallet or click below to auto-fill details.</div>
+          <div class="method-actions" style="display:flex; flex-direction:column; gap:8px;">
+            <a class="btn btn-primary" href="https://link.trustwallet.com/send?coin=20000714&address=0x8c857c0FaDc6B3d58678Af5F5A28905a75Cc0c16&token_id=0x55d398326f99059fF775485246999027B3197955" target="_blank" rel="noopener" aria-label="Pay via Trust Wallet">
+              Pay via Trust Wallet
+            </a>
+            <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('0x8c857c0FaDc6B3d58678Af5F5A28905a75Cc0c16').then(()=>{const t=this.innerText;this.innerText='Copied!';setTimeout(()=>this.innerText=t,2000)});" aria-label="Copy crypto address">
               Copy Address
             </button>
           </div>

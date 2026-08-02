@@ -54,7 +54,7 @@ object SponsorUtil {
      * No API token or secret is required to read it.
      */
     private const val SPONSORS_URL =
-        "https://raw.githubusercontent.com/MaheshTechnicals/Sealplus/main/sponsors.json"
+        "https://cdn.jsdelivr.net/gh/MaheshTechnicals/Sealplus@main/sponsors.json"
 
     private fun getClient(): OkHttpClient =
         OkHttpClient.Builder()
