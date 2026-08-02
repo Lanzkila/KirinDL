@@ -332,7 +332,8 @@ object Downloader {
                         delay(3000)
                     }
                 }
-                .invokeOnCompletion {
+                .invokeOnCompletion { cause ->
+                    if (cause != null) return@invokeOnCompletion
                     if (!isDownloaderAvailable()) {
                         Log.w(TAG, "addToDownloadQueue: downloader never became idle; dropping task.")
                         return@invokeOnCompletion

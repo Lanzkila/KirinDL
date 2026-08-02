@@ -255,6 +255,7 @@ class App : Application(), SingletonImageLoader.Factory {
             if (!isServiceRunning) return
             try {
                 isServiceRunning = false
+                boundDownloadService = null
                 context.applicationContext.run { unbindService(connection) }
             } catch (e: Exception) {
                 e.printStackTrace()

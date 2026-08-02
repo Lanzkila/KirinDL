@@ -120,8 +120,9 @@ object DownloadUtil {
         val items = jsonFormat.decodeFromString<List<CookieJson>>(normalised)
         val now = System.currentTimeMillis() / 1000L
         val fallbackDomain = profileUrl.let {
-            val url = if (it.startsWith("http")) it else "https://$it"
-            "." + (Uri.parse(url).host?.removePrefix("www.") ?: return@let "")
+            val url = if (it.startsWith("http://") || it.startsWith("https://")) it else "https://$it"
+            val host = Uri.parse(url).host?.removePrefix("www.")
+            if (host.isNullOrBlank()) "" else ".$host"
         }
         return items.mapNotNull { c ->
             if (c.name.isEmpty()) return@mapNotNull null

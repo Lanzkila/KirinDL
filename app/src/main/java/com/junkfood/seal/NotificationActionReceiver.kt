@@ -67,9 +67,13 @@ class NotificationActionReceiver : BroadcastReceiver(), KoinComponent {
     }
 
     private fun copyErrorReport(error: String, notificationId: Int) {
-        App.clipboard.setPrimaryClip(ClipData.newPlainText(null, error))
-        App.applicationScope.launch(Dispatchers.Main) {
-            context.makeToast(R.string.error_copied)
+        runCatching {
+            App.clipboard.setPrimaryClip(ClipData.newPlainText(null, error))
+            App.applicationScope.launch(Dispatchers.Main) {
+                context.makeToast(R.string.error_copied)
+            }
+        }.onFailure { e ->
+            Log.w(TAG, "Failed to copy error report to clipboard: ${e.message}")
         }
         NotificationUtil.cancelNotification(notificationId)
     }
