@@ -1,5 +1,7 @@
 package com.junkfood.seal.ui.page.settings.about
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -353,7 +355,14 @@ fun CryptoDonationPage(
                                 runCatching {
                                     uriHandler.openUri(TRUST_WALLET_URL)
                                 }.onFailure {
-                                    context.makeToast("Could not open Trust Wallet link")
+                                    runCatching {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(TRUST_WALLET_URL)).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(intent)
+                                    }.onFailure {
+                                        context.makeToast("Could not open Trust Wallet link")
+                                    }
                                 }
                             },
                             modifier = Modifier

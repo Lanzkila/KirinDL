@@ -252,6 +252,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                     // Write back original map (with real progress) so paused-on-kill tasks
                     // restore with the last known progress value.
                     val original = taskStateMap
+                        .toMap()
                         .filter { (_, state) -> state.downloadState !is Completed }
                     PreferenceUtil.encodeTaskListBackup(original)
                 }
@@ -687,15 +688,14 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
     }
 
     private fun Task.pauseImpl(): Boolean {
-        when (val preState = downloadState) {
+        return when (val preState = downloadState) {
             is DownloadState.Cancelable -> {
-                return pauseForReason(preState, PauseReason.User)
+                pauseForReason(preState, PauseReason.User)
             }
             else -> {
-                return false
+                false
             }
         }
-        return true
     }
 
     private fun Task.pauseForReason(
@@ -703,18 +703,16 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
         reason: PauseReason,
     ): Boolean {
         val res = YoutubeDL.destroyProcessById(preState.taskId)
-        if (res) {
-            preState.job.cancel()
-            val progress = if (preState is Running) preState.progress else null
-            NotificationUtil.updateNotification(
-                notificationId = notificationId,
-                title = viewState.title,
-                text = appContext.getString(R.string.status_paused),
-            )
-            downloadState =
-                DownloadState.Paused(action = preState.action, progress = progress, reason = reason)
-        }
-        return res
+        preState.job.cancel()
+        val progress = if (preState is Running) preState.progress else null
+        NotificationUtil.updateNotification(
+            notificationId = notificationId,
+            title = viewState.title,
+            text = appContext.getString(R.string.status_paused),
+        )
+        downloadState =
+            DownloadState.Paused(action = preState.action, progress = progress, reason = reason)
+        return true
     }
 
     private fun Task.resumeImpl(): Boolean {
@@ -741,14 +739,12 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
         when (val preState = downloadState) {
             is DownloadState.Cancelable -> {
                 val res = YoutubeDL.destroyProcessById(preState.taskId)
-                if (res) {
-                    preState.job.cancel()
-                    val progress = if (preState is Running) preState.progress else null
-                    NotificationUtil.cancelNotification(notificationId)
-                    downloadState =
-                        DownloadState.Canceled(action = preState.action, progress = progress)
-                }
-                return res
+                preState.job.cancel()
+                val progress = if (preState is Running) preState.progress else null
+                NotificationUtil.cancelNotification(notificationId)
+                downloadState =
+                    DownloadState.Canceled(action = preState.action, progress = progress)
+                return true
             }
             Idle -> {
                 downloadState = DownloadState.Canceled(action = FetchInfo)

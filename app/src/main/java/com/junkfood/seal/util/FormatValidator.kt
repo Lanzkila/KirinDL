@@ -1,5 +1,6 @@
 package com.junkfood.seal.util
 
+import android.net.NetworkCapabilities
 import android.util.Log
 import com.junkfood.seal.App
 import kotlinx.coroutines.Dispatchers
@@ -364,9 +365,10 @@ object FormatValidator {
     fun isNetworkAvailable(): Boolean {
         return try {
             val connectivityManager = App.connectivityManager
-            val activeNetwork = connectivityManager.activeNetwork
-            val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-            networkCapabilities != null
+            val activeNetwork = connectivityManager.activeNetwork ?: return false
+            val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         } catch (e: Exception) {
             Log.e(TAG, "Error checking network availability: ${e.message}")
             false
