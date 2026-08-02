@@ -525,7 +525,7 @@ private fun ResultPreviewCard(
     thumbnailUrl: String?,
     durationString: String?,
     viewCount: Long?,
-    likeCount: Int?,
+    likeCount: Long?,
     tagCount: Int,
     hasDescription: Boolean,
     isSaved: Boolean,
