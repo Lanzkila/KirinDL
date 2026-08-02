@@ -59,11 +59,8 @@ fun Int.toDurationText(): String =
     }
 
 fun String.isNumberInRange(start: Int, end: Int): Boolean {
-    return this.isNotEmpty() &&
-        this.isDigitsOnly() &&
-        this.length < 10 &&
-        this.toInt() >= start &&
-        this.toInt() <= end
+    val num = this.toIntOrNull() ?: return false
+    return num in start..end
 }
 
 private const val URL_REGEX_PATTERN =
