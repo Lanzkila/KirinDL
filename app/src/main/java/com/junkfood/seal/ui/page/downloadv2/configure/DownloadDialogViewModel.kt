@@ -268,9 +268,7 @@ class DownloadDialogViewModel(private val downloader: DownloaderV2) : ViewModel(
         return when (val state = sheetState) {
             is SheetState.Loading -> {
                 val res = YoutubeDL.destroyProcessById(id = state.taskKey)
-                if (res) {
-                    state.job.cancel()
-                }
+                state.job.cancel()
                 return res
             }
             else -> false

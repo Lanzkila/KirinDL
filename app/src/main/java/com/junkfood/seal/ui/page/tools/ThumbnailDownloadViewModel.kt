@@ -113,6 +113,7 @@ class ThumbnailDownloadViewModel : ViewModel() {
                     errorMessage = null,
                 )
             }
+            refreshFileSizeEstimate(cached.thumbnailUrl)
             return
         }
 

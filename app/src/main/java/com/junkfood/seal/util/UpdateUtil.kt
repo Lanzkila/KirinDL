@@ -172,11 +172,14 @@ object UpdateUtil {
             val preferredArch = abiList.firstOrNull() ?: return@withContext emptyFlow()
 
             val targetUrl =
-                release.assets
-                    ?.find {
-                        return@find it.name?.contains(preferredArch) ?: false
-                    }
-                    ?.browserDownloadUrl ?: return@withContext emptyFlow()
+                release.assets?.find { asset ->
+                    asset.name?.contains(preferredArch, ignoreCase = true) == true
+                }?.browserDownloadUrl
+                    ?: release.assets?.find { asset ->
+                        asset.name?.contains("universal", ignoreCase = true) == true ||
+                            asset.name?.endsWith(".apk", ignoreCase = true) == true
+                    }?.browserDownloadUrl
+                    ?: return@withContext emptyFlow()
             val request = Request.Builder().url(targetUrl).build()
             try {
                 val response = getClient().newCall(request).execute()
