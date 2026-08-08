@@ -832,23 +832,43 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
         val template = type.template
         scope
             .launch {
+                // Same unthrottled-callback hazard as Task.download() (see
+                // PROGRESS_UI_UPDATE_THROTTLE_MS/PROGRESS_NOTIFICATION_THROTTLE_MS comment
+                // above): custom-command execution's yt-dlp process emits progress lines just
+                // as frequently, so this closure needs its own local throttling state too —
+                // otherwise the drawer-unresponsive-during-download bug reappears whenever a
+                // Custom Command template task is running instead of a normal download.
+                var lastUiUpdateAtMs = 0L
+                var lastNotifiedAtMs = 0L
+                var lastNotifiedProgress = -1
                 DownloadUtil.executeCustomCommandTask(url, id, template, preferences) {
                         progressPercentage,
                         _,
                         text ->
                         val progress = progressPercentage / 100f
+                        val progressInt = progressPercentage.toInt()
+                        val now = System.currentTimeMillis()
                         when (val preState = downloadState) {
                             is Running -> {
-                                downloadState =
-                                    preState.copy(progress = progress, progressText = text)
-                                NotificationUtil.makeNotificationForCustomCommand(
-                                    notificationId = notificationId,
-                                    taskId = id,
-                                    progress = progressPercentage.toInt(),
-                                    templateName = template.name,
-                                    taskUrl = url,
-                                    text = text,
-                                )
+                                if (now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS) {
+                                    lastUiUpdateAtMs = now
+                                    downloadState =
+                                        preState.copy(progress = progress, progressText = text)
+                                }
+                                if (progressInt != lastNotifiedProgress &&
+                                    now - lastNotifiedAtMs >= PROGRESS_NOTIFICATION_THROTTLE_MS
+                                ) {
+                                    lastNotifiedAtMs = now
+                                    lastNotifiedProgress = progressInt
+                                    NotificationUtil.makeNotificationForCustomCommand(
+                                        notificationId = notificationId,
+                                        taskId = id,
+                                        progress = progressInt,
+                                        templateName = template.name,
+                                        taskUrl = url,
+                                        text = text,
+                                    )
+                                }
                             }
                             else -> {}
                         }
