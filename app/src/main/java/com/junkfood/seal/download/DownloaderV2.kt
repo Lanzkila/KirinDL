@@ -167,6 +167,19 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
             "HTTP Error 5", "Network is unreachable", "nodename nor servname",
             "Failed to establish", "RemoteDisconnected", "SSLError"
         )
+
+        // yt-dlp emits a progress line on essentially every stdout flush, which on a fast
+        // connection can fire many times per second, with no throttling from this app or the
+        // underlying youtubedl-android callback. Writing Compose state (which the Home screen's
+        // active-download list observes) and posting a notification (a Binder IPC into
+        // system_server) on every single tick can flood the main thread with recomposition/
+        // layout/draw work and IPC churn. On some heavily-customized OEM ROMs this is enough to
+        // starve touch-input dispatch, making the navigation drawer appear unclickable for as
+        // long as a download keeps ticking (see: menu items unresponsive while downloading).
+        // Capping both to a bounded cadence keeps the UI/notification smooth while freeing up
+        // the main thread to service input in between updates.
+        private const val PROGRESS_UI_UPDATE_THROTTLE_MS = 200L
+        private const val PROGRESS_NOTIFICATION_THROTTLE_MS = 750L
     }
     private val snapshotFlow = snapshotFlow { taskStateMap.toMap() }
 
@@ -552,29 +565,57 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
         }
         scope
             .launch(Dispatchers.Default) {
+                // Per-download throttling state for the progress callback below. These are
+                // local to this download attempt (a fresh closure is created each time
+                // Task.download() runs, e.g. on resume/retry), so no cross-task interference.
+                var lastUiUpdateAtMs = 0L
+                var lastNotifiedAtMs = 0L
+                var lastNotifiedProgress = -1
                 DownloadUtil.downloadVideo(
                         videoInfo = info,
                         taskId = id,
                         downloadPreferences = preferences,
                         progressCallback = { progressPercentage, _, text ->
                             val progress = progressPercentage / 100f
+                            val progressInt = progressPercentage.toInt()
                             // Strip yt-dlp's "[download] " prefix so progressText stored
                             // in the Running state is clean for any UI that displays it.
                             val cleanText = text
                                 .removePrefix("[download] ")
                                 .removePrefix("[download]")
                                 .trim()
+                            val now = System.currentTimeMillis()
                             when (val preState = downloadState) {
                                 is Running -> {
-                                    downloadState =
-                                        preState.copy(progress = progress, progressText = cleanText)
-                                    NotificationUtil.notifyProgress(
-                                        notificationId = notificationId,
-                                        progress = progressPercentage.toInt(),
-                                        text = cleanText,
-                                        title = viewState.title,
-                                        taskId = id,
-                                    )
+                                    // Throttle Compose state writes so the Home screen's
+                                    // active-download list (which lives behind the nav
+                                    // drawer) doesn't recompose/re-layout on every single
+                                    // yt-dlp progress line — see PROGRESS_UI_UPDATE_THROTTLE_MS
+                                    // comment above for why this matters. The final jump to
+                                    // 100%/Completed is handled separately in onSuccess below,
+                                    // so a throttled last tick here is harmless.
+                                    if (now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS) {
+                                        lastUiUpdateAtMs = now
+                                        downloadState =
+                                            preState.copy(progress = progress, progressText = cleanText)
+                                    }
+                                    // Throttle notification updates independently (and more
+                                    // conservatively, since each is a Binder IPC into
+                                    // system_server) and skip redundant calls when the
+                                    // integer percentage hasn't actually changed.
+                                    if (progressInt != lastNotifiedProgress &&
+                                        now - lastNotifiedAtMs >= PROGRESS_NOTIFICATION_THROTTLE_MS
+                                    ) {
+                                        lastNotifiedAtMs = now
+                                        lastNotifiedProgress = progressInt
+                                        NotificationUtil.notifyProgress(
+                                            notificationId = notificationId,
+                                            progress = progressInt,
+                                            text = cleanText,
+                                            title = viewState.title,
+                                            taskId = id,
+                                        )
+                                    }
                                 }
                                 else -> {}
                             }
