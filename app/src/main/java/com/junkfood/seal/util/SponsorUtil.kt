@@ -54,13 +54,14 @@ object SponsorUtil {
      * No API token or secret is required to read it.
      */
     private const val SPONSORS_URL =
-        "https://raw.githubusercontent.com/MaheshTechnicals/Sealplus/main/sponsors.json"
+        "https://cdn.jsdelivr.net/gh/MaheshTechnicals/Sealplus@main/sponsors.json"
 
-    private fun getClient(): OkHttpClient =
+    private val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
+    }
 
     private val jsonFormat = Json { ignoreUnknownKeys = true }
     @Volatile
@@ -72,7 +73,7 @@ object SponsorUtil {
             // Double-checked locking: recheck under lock after acquiring it
             cachedResponse ?: run {
                 val request = Request.Builder().url(SPONSORS_URL).get().build()
-                val body = getClient().newCall(request).execute().use { response ->
+                val body = httpClient.newCall(request).execute().use { response ->
                     response.body?.string() ?: error("Empty response body from sponsors endpoint")
                 }
                 Log.d(TAG, "Sponsors fetched successfully")

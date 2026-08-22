@@ -247,7 +247,15 @@ object BatteryUtil {
 
     private fun isIntentResolvable(context: Context, intent: Intent): Boolean {
         return try {
-            context.packageManager.resolveActivity(intent, 0) != null
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.resolveActivity(
+                    intent,
+                    android.content.pm.PackageManager.ResolveInfoFlags.of(0L)
+                ) != null
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.resolveActivity(intent, 0) != null
+            }
         } catch (_: Exception) {
             false
         }

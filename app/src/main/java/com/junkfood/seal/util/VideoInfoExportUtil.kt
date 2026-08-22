@@ -114,7 +114,7 @@ object VideoInfoExportUtil {
         val uploadDate: String,
         val duration: String,
         val viewCount: Long?,
-        val likeCount: Int?,
+        val likeCount: Long?,
         val extractor: String,
     )
 }

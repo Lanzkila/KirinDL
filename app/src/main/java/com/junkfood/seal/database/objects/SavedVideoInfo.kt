@@ -24,7 +24,7 @@ data class SavedVideoInfo(
     @ColumnInfo(defaultValue = "") val uploadDate: String = "",
     @ColumnInfo(defaultValue = "") val durationString: String = "",
     @ColumnInfo(defaultValue = "-1") val viewCount: Long = -1L,
-    @ColumnInfo(defaultValue = "-1") val likeCount: Int = -1,
+    @ColumnInfo(defaultValue = "-1") val likeCount: Long = -1L,
     @ColumnInfo(defaultValue = "") val extractor: String = "",
     @ColumnInfo(defaultValue = "0") val savedAtMillis: Long = 0L,
 ) {

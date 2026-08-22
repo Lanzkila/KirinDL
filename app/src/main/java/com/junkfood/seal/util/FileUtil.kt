@@ -265,7 +265,7 @@ object FileUtil {
 
     internal fun getExternalDownloadDirectory() =
         File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SealPlus")
-            .also { it.mkdir() }
+            .also { it.mkdirs() }
 
     fun getDocsDirectory(): File =
         File(getExternalDownloadDirectory(), "docs").also { it.mkdirs() }
@@ -285,10 +285,13 @@ object FileUtil {
 
     fun File.createEmptyFile(fileName: String): Result<File> =
         this.runCatching {
-                mkdirs()
-                resolve(fileName).apply { this@apply.createNewFile() }
+            mkdirs()
+            resolve(fileName).also { file ->
+                if (!file.exists() && !file.createNewFile()) {
+                    throw java.io.IOException("Failed to create file: ${file.absolutePath}")
+                }
             }
-            .onFailure { it.printStackTrace() }
+        }.onFailure { it.printStackTrace() }
 
     fun writeContentToFile(content: String, file: File): File = file.apply { writeText(content) }
 

@@ -32,7 +32,7 @@ data class VideoInfo(
     //    @SerialName("release_timestamp") val releaseTimestamp: Int? = null,
     @SerialName("comment_count") val commentCount: Int? = null,
     val chapters: List<Chapter>? = null,
-    @SerialName("like_count") val likeCount: Int? = null,
+    @SerialName("like_count") val likeCount: Long? = null,
     val channel: String? = null,
     //    @SerialName("channel_follower_count") val channelFollowerCount: Int? = null,
     @SerialName("upload_date") val uploadDate: String? = null,
@@ -88,7 +88,7 @@ data class Comment(
     @SerialName("author_is_verified") val authorIsVerified: Boolean = false,
     /** "root" for a top-level comment, otherwise the id of the comment it replies to. */
     val parent: String = "root",
-    @SerialName("like_count") val likeCount: Int? = null,
+    @SerialName("like_count") val likeCount: Long? = null,
     val timestamp: Long? = null,
     @SerialName("is_favorited") val isFavorited: Boolean? = null,
     @SerialName("is_pinned") val isPinned: Boolean? = null,

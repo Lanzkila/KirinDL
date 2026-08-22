@@ -119,10 +119,13 @@ class MainActivity : AppCompatActivity() {
     
     override fun onResume() {
         super.onResume()
-        if (isAppInBackground && AuthenticationManager.isSecurityEnabled() && 
+        val wasInBackground = isAppInBackground
+        isAppInBackground = false
+        if (wasInBackground && AuthenticationManager.isSecurityEnabled() && 
             AuthenticationManager.isAuthenticationNeeded()) {
             // Trigger re-authentication by recreating activity
             recreate()
+            return
         }
         // If a download's foreground-service promotion was blocked earlier while the app was
         // backgrounded without a battery-optimization exemption (see DownloadService), the app
@@ -130,7 +133,6 @@ class MainActivity : AppCompatActivity() {
         // the download notification/foreground status catches up without waiting on the next
         // task-state change.
         App.retryForegroundPromotionIfNeeded()
-        isAppInBackground = false
     }
 
     override fun onNewIntent(intent: Intent) {

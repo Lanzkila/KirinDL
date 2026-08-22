@@ -82,8 +82,8 @@ object ThumbnailUtil {
             val maxresAvailable = runCatching {
                 val request = Request.Builder().url(maxresUrl).head().build()
                 httpClient.newCall(request).execute().use { response ->
-                    response.isSuccessful &&
-                        (response.header("Content-Length")?.toLongOrNull() ?: 0L) > MAXRES_MIN_BYTES
+                    val contentLength = response.header("Content-Length")?.toLongOrNull()
+                    response.isSuccessful && (contentLength == null || contentLength > MAXRES_MIN_BYTES)
                 }
             }.getOrDefault(false)
 

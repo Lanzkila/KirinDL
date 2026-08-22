@@ -768,7 +768,13 @@ Help make Seal Plus accessible to users worldwide:
 
 Watch how our community has grown over time!
 
-[![Star History Chart](https://api.star-history.com/svg?repos=MaheshTechnicals/Sealplus&type=Timeline)](https://star-history.com/#MaheshTechnicals/Sealplus&Timeline)
+<a href="https://www.star-history.com/?repos=MaheshTechnicals%2FSealplus&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=MaheshTechnicals/Sealplus&type=date&theme=dark&legend=top-left&sealed_token=GOlb1s7yaOu_jIlZC6RgDlzDCmd8ES-3lqcTtDciPQFpy_uLPyxWkX0aE9zzzfmENuI1HsIHaIO247uaLgCSijoYhEkKo0CWE1en_LqiTZfObqGgZSLzgw" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=MaheshTechnicals/Sealplus&type=date&legend=top-left&sealed_token=GOlb1s7yaOu_jIlZC6RgDlzDCmd8ES-3lqcTtDciPQFpy_uLPyxWkX0aE9zzzfmENuI1HsIHaIO247uaLgCSijoYhEkKo0CWE1en_LqiTZfObqGgZSLzgw" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=MaheshTechnicals/Sealplus&type=date&legend=top-left&sealed_token=GOlb1s7yaOu_jIlZC6RgDlzDCmd8ES-3lqcTtDciPQFpy_uLPyxWkX0aE9zzzfmENuI1HsIHaIO247uaLgCSijoYhEkKo0CWE1en_LqiTZfObqGgZSLzgw" />
+ </picture>
+</a>
 
 ---
 

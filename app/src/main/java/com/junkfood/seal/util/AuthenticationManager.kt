@@ -194,15 +194,21 @@ object AuthenticationManager {
         return SecretKeyFactory.getInstance(PBKDF2_ALGORITHM).generateSecret(spec).encoded
     }
     
+    private fun canAuthenticateBiometrics(biometricManager: BiometricManager): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            biometricManager.canAuthenticate(BIOMETRIC_STRONG or BIOMETRIC_WEAK)
+        } else {
+            @Suppress("DEPRECATION")
+            biometricManager.canAuthenticate()
+        }
+    }
+
     /**
      * Check if biometric authentication is available
      */
     fun isBiometricAvailable(context: Context): Boolean {
         val biometricManager = BiometricManager.from(context)
-        return when (biometricManager.canAuthenticate(BIOMETRIC_STRONG or BIOMETRIC_WEAK)) {
-            BiometricManager.BIOMETRIC_SUCCESS -> true
-            else -> false
-        }
+        return canAuthenticateBiometrics(biometricManager) == BiometricManager.BIOMETRIC_SUCCESS
     }
     
     /**
@@ -210,9 +216,10 @@ object AuthenticationManager {
      */
     fun isDeviceCredentialAvailable(context: Context): Boolean {
         val biometricManager = BiometricManager.from(context)
-        return when (biometricManager.canAuthenticate(DEVICE_CREDENTIAL)) {
-            BiometricManager.BIOMETRIC_SUCCESS -> true
-            else -> false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            biometricManager.canAuthenticate(DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
+        } else {
+            true
         }
     }
     
@@ -221,7 +228,7 @@ object AuthenticationManager {
      */
     fun getBiometricStatusMessage(context: Context): String {
         val biometricManager = BiometricManager.from(context)
-        return when (biometricManager.canAuthenticate(BIOMETRIC_STRONG or BIOMETRIC_WEAK)) {
+        return when (canAuthenticateBiometrics(biometricManager)) {
             BiometricManager.BIOMETRIC_SUCCESS -> 
                 context.getString(R.string.biometric_available)
             BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> 
