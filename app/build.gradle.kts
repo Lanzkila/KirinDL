@@ -1,72 +1,190 @@
+@file:Suppress("UnstableApiUsage")
+
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.chaquo.python")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.room)
+    alias(libs.plugins.ktfmt.gradle)
 }
 
-val kirinKeystorePath = System.getenv("KIRIN_KEYSTORE_FILE")
-val kirinKeystorePassword = System.getenv("KIRIN_KEYSTORE_PASSWORD")
-val kirinKeyAlias = System.getenv("KIRIN_KEY_ALIAS")
-val kirinKeyPassword = System.getenv("KIRIN_KEY_PASSWORD")
+val keystorePropertiesFile: File = rootProject.file("keystore.properties")
+
+val splitApks = !project.hasProperty("noSplits")
+
+val abiFilterList = (properties["ABI_FILTERS"] as String).split(';')
+
+val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 3, "x86_64" to 4)
+
+val baseVersionName = currentVersion.name
+val currentVersionCode = currentVersion.code.toInt()
 
 android {
-    namespace = "com.kirin.downloader"
-    compileSdk = 35
+    compileSdk = 37
 
-    defaultConfig {
-        applicationId = "com.kirin.downloader"
-        minSdk = 24
-        targetSdk = 35
-        versionCode = 8
-        versionName = "1.0.0-full-batch7"
-
-        // Universal APK: package every ABI supplied by native dependencies.
+    if (keystorePropertiesFile.exists()) {
+        val keystoreProperties = Properties()
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+        signingConfigs {
+            create("githubPublish") {
+                keyAlias = keystoreProperties["keyAlias"].toString()
+                keyPassword = keystoreProperties["keyPassword"].toString()
+                storeFile = file(keystoreProperties["storeFile"]!!)
+                storePassword = keystoreProperties["storePassword"].toString()
+            }
+        }
     }
 
-    signingConfigs {
-        create("release") {
-            if (!kirinKeystorePath.isNullOrBlank()) {
-                storeFile = file(kirinKeystorePath)
+    buildFeatures { buildConfig = true }
+
+    defaultConfig {
+        applicationId = "com.maheshtechnicals.sealplus"
+        minSdk = 24
+        targetSdk = 37
+        versionCode = 300_000_400
+        check(versionCode == currentVersionCode)
+
+        versionName = baseVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables { useSupportLibrary = true }
+
+        if (splitApks) {
+            splits {
+                abi {
+                    isEnable = true
+                    reset()
+                    include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                    isUniversalApk = true
+                }
             }
-            storePassword = kirinKeystorePassword
-            keyAlias = kirinKeyAlias
-            keyPassword = kirinKeyPassword
+        } else {
+            ndk { abiFilters.addAll(abiFilterList) }
+        }
+    }
+
+    room { schemaDirectory("$projectDir/schemas") }
+    ksp { arg("room.incremental", "true") }
+
+    androidComponents {
+        onVariants { variant ->
+            variant.outputs.forEach { output ->
+                val name =
+                    if (splitApks) {
+                        output.filters
+                            .find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }
+                            ?.identifier
+                    } else {
+                        abiFilterList.firstOrNull()
+                    }
+
+                val baseAbiCode = abiCodes[name]
+
+                if (baseAbiCode != null) {
+                    output.versionCode.set(baseAbiCode + (output.versionCode.get() ?: 0))
+                }
+
+                output.outputFileName.set("SealPlus-${baseVersionName}-${name ?: "universal"}.apk")
+            }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isDebuggable = false
-            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("githubPublish")
+            }
         }
+        debug {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("githubPublish")
+            }
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+    }
+
+    flavorDimensions += "publishChannel"
+
+    productFlavors {
+        create("generic") {
+            dimension = "publishChannel"
+            isDefault = true
+        }
+    }
+
+    lint { disable.addAll(listOf("MissingTranslation", "ExtraTranslation", "MissingQuantity")) }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        jniLibs { useLegacyPackaging = true }
     }
+    androidResources { generateLocaleConfig = true }
+
+    namespace = "com.junkfood.seal"
 }
 
-chaquopy {
-    defaultConfig {
-        version = "3.13"
+ktfmt { kotlinLangStyle() }
 
-        pip {
-            install("gallery-dl==1.32.9")
-        }
+kotlin { 
+    jvmToolchain(21)
+    
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
     }
 }
 
 dependencies {
-    val youtubedlAndroid = "0.18.1"
+    implementation(project(":color"))
 
-    implementation("io.github.junkfood02.youtubedl-android:library:$youtubedlAndroid")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroid")
-    implementation("io.github.junkfood02.youtubedl-android:aria2c:$youtubedlAndroid")
-}
+    implementation(libs.bundles.core)
 
-kotlin {
-    jvmToolchain(17)
+    implementation(libs.androidx.lifecycle.runtimeCompose)
+
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.bundles.androidxCompose)
+
+    implementation(libs.coil.kt.compose)
+    implementation(libs.coil.kt.network.okhttp)
+
+    implementation(libs.kotlinx.serialization.json)
+
+    implementation(libs.koin.android)
+    implementation(libs.koin.compose)
+
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    implementation(libs.okhttp)
+
+    implementation(libs.bundles.youtubedlAndroid)
+
+    implementation(libs.mmkv)
+
+    implementation(libs.androidx.documentfile)
+
+    // AndroidX WebKit — provides WebViewCompat.addDocumentStartJavaScript() which
+    // injects JavaScript BEFORE any page script runs. Required to inject the
+    // window.chrome shim that bypasses Meta's (Facebook/Instagram) bot detection.
+    implementation("androidx.webkit:webkit:1.16.0")
+
+    testImplementation(libs.junit4)
+    androidTestImplementation(libs.androidx.test.ext)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    implementation(libs.androidx.compose.ui.tooling)
 }
