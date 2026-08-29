@@ -69,13 +69,14 @@ import com.junkfood.seal.ui.component.ConfirmButton
 import com.junkfood.seal.util.AUTO_UPDATE
 import com.junkfood.seal.util.PreferenceUtil
 
-private const val releaseURL = "https://github.com/MaheshTechnicals/Sealplus/releases"
-private const val repoUrl = "https://github.com/MaheshTechnicals/Sealplus/blob/main/README.md"
+private const val releaseURL = "https://github.com/Lanzkila/KirinDownloader-Seal/releases"
+private const val repoUrl = "https://github.com/Lanzkila/KirinDownloader-Seal/blob/main/README.md"
 const val weblate = "https://hosted.weblate.org/engage/seal/"
 const val YtdlpRepository = "https://github.com/yt-dlp/yt-dlp"
-private const val githubIssueUrl = "https://github.com/MaheshTechnicals/Sealplus/issues"
-private const val telegramChannelUrl = "https://t.me/maheshtechnicals"
-private const val youtubeChannelUrl = "https://youtube.com/@maheshtechnicals"
+private const val githubIssueUrl = "https://github.com/Lanzkila/KirinDownloader-Seal/issues"
+private const val telegramChannelUrl = ""
+private const val youtubeChannelUrl = ""
+private const val websiteUrl = ""
 private const val githubSponsor = "https://github.com/sponsors/JunkFood02"
 private const val TAG = "AboutPage"
 
@@ -226,32 +227,47 @@ fun AboutPage(
                                 onClick = onNavigateToDonatePage,
                                 modifier = Modifier.weight(1f),
                             )
-                            CommunityCard(
-                                title = stringResource(R.string.telegram_channel),
-                                description = telegramChannelUrl,
-                                icon = painterResource(id = R.drawable.icons8_telegram_app),
-                                onClick = { openUrl(telegramChannelUrl) },
-                                modifier = Modifier.weight(1f),
-                            )
+                            if (telegramChannelUrl.isNotBlank()) {
+                                CommunityCard(
+                                    title = stringResource(R.string.telegram_channel),
+                                    description = telegramChannelUrl,
+                                    icon = painterResource(id = R.drawable.icons8_telegram_app),
+                                    onClick = { openUrl(telegramChannelUrl) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            CommunityCard(
-                                title = stringResource(R.string.youtube_channel),
-                                description = youtubeChannelUrl,
-                                icon = painterResource(id = R.drawable.icons8_youtube),
-                                onClick = { openUrl(youtubeChannelUrl) },
-                                modifier = Modifier.weight(1f),
-                            )
-                            CommunityCard(
-                                title = stringResource(R.string.website),
-                                description = "sealplus.in",
-                                icon = Icons.Outlined.Public,
-                                onClick = { openUrl("https://sealplus.in/") },
-                                modifier = Modifier.weight(1f),
-                            )
+                        if (youtubeChannelUrl.isNotBlank() || websiteUrl.isNotBlank()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                if (youtubeChannelUrl.isNotBlank()) {
+                                    CommunityCard(
+                                        title = stringResource(R.string.youtube_channel),
+                                        description = youtubeChannelUrl,
+                                        icon = painterResource(id = R.drawable.icons8_youtube),
+                                        onClick = { openUrl(youtubeChannelUrl) },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+
+                                if (websiteUrl.isNotBlank()) {
+                                    CommunityCard(
+                                        title = stringResource(R.string.website),
+                                        description = websiteUrl,
+                                        icon = Icons.Outlined.Public,
+                                        onClick = { openUrl(websiteUrl) },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -353,7 +369,7 @@ fun AutoUpdateUnavailableDialog(onDismissRequest: () -> Unit = {}) {
         val startIndex = text.indexOf(hyperLinkText)
         val endIndex = startIndex + hyperLinkText.length
         addUrlAnnotation(
-            UrlAnnotation("https://github.com/MaheshTechnicals/Sealplus/releases/latest"),
+            UrlAnnotation("https://github.com/Lanzkila/KirinDownloader-Seal/releases/latest"),
             start = startIndex,
             end = endIndex,
         )
