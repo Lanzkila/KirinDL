@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">Seal Plus</string>
+    <string name="app_name" translatable="false">KirinDownloader</string>
     <string name="video_directory">Video folder</string>
     <string name="extract_audio">Save as audio</string>
     <string name="create_thumbnail">Save thumbnail</string>
@@ -145,7 +145,7 @@
     <string name="permission_issue_desc">Directories outside Download/ and Documents/ are not supported</string>
     <string name="battery_configuration">Battery configuration</string>
     <string name="battery_configuration_desc">Ignore battery optimization for this app to download in the background</string>
-    <string name="service_title">Seal Plus is downloading…</string>
+    <string name="service_title">KirinDownloader is downloading…</string>
     <string name="unknown_error">Unknown error</string>
     <string name="translate">Translate</string>
     <string name="translate_desc">Help translate this app on Hosted Weblate</string>
