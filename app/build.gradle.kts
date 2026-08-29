@@ -42,7 +42,7 @@ android {
     buildFeatures { buildConfig = true }
 
     defaultConfig {
-        applicationId = "com.maheshtechnicals.sealplus"
+        applicationId = "com.kirin.downloader"
         minSdk = 24
         targetSdk = 37
         versionCode = 300_000_400
