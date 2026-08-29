@@ -87,7 +87,7 @@ android {
                     output.versionCode.set(baseAbiCode + (output.versionCode.get() ?: 0))
                 }
 
-                output.outputFileName.set("SealPlus-${baseVersionName}-${name ?: "universal"}.apk")
+                output.outputFileName.set("KirinDownloader-${baseVersionName}-${name ?: "universal"}.apk")
             }
         }
     }
