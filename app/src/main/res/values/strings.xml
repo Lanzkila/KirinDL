@@ -775,7 +775,7 @@
     <string name="gallery_dl_engine_not_installed">Not installed yet</string>
     <string name="gallery_dl_install_update">Install / Update Engine</string>
     <string name="gallery_dl_installing">Installing from PyPI…</string>
-    <string name="gallery_dl_engine_note">The engine is downloaded only when you request it, verified with PyPI's SHA-256 checksum, and stored inside the app.</string>
+    <string name="gallery_dl_engine_note">The engine is downloaded only when you request it, verified with PyPI\'s SHA-256 checksum, and stored inside the app.</string>
     <string name="gallery_dl_url">Gallery URL</string>
     <string name="gallery_dl_url_hint">Paste a supported gallery or collection URL</string>
     <string name="gallery_dl_download">Download Gallery</string>
