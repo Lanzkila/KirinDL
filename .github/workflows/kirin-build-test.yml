@@ -36,7 +36,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build generic release
-        run: ./gradlew assembleGenericRelease --stacktrace --no-daemon
+        run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
       - name: Show generated APKs
         run: find app/build/outputs/apk -type f -name "*.apk" -print
