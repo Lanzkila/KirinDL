@@ -6,7 +6,7 @@
 
 ### 🎬 Advanced Video/Audio Downloader for Android
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/MaheshTechnicals/Sealplus?color=black&label=Latest%20Release&logo=github)](https://github.com/MaheshTechnicals/Sealplus/releases/latest/)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Lanzkila/KirinDownloader-Seal?color=black&label=Latest%20Release&logo=github)](https://github.com/Lanzkila/KirinDownloader-Seal/releases/latest/)
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/MaheshTechnicals/Sealplus?include_prereleases&label=Preview&logo=Github)](https://github.com/MaheshTechnicals/Sealplus/releases/)
 [![Keep a Changelog](https://img.shields.io/badge/Changelog-lightgray?style=flat&color=gray&logo=keep-a-changelog)](https://github.com/MaheshTechnicals/Sealplus/blob/main/CHANGELOG.md)
 [![GitHub all releases](https://img.shields.io/github/downloads/MaheshTechnicals/Sealplus/total?label=Downloads&logo=github)](https://github.com/MaheshTechnicals/Sealplus/releases/)
