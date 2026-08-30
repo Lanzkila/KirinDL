@@ -34,6 +34,17 @@ https://github.com/Lanzkila/KirinDownloader-Seal
 **Issues / bug reports:**  
 https://github.com/Lanzkila/KirinDownloader-Seal/issues
 
+
+## Gallery DL
+
+KirinDownloader includes an optional **Gallery DL** tool for image galleries and collections supported by gallery-dl.
+
+The APK includes the Chaquopy Python runtime and the Requests dependency, but **does not bundle gallery-dl itself**. When the user chooses **Install / Update Engine**, the app downloads the current pure-Python gallery-dl wheel from official PyPI, verifies the SHA-256 digest published by PyPI, and installs it into app-private storage.
+
+This keeps gallery-dl independently updateable and avoids combining its GPL-2.0-only distribution directly into the GPL-3.0 APK. gallery-dl remains a separate upstream project: https://github.com/mikf/gallery-dl
+
+Only save content you have permission or rights to download.
+
 ## Supported Sites
 
 KirinDownloader uses **yt-dlp** as its main extraction engine.

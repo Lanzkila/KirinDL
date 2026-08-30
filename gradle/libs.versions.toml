@@ -39,6 +39,7 @@ mmkv = "1.3.16"
 koin = "4.2.1"
 
 ktfmt = "0.26.0"
+chaquopy = "17.0.0"
 
 [libraries]
 
@@ -118,6 +119,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 room = { id = "androidx.room", version.ref = "room" }
 ktfmt-gradle = { id = "com.ncorti.ktfmt.gradle", version.ref = "ktfmt" }
+chaquopy = { id = "com.chaquo.python", version.ref = "chaquopy" }
 
 
 [bundles]

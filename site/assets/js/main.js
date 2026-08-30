@@ -1,5 +1,5 @@
 /**
- * Seal Plus Website — main.js
+ * KirinDownloader Website — main.js
  * Author: Mahesh Technicals
  * Features:
  *   - GitHub Releases API with localStorage cache (1 hr TTL)
@@ -14,8 +14,8 @@
 
 /* ── Config ─────────────────────────────────────────────────── */
 const CONFIG = {
-  apiUrl:    'https://api.github.com/repos/MaheshTechnicals/Sealplus/releases',
-  cacheKey:  'sealplus_releases_cache',
+  apiUrl:    'https://api.github.com/repos/Lanzkila/KirinDownloader-Seal/releases',
+  cacheKey:  'kirindownloader_releases_cache',
   cacheTTL:  60 * 60 * 1000,   // 1 hour in ms
   maxReleases: 15,
 };
@@ -623,7 +623,7 @@ async function loadReleases(forceRefresh = false) {
         <p style="margin-bottom:12px;">Failed to load releases. Please try again.</p>
         <button class="btn btn-secondary" onclick="loadReleases(true)">Retry</button>
       </div>`;
-    console.error('[SealPlus] Releases fetch error:', err);
+    console.error('[KirinDownloader] Releases fetch error:', err);
     if (forceRefresh) toast('Failed to refresh.', 'error');
   } finally {
     refreshBtn?.classList.remove('loading');

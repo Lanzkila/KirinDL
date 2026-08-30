@@ -1,12 +1,2 @@
 User-agent: *
 Allow: /
-Disallow: /build/
-Disallow: /.github/
-Disallow: /.gradle/
-Disallow: /.idea/
-Disallow: /.vscode/
-Disallow: /app/
-Disallow: /buildSrc/
-Disallow: /gradle/
-
-Sitemap: https://sealplus.in/sitemap.xml

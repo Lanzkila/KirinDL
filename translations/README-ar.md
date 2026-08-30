@@ -2,7 +2,7 @@
 
 <img width="" src="fastlane/metadata/android/en-US/images/icon.png"  width=160 height=160  align="center">
 
-# Seal Plus
+# KirinDownloader
 
 ### تطبيق لتحميل ملفات الفيديو والصوت من الإنترنت لنظام تشغيل اندرويد
 
