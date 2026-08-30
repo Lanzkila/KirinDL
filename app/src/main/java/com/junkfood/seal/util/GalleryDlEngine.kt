@@ -4,7 +4,6 @@ import android.content.Context
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
@@ -15,23 +14,34 @@ import okhttp3.Request
 import org.json.JSONObject
 
 /**
- * Installs gallery-dl on demand from the official PyPI package index.
+ * Installs gallery-dl on demand from the official Codeberg source repository.
  *
- * gallery-dl itself is not packaged inside the APK. This keeps the engine independently
- * updateable and avoids merging its GPL-2.0-only distribution into the GPL-3.0 APK. The wheel
- * is accepted only from pypi.org metadata and only after its published SHA-256 digest matches.
+ * KirinDownloader follows the current Codeberg master branch instead of relying on a package
+ * mirror. The updater first resolves the exact master commit from Codeberg's Forgejo API, then
+ * downloads the archive for that immutable commit and extracts only the gallery_dl Python package
+ * into app-private storage.
  */
 object GalleryDlEngine {
-    private const val PYPI_METADATA_URL = "https://pypi.org/pypi/gallery-dl/json"
+    private const val CODEBERG_BRANCH_METADATA_URL =
+        "https://codeberg.org/api/v1/repos/mikf/gallery-dl/branches/master"
+    private const val CODEBERG_ARCHIVE_BASE_URL =
+        "https://codeberg.org/api/v1/repos/mikf/gallery-dl/archive/"
+    private const val USER_AGENT = "KirinDownloader gallery-dl updater"
+
     private const val ENGINE_ROOT = "gallery-dl-engine"
     private const val CURRENT_DIR = "current"
     private const val VERSION_FILE = "VERSION"
+    private const val SOURCE_FILE = "SOURCE"
+
+    private val versionPattern = Regex("""__version__\s*=\s*[\"']([^\"']+)[\"']""")
+    private val commitPattern = Regex("^[0-9a-fA-F]{7,64}$")
 
     private val httpClient =
         OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(45, TimeUnit.SECONDS)
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(90, TimeUnit.SECONDS)
             .followRedirects(true)
+            .followSslRedirects(true)
             .build()
 
     data class InstallInfo(val version: String)
@@ -51,124 +61,170 @@ object GalleryDlEngine {
     suspend fun installLatest(context: Context): Result<InstallInfo> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val metadataRequest = Request.Builder().url(PYPI_METADATA_URL).get().build()
-                val metadata =
-                    httpClient.newCall(metadataRequest).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            throw IOException("PyPI metadata request failed (HTTP ${response.code})")
-                        }
-                        response.body?.string()?.takeIf { it.isNotBlank() }
-                            ?: throw IOException("PyPI returned an empty response")
-                    }
-
-                val rootJson = JSONObject(metadata)
-                val version = rootJson.getJSONObject("info").getString("version")
-                val urls = rootJson.getJSONArray("urls")
-
-                var wheelUrl: String? = null
-                var wheelName: String? = null
-                var expectedSha256: String? = null
-
-                // gallery-dl publishes a pure-Python wheel. Prefer the universal py3 wheel.
-                for (index in 0 until urls.length()) {
-                    val item = urls.getJSONObject(index)
-                    val filename = item.optString("filename")
-                    if (item.optString("packagetype") == "bdist_wheel" &&
-                        filename.endsWith("py3-none-any.whl")
-                    ) {
-                        wheelUrl = item.getString("url")
-                        wheelName = filename
-                        expectedSha256 = item.getJSONObject("digests").getString("sha256")
-                        break
-                    }
-                }
-
-                if (wheelUrl == null || wheelName == null || expectedSha256 == null) {
-                    throw IOException("No compatible pure-Python gallery-dl wheel was found")
-                }
+                val commit = resolveCodebergMasterCommit()
+                val shortCommit = commit.take(12)
+                val archiveUrl = "$CODEBERG_ARCHIVE_BASE_URL$commit.zip"
 
                 val engineRoot = File(context.filesDir, ENGINE_ROOT).apply { mkdirs() }
-                val wheelFile = File(context.cacheDir, wheelName)
+                val archiveFile = File(context.cacheDir, "gallery-dl-codeberg-$shortCommit.zip")
                 val stageDir = File(engineRoot, "stage-${UUID.randomUUID()}")
 
                 try {
-                    val wheelRequest = Request.Builder().url(wheelUrl).get().build()
-                    httpClient.newCall(wheelRequest).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            throw IOException("gallery-dl wheel download failed (HTTP ${response.code})")
-                        }
-                        val body = response.body ?: throw IOException("gallery-dl wheel was empty")
-                        FileOutputStream(wheelFile).use { output -> body.byteStream().copyTo(output) }
-                    }
+                    downloadArchive(archiveUrl, archiveFile)
+                    extractGalleryDlPackageSafely(archiveFile, stageDir)
 
-                    val actualSha256 = sha256(wheelFile)
-                    if (!actualSha256.equals(expectedSha256, ignoreCase = true)) {
-                        throw SecurityException("gallery-dl wheel checksum did not match PyPI metadata")
-                    }
-
-                    extractWheelSafely(wheelFile, stageDir)
                     if (!File(stageDir, "gallery_dl/__init__.py").isFile) {
-                        throw IOException("Downloaded wheel did not contain the gallery_dl package")
+                        throw IOException("Codeberg archive did not contain the gallery_dl package")
                     }
 
-                    val currentDir = File(engineRoot, CURRENT_DIR)
-                    val backupDir = File(engineRoot, "previous")
-                    backupDir.deleteRecursively()
-                    if (currentDir.exists() && !currentDir.renameTo(backupDir)) {
-                        currentDir.deleteRecursively()
-                    }
-
-                    if (!stageDir.renameTo(currentDir)) {
-                        currentDir.deleteRecursively()
-                        if (!stageDir.copyRecursively(currentDir, overwrite = true)) {
-                            throw IOException("Could not install gallery-dl engine files")
-                        }
-                        stageDir.deleteRecursively()
-                    }
+                    val version = detectPackageVersion(stageDir) ?: "codeberg-$shortCommit"
+                    installStagedEngine(engineRoot, stageDir)
 
                     File(engineRoot, VERSION_FILE).writeText(version)
-                    backupDir.deleteRecursively()
+                    File(engineRoot, SOURCE_FILE).writeText("codeberg:$commit")
                     InstallInfo(version)
                 } finally {
-                    wheelFile.delete()
+                    archiveFile.delete()
                     stageDir.deleteRecursively()
                 }
             }
         }
 
-    private fun sha256(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().buffered().use { input ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            while (true) {
-                val count = input.read(buffer)
-                if (count <= 0) break
-                digest.update(buffer, 0, count)
+    private fun resolveCodebergMasterCommit(): String {
+        val request =
+            Request.Builder()
+                .url(CODEBERG_BRANCH_METADATA_URL)
+                .header("Accept", "application/json")
+                .header("User-Agent", USER_AGENT)
+                .get()
+                .build()
+
+        val metadata =
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("Codeberg branch request failed (HTTP ${response.code})")
+                }
+                response.body?.string()?.takeIf { it.isNotBlank() }
+                    ?: throw IOException("Codeberg returned an empty branch response")
             }
+
+        val commitJson =
+            JSONObject(metadata).optJSONObject("commit")
+                ?: throw IOException("Codeberg branch response did not include commit metadata")
+
+        val commit =
+            commitJson.optString("id").ifBlank {
+                commitJson.optString("sha")
+            }
+
+        if (!commitPattern.matches(commit)) {
+            throw IOException("Codeberg returned an invalid gallery-dl commit id")
         }
-        return digest.digest().joinToString("") { "%02x".format(it) }
+        return commit.lowercase()
     }
 
-    private fun extractWheelSafely(wheel: File, destination: File) {
+    private fun downloadArchive(url: String, destination: File) {
+        val request =
+            Request.Builder()
+                .url(url)
+                .header("Accept", "application/zip, application/octet-stream")
+                .header("User-Agent", USER_AGENT)
+                .get()
+                .build()
+
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Codeberg gallery-dl archive download failed (HTTP ${response.code})")
+            }
+            val body = response.body ?: throw IOException("Codeberg gallery-dl archive was empty")
+            FileOutputStream(destination).use { output -> body.byteStream().copyTo(output) }
+        }
+
+        if (!destination.isFile || destination.length() <= 0L) {
+            throw IOException("Codeberg gallery-dl archive download produced no data")
+        }
+    }
+
+    /** Extract only the gallery_dl package, ignoring docs/tests/build metadata from the source ZIP. */
+    private fun extractGalleryDlPackageSafely(archive: File, destination: File) {
         destination.deleteRecursively()
         destination.mkdirs()
         val destinationPath = destination.canonicalFile.toPath()
+        var extractedPackageFile = false
 
-        ZipInputStream(wheel.inputStream().buffered()).use { zip ->
+        ZipInputStream(archive.inputStream().buffered()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
-                val out = File(destination, entry.name).canonicalFile
-                if (!out.toPath().startsWith(destinationPath)) {
-                    throw SecurityException("Unsafe path in gallery-dl wheel")
-                }
-                if (entry.isDirectory) {
-                    out.mkdirs()
-                } else {
-                    out.parentFile?.mkdirs()
-                    FileOutputStream(out).use { output -> zip.copyTo(output) }
+                val normalizedName = entry.name.replace('\\', '/')
+                val marker = "gallery_dl/"
+                val markerIndex = normalizedName.indexOf(marker)
+
+                if (markerIndex >= 0) {
+                    val relativeName = normalizedName.substring(markerIndex)
+                    val out = File(destination, relativeName).canonicalFile
+                    if (!out.toPath().startsWith(destinationPath)) {
+                        throw SecurityException("Unsafe path in Codeberg gallery-dl archive")
+                    }
+
+                    if (entry.isDirectory) {
+                        out.mkdirs()
+                    } else {
+                        out.parentFile?.mkdirs()
+                        FileOutputStream(out).use { output -> zip.copyTo(output) }
+                        extractedPackageFile = true
+                    }
                 }
                 zip.closeEntry()
             }
+        }
+
+        if (!extractedPackageFile) {
+            throw IOException("No gallery_dl package files were found in the Codeberg archive")
+        }
+    }
+
+    private fun detectPackageVersion(stageDir: File): String? {
+        val candidates =
+            listOf(
+                File(stageDir, "gallery_dl/version.py"),
+                File(stageDir, "gallery_dl/__init__.py"),
+            )
+
+        for (file in candidates) {
+            if (!file.isFile) continue
+            val match = runCatching { versionPattern.find(file.readText()) }.getOrNull() ?: continue
+            return match.groupValues.getOrNull(1)?.takeIf { it.isNotBlank() }
+        }
+        return null
+    }
+
+    private fun installStagedEngine(engineRoot: File, stageDir: File) {
+        val currentDir = File(engineRoot, CURRENT_DIR)
+        val backupDir = File(engineRoot, "previous")
+        backupDir.deleteRecursively()
+
+        if (currentDir.exists() && !currentDir.renameTo(backupDir)) {
+            if (!currentDir.copyRecursively(backupDir, overwrite = true)) {
+                throw IOException("Could not back up the current gallery-dl engine")
+            }
+            currentDir.deleteRecursively()
+        }
+
+        try {
+            if (!stageDir.renameTo(currentDir)) {
+                currentDir.deleteRecursively()
+                if (!stageDir.copyRecursively(currentDir, overwrite = true)) {
+                    throw IOException("Could not install gallery-dl engine files")
+                }
+                stageDir.deleteRecursively()
+            }
+            backupDir.deleteRecursively()
+        } catch (error: Throwable) {
+            currentDir.deleteRecursively()
+            if (backupDir.exists()) {
+                backupDir.renameTo(currentDir)
+            }
+            throw error
         }
     }
 }
