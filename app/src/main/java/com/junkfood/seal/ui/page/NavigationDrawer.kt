@@ -235,7 +235,7 @@ fun DrawerHeader(
             // App Logo - left side, vertically centered, reduced for balance
             Image(
                 painter = painterResource(id = R.drawable.splash_logo),
-                contentDescription = "Seal Plus Logo",
+                contentDescription = "KirinDownloader Logo",
                 modifier = Modifier.size(76.dp)
             )
             
@@ -249,7 +249,7 @@ fun DrawerHeader(
             ) {
                 // App Name - refined typography with tighter line height
                 Text(
-                    text = "Seal Plus",
+                    text = "KirinDownloader",
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 20.sp,

@@ -124,7 +124,7 @@
     <string name="subdirectory_desc">각 필드 이름으로 지정된 폴더에 파일 저장</string>
     <string name="permission_issue">저장소 권한 문제</string>
     <string name="permission_issue_desc">Download/ 및 Documents/ 이외의 외부 디렉토리는 지원되지 않습니다</string>
-    <string name="service_title">Seal Plus 다운로드 중…</string>
+    <string name="service_title">KirinDownloader 다운로드 중…</string>
     <string name="translate">번역</string>
     <string name="translate_desc">Hosted Weblate에서 이 앱의 번역을 도울수 있습니다</string>
     <string name="prefix">접두사</string>
@@ -235,7 +235,7 @@
     <string name="update_channel">채널 업데이트</string>
     <string name="auto_update">자동 업데이트</string>
     <string name="enable_auto_update">자동 업데이트 사용</string>
-    <string name="sponsor_msg">Seal Plus은 항상 무료이며 모든 사람을 위한 오픈 소스입니다. 마음에 드신다면 GitHub에서 저를 후원해 주세요!</string>
+    <string name="sponsor_msg">KirinDownloader은 항상 무료이며 모든 사람을 위한 오픈 소스입니다. 마음에 드신다면 GitHub에서 저를 후원해 주세요!</string>
     <string name="msg_from_developer">개발자 메시지</string>
     <string name="sponsor_msg2">매우 감사합니다!</string>
     <string name="switch_to_github_builds">GitHub 빌드로 전환</string>
@@ -283,7 +283,7 @@
     <string name="update_channel_desc">새로운 기능과 변경 사항을 미리 보기위해 시험판 빌드를 설치합니다.
 \n
 \n이러한 버전에는 약간의 불안정성이 있을 수 있으므로, 향후 앱을 개선하는 데 도움이 되도록 문제가 발생하면 주저하지 말고 피드백을 보내주세요.</string>
-    <string name="auto_update_disabled_msg">%1$s 빌드에는 자동 업데이트를 사용할 수 없습니다. 장치에 %1$s이(가) 설치되어 있지 않거나 Seal Plus의 향후 새 기능을 미리 보려면 %2$s를 고려하세요.</string>
+    <string name="auto_update_disabled_msg">%1$s 빌드에는 자동 업데이트를 사용할 수 없습니다. 장치에 %1$s이(가) 설치되어 있지 않거나 KirinDownloader의 향후 새 기능을 미리 보려면 %2$s를 고려하세요.</string>
     <string name="no_custom_command_tasks">사용자 지정 명령 작업 없음</string>
     <string name="title">제목</string>
     <string name="download_video_desc">URL에서 동영상 다운로드</string>
@@ -324,9 +324,9 @@
     <string name="legacy">레거시</string>
     <string name="expand">펼치기</string>
     <string name="new_task">새 다운로드 작업</string>
-    <string name="custom_command_usage_msg">yt-dlp는 영상 다운로드를 위한 강력한 명령줄 도구입니다. Seal Plus은 직관적인 GUI와 일반적인 명령어들을 위한 프리셋들, 기타 추가적인 기능들을 제공함으로써 yt-dlp을 쉽게 사용할 수 있습니다.
+    <string name="custom_command_usage_msg">yt-dlp는 영상 다운로드를 위한 강력한 명령줄 도구입니다. KirinDownloader은 직관적인 GUI와 일반적인 명령어들을 위한 프리셋들, 기타 추가적인 기능들을 제공함으로써 yt-dlp을 쉽게 사용할 수 있습니다.
 \n
-\nyt-dlp의 고급 사용을 위해 Seal Plus은 커스텀 명령어 템플릿을 제작과 저장, 터미널에서처럼 직접 실행할 수도 있습니다.
+\nyt-dlp의 고급 사용을 위해 KirinDownloader은 커스텀 명령어 템플릿을 제작과 저장, 터미널에서처럼 직접 실행할 수도 있습니다.
 \n
 \n커스텀 명령어 사용 시, 대부분의 GUI 옵션과 기능들이 비활성화될 것입니다.</string>
     <string name="clear_download_archive">다운로드 아카이브를 비울까요?</string>

@@ -67,7 +67,7 @@
     <string name="github_issue">Issue ใน GitHub</string>
     <string name="task_canceled">ยกเลิกงานดาวน์โหลดแล้ว</string>
     <string name="unknown_error">ข้อผิดพลาดที่ไม่รู้จัก</string>
-    <string name="service_title">Seal Plus กำลังดาวน์โหลด…</string>
+    <string name="service_title">KirinDownloader กำลังดาวน์โหลด…</string>
     <string name="battery_configuration_desc">ละเว้นการเพิ่มประสิทธิภาพแบตเตอรี่สำหรับแอพฯ นี้เพื่อดาวน์โหลดในพื้นหลัง</string>
     <string name="downloading_indicator_text">กำลังดาวน์โหลด…</string>
     <string name="info_copied">­ข้อมูลถูกคัดลอกไปยังคลิปบอร์ดแล้ว</string>
@@ -240,7 +240,7 @@
     <string name="convert_audio_format_desc">การเข้ารหัสไฟล์เสียงอีกครั้งจะทำให้ไฟล์เสียงสูญเสียคุณภาพและขนาดไฟล์จะเพิ่มมากขึ้น</string>
     <string name="advanced_settings">ขั้นสูง</string>
     <string name="delete_info_msg">ต้องการลบ \"%1$s\" ออกจากประวัติการดาวน์โหลดของคุณอย่างถาวร?</string>
-    <string name="auto_update_disabled_msg">ออโต้อัปเดทไม่สามารถใช้ได้สำหรับ %1$s นี้ ถ้าคุณไม่ได้ติดตั้ง %1$s บนอุปกรณ์ของคุณหรือต้องการดูฟีเจอร์ใหม่ที่กำลังจะมาใน Seal Plus โปรดพิจารณา %2$s</string>
+    <string name="auto_update_disabled_msg">ออโต้อัปเดทไม่สามารถใช้ได้สำหรับ %1$s นี้ ถ้าคุณไม่ได้ติดตั้ง %1$s บนอุปกรณ์ของคุณหรือต้องการดูฟีเจอร์ใหม่ที่กำลังจะมาใน KirinDownloader โปรดพิจารณา %2$s</string>
     <string name="embed_subtitles_mkv_msg">สำหรับการฝังซับไทเทิลฝังแยก วิดีโอจะถูกรีมักซ์เข้ากับคอนเทนเนอร์ mkv คุณสามารถใช้ VLC Media Player หรือแอปพลิเคชั่นอื่น ๆ ที่รองรับเพื่อเล่นวีดีโอที่มีซับไทเทิลฝังแยก</string>
     <string name="settings_before_download_desc">กำหนดตัวเลือกก่อนการดาวน์โหลด</string>
     <string name="version">เวอร์ชั่น</string>
@@ -280,7 +280,7 @@
     <string name="subtitle">ซับไตเติ้ล</string>
     <string name="video_title_sample_text">ตัวอย่างข้อความของไตเติ้ล</string>
     <string name="running_tasks">กำลังรันงาน</string>
-    <string name="sponsor_msg">Seal Plus จะยังคงเป็นซอร์ตฟรีและเปิดกว้างสำหรับทุกคน ถ้าคุณชอบมัน กรุณาพิจารณาสนับสนุนฉันใน GitHub!</string>
+    <string name="sponsor_msg">KirinDownloader จะยังคงเป็นซอร์ตฟรีและเปิดกว้างสำหรับทุกคน ถ้าคุณชอบมัน กรุณาพิจารณาสนับสนุนฉันใน GitHub!</string>
     <string name="format_sorting_desc">จัดเรียงรูปแบบด้วยตัวเลือก -S ของ yt-dlp</string>
     <string name="update_channel_desc">ติดตั้งรุ่นก่อนวางจำหน่ายเพื่อดูลักษณะใหม่และการเปลี่ยนแปลง
 \n
@@ -291,9 +291,9 @@
     <string name="matrix_space">เมทริกซ์สเปซ</string>
     <string name="multiselect_mode">โหมดเลือกหลายรายการ</string>
     <string name="crop_artwork">ครอบตัดรูปภาพ</string>
-    <string name="custom_command_usage_msg">yt-dlp คือเครื่องมือ command line ประสิทธิภาพสูงสำหรับดาวน์โหลดวีดีโอ Seal Plus ทำให้การใช้งาน yt-dlp ง่ายขึ้นด้วยอินเทอร์เฟซที่เรียบง่าย, พรีเซ็ตคำสั่งทั่วไป และฟีเจอร์เพิ่มเติมอื่นๆ
+    <string name="custom_command_usage_msg">yt-dlp คือเครื่องมือ command line ประสิทธิภาพสูงสำหรับดาวน์โหลดวีดีโอ KirinDownloader ทำให้การใช้งาน yt-dlp ง่ายขึ้นด้วยอินเทอร์เฟซที่เรียบง่าย, พรีเซ็ตคำสั่งทั่วไป และฟีเจอร์เพิ่มเติมอื่นๆ
 \n
-\nสำหรับการใช้งานขั้นสูงของ yt-dlp. Seal Plus ให้คุณสามารถสร้าง, บันทึก และใช้เทมเพลตคำสั่งที่กำเองได้โดยตรง เหมือนเทอมินอลเลย
+\nสำหรับการใช้งานขั้นสูงของ yt-dlp. KirinDownloader ให้คุณสามารถสร้าง, บันทึก และใช้เทมเพลตคำสั่งที่กำเองได้โดยตรง เหมือนเทอมินอลเลย
 \n
 \nเมื่อคุณกำลังใช้คำสั่งที่กำหนดเอง ตัวเลือกและฟีเจอร์ที่เกี่ยวข้องกับส่วนติดต่อผู้ใช้งานจะถูกปิดใช้งานด้วย</string>
     <string name="general_settings_desc">เวอร์ชั่นของ Yt-dlp, การแจ้งเตือน, เพลย์ลิสต์</string>

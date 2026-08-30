@@ -137,7 +137,7 @@
     <string name="github_issue_desc">バグ報告や機能要望</string>
     <string name="info_copied">情報がクリップボードにコピーされました</string>
     <string name="remove_template">削除しますか？</string>
-    <string name="service_title">Seal Plus でダウンロード中…</string>
+    <string name="service_title">KirinDownloader でダウンロード中…</string>
     <string name="subdirectory">サブフォルダに保存</string>
     <string name="subdirectory_desc">以下の項目名の各フォルダ内にファイルを保存</string>
     <string name="battery_configuration_desc">バックグラウンドでダウンロードするにはこのアプリのバッテリー最適化を無効にしてください</string>
@@ -282,7 +282,7 @@
     <string name="second">秒</string>
     <string name="audio_format">音声形式</string>
     <string name="clip_video_dialog_msg">このダウンロード機能はFFmpegによるもので、選択した動画中の範囲をダウンロードします。この機能はまだ実験的で、切り抜きは完全に正確ではなく、あらゆる形式に対応したものでもなく、またダウンロード速度が遅くなる場合があります。</string>
-    <string name="auto_update_disabled_msg">自動更新は%1$sビルドでは利用できません。お使いのデバイスに%1$sがインストールされていない場合、または Seal Plus の今後の新機能をプレビューしたい場合は、%2$sを検討してください。</string>
+    <string name="auto_update_disabled_msg">自動更新は%1$sビルドでは利用できません。お使いのデバイスに%1$sがインストールされていない場合、または KirinDownloader の今後の新機能をプレビューしたい場合は、%2$sを検討してください。</string>
     <string name="msg_from_developer">開発者からのメッセージ</string>
     <string name="clip_video">クリップ動画を作成</string>
     <string name="clip_start">開始</string>
@@ -296,7 +296,7 @@
     <string name="clear_all_cookies">すべてのクッキーを消去</string>
     <string name="sponsor">スポンサー</string>
     <string name="sponsor_desc">GitHubでスポンサーになって本アプリを支援する</string>
-    <string name="sponsor_msg">Seal Plusはいつでも無料で、誰でも使えるオープンソースです。もし気に入っていただけたなら、GitHubで私のスポンサーになることを検討してください！</string>
+    <string name="sponsor_msg">KirinDownloaderはいつでも無料で、誰でも使えるオープンソースです。もし気に入っていただけたなら、GitHubで私のスポンサーになることを検討してください！</string>
     <string name="temporary_directory_desc">内部ディレクトリーに一時ファイルを保存する</string>
     <string name="ytdlp_update_action">yt-dlp を更新</string>
     <string name="commands">コマンド</string>
@@ -310,7 +310,7 @@
     <string name="proxy_desc">インターネット接続にプロキシを使用する</string>
     <string name="proxy">プロキシ</string>
     <string name="format_preference">形式の設定</string>
-    <string name="custom_command_usage_msg">yt-dlp は動画をダウンロードするための強力なコマンドラインツールです。Seal Plus は、直感的な GUI、通常のコマンドのプリセット、その他の追加機能を提供することで、yt-dlp をより使いやすくします。
+    <string name="custom_command_usage_msg">yt-dlp は動画をダウンロードするための強力なコマンドラインツールです。KirinDownloader は、直感的な GUI、通常のコマンドのプリセット、その他の追加機能を提供することで、yt-dlp をより使いやすくします。
 \n
 \nyt-dlp の高度な使用のために、Seal ではカスタムコマンドテンプレートをターミナルと同じように直接作成、保存、実行することができます。
 \n

@@ -62,7 +62,7 @@ fun OnboardingScreen(
     val pages = listOf(
         OnboardingPage(
             icon = Icons.Filled.VideoLibrary,
-            title = "Welcome to Seal Plus",
+            title = "Welcome to KirinDownloader",
             description = "Your ultimate video downloader powered by yt-dlp. Download videos, audio, and playlists from your favorite platforms with ease.",
             gradient = GradientBrushes.Primary
         ),

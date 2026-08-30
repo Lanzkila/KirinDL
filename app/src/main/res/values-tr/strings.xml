@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">Seal Plus</string>
+    <string name="app_name" translatable="false">KirinDownloader</string>
     <string name="video_directory">Video klasörü</string>
     <string name="extract_audio">Sadece sesi indir</string>
     <string name="create_thumbnail">Küçük resmi kaydet</string>
@@ -130,7 +130,7 @@
     <string name="permission_issue_desc">İndirilenler (Download) ve Belgeler (Documents) klasörleri dışındaki dizinler desteklenmiyor</string>
     <string name="battery_configuration">Pil ayarları</string>
     <string name="battery_configuration_desc">Arka planda sorunsuz indirme için pil optimizasyonunu devre dışı bırakın</string>
-    <string name="service_title">Seal Plus indiriyor…</string>
+    <string name="service_title">KirinDownloader indiriyor…</string>
     <string name="unknown_error">Bilinmeyen bir hata oluştu</string>
     <string name="translate">Çeviriye katkıda bulun</string>
     <string name="translate_desc">Weblate üzerinden uygulamanın çevirisine yardımcı olun</string>
@@ -235,7 +235,7 @@
     <string name="custom_command_enabled_hint">Özel komut kullanılırken bazı arayüz seçenekleri devre dışı kalır</string>
     <string name="how_does_it_work">Nasıl çalışır?</string>
     <string name="cookies_usage_msg">Bazı sitelerden video indirmek için o siteye giriş yapmış olmanız gerekir. \"Yeni çerez oluştur\"a dokunup sitenin adresini girin, ardından açılan tarayıcıda kendi hesabınıza giriş yapın. Uygulama gerekli çerezleri sizin için otomatik olarak halledecektir.</string>
-    <string name="custom_command_usage_msg">yt-dlp, videoları indirmek için kullanılan oldukça güçlü bir komut satırı aracıdır. Seal Plus, yt-dlp\'yi kullanıcı dostu bir arayüz ve hazır ayarlar ile herkesin kullanabileceği bir hale getirir.\n\nEğer işin tekniğine inmek isterseniz, tıpkı bir terminal kullanıyormuş gibi özel komut şablonları oluşturabilir, kaydedebilir ve çalıştırabilirsiniz.\n\nAncak unutmayın, özel komutları kullandığınızda arayüzdeki pek çok özellik devre dışı bırakılır.</string>
+    <string name="custom_command_usage_msg">yt-dlp, videoları indirmek için kullanılan oldukça güçlü bir komut satırı aracıdır. KirinDownloader, yt-dlp\'yi kullanıcı dostu bir arayüz ve hazır ayarlar ile herkesin kullanabileceği bir hale getirir.\n\nEğer işin tekniğine inmek isterseniz, tıpkı bir terminal kullanıyormuş gibi özel komut şablonları oluşturabilir, kaydedebilir ve çalıştırabilirsiniz.\n\nAncak unutmayın, özel komutları kullandığınızda arayüzdeki pek çok özellik devre dışı bırakılır.</string>
     <string name="telegram_channel">Telegram kanalı</string>
     <string name="youtube_channel">YouTube kanalı</string>
     <string name="matrix_space">Matrix alanı</string>
@@ -294,7 +294,7 @@
     <string name="temporary_directory_desc">Geçici dosyaları cihazın dahili depolamasında tutar</string>
     <string name="sponsor">Destek Ol</string>
     <string name="sponsor_desc">GitHub üzerinden sponsor olarak uygulamaya destek olun</string>
-    <string name="sponsor_msg">Seal Plus her zaman herkes için ücretsiz ve açık kaynaklı kalacak. Eğer uygulamayı beğendiyseniz ve gelişimine katkıda bulunmak isterseniz, GitHub üzerinden bana destek olabilirsiniz!</string>
+    <string name="sponsor_msg">KirinDownloader her zaman herkes için ücretsiz ve açık kaynaklı kalacak. Eğer uygulamayı beğendiyseniz ve gelişimine katkıda bulunmak isterseniz, GitHub üzerinden bana destek olabilirsiniz!</string>
     <string name="feedback">Geri Bildirim</string>
     <string name="sponsors">Sponsorlar</string>
     <string name="audio_format">Ses formatı</string>
@@ -453,8 +453,8 @@
     <string name="trouble_shooting_desc">Sık rastlanan sorunlara göz atın ve çözüm yollarını bulun</string>
     <string name="issue_tracker_hint">Bir hatayla mı karşılaştınız? Bize bildirmeden önce hata kayıtlarımıza göz atmanız harika olur. Çoğu genel problemin çözümü halihazırda orada mevcut.</string>
     
-    <!-- Sealplus Extras -->
-    <string name="sealplus_extras">Seal Plus Ekstraları</string>
+    <!-- KirinDownloader Extras -->
+    <string name="sealplus_extras">KirinDownloader Ekstraları</string>
     <string name="sealplus_extras_desc">Ayrıcalıklı özellikler ve gelişmiş ayarlar</string>
     <string name="network_type_restriction">Ağ kısıtlamaları</string>
     <string name="network_type_restriction_desc">İndirmeler için hangi bağlantının kullanılacağını seçin: Yalnızca Wi-Fi, yalnızca mobil veri veya fark etmez.</string>
@@ -533,10 +533,10 @@
     <string name="timeout_minutes">%d dakika</string>
     
     <!-- Lock Screen strings -->
-    <string name="seal_plus" translatable="false">Seal Plus</string>
-    <string name="unlock_seal_plus">Seal Plus\'ı Aç</string>
+    <string name="seal_plus" translatable="false">KirinDownloader</string>
+    <string name="unlock_seal_plus">KirinDownloader\'ı Aç</string>
     <string name="enter_pin_to_unlock">Girmek için PIN kodunuzu tuşlayın</string>
-    <string name="biometric_prompt_subtitle">Seal Plus\'ı açmak için kimliğinizi doğrulayın</string>
+    <string name="biometric_prompt_subtitle">KirinDownloader\'ı açmak için kimliğinizi doğrulayın</string>
     <string name="biometric_prompt_description">Parmak izinizi okutun veya yüzünüzü gösterin</string>
     <string name="use_biometric">Parmak İzi / Yüz Kullan</string>
     <string name="backspace">Sil</string>
@@ -575,7 +575,7 @@
     <string name="app_lock_reset_success">Uygulama Kilidi başarıyla sıfırlandı ve kapatıldı</string>
     
     <!-- Exit Confirmation strings -->
-    <string name="exit_app_title">Seal Plus\'tan çıkılsın mı?</string>
+    <string name="exit_app_title">KirinDownloader\'tan çıkılsın mı?</string>
     <string name="exit_app_message">Çıkmak istediğinize emin misiniz? Merak etmeyin, devam eden indirmeleriniz arka planda inmeye devam edecek.</string>
     <string name="exit">Çıkış yap</string>
     
@@ -599,9 +599,9 @@
     <!-- Sponsor Support Dialog -->
     <string name="support_us">Bize Destek Olun ✨</string>
     <string name="maybe_later">Belki Daha Sonra</string>
-    <string name="sponsor_dialog_title">Seal Plus\'ın Ücretsiz ve Reklamsız Kalmasına Yardım Edin</string>
+    <string name="sponsor_dialog_title">KirinDownloader\'ın Ücretsiz ve Reklamsız Kalmasına Yardım Edin</string>
     <string name="sponsor_dialog_subtitle">Sizin desteğinizle büyüyoruz</string>
-    <string name="sponsor_dialog_message">Seal Plus\'ı büyük bir tutkuyla, tamamen ücretsiz, açık kaynaklı ve reklamsız olarak geliştirdik. Yapacağınız her destek; daha sık güncelleme, yeni özellikler ve daha yüksek performans olarak size geri dönecek. Desteğinizin miktarı ne olursa olsun bizim için çok kıymetli.</string>
+    <string name="sponsor_dialog_message">KirinDownloader\'ı büyük bir tutkuyla, tamamen ücretsiz, açık kaynaklı ve reklamsız olarak geliştirdik. Yapacağınız her destek; daha sık güncelleme, yeni özellikler ve daha yüksek performans olarak size geri dönecek. Desteğinizin miktarı ne olursa olsun bizim için çok kıymetli.</string>
     <string name="sponsor_dialog_frequency_title">Destek Hatırlatıcısı</string>
     <string name="sponsor_dialog_frequency_desc">Bu mesajın size ne sıklıkla gösterileceğini seçebilirsiniz</string>
     <string name="sponsor_dialog_off">Kapalı (Bir Daha Gösterme)</string>
@@ -614,7 +614,7 @@
 
     <!-- Permission strings -->
     <string name="notification_permission_required">Bildirim İzni Gerekli</string>
-    <string name="notification_permission_desc">Uygulamadan en iyi şekilde faydalanmak ve dosyalarınızın ne durumda olduğunu arka plandayken bile takip edebilmek için Seal Plus\'a bildirim izni vermeniz gerekiyor.</string>
+    <string name="notification_permission_desc">Uygulamadan en iyi şekilde faydalanmak ve dosyalarınızın ne durumda olduğunu arka plandayken bile takip edebilmek için KirinDownloader\'a bildirim izni vermeniz gerekiyor.</string>
     <string name="grant_permission">İzin Ver</string>
     <string name="skip">Geç</string>
 </resources>

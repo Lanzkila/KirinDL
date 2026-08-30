@@ -748,7 +748,7 @@ fun NewHomePage(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Seal+ Branding with animated glowing "+"
+            // KirinDownloader branding
             item {
                 Box(
                     modifier = Modifier
@@ -756,15 +756,12 @@ fun NewHomePage(
                         .padding(vertical = 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Seal",
-                            style = MaterialTheme.typography.displayMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        AnimatedGlowingPlus()
-                    }
+                    Text(
+                        text = "KirinDownloader",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
                 }
             }
 
@@ -2673,7 +2670,7 @@ fun AnimatedGlowingPlus() {
 
 /**
  * Quick-access row for the 4 More Tools (Batch URL Import, Thumbnail Download, Video Info
- * Download, Comment Download), placed between the "Seal+" branding and the URL input field.
+ * Download, Comment Download), placed between the KirinDownloader branding and the URL input field.
  *
  * Icon-only by design — no labels/section header — so it reads as a native strip of shortcuts
  * baked into the home screen rather than a bolted-on section. Colors reuse the same

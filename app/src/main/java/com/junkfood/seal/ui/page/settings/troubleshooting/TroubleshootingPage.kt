@@ -70,9 +70,9 @@ fun TroubleShootingPage(
                         modifier = Modifier,
                         text = stringResource(R.string.issue_tracker_hint),
                     )
-                    val knownIssueUrlSeal = "https://github.com/MaheshTechnicals/Sealplus/issues"
+                    val knownIssueUrlSeal = "https://github.com/Lanzkila/KirinDownloader-Seal/issues"
                     PreferenceItem(
-                        title = "Seal Issue Tracker",
+                        title = "KirinDownloader Issue Tracker",
                         description = null,
                         icon = Icons.AutoMirrored.Outlined.OpenInNew,
                         onClick = { uriHandler.openUri(knownIssueUrlSeal) },

@@ -158,9 +158,9 @@ object ThumbnailUtil {
     }
 
     /**
-     * Writes [bytes] into `Downloads/SealPlus/Thumbnails/<fileName>.<ext>`, auto-numbering if a
+     * Writes [bytes] into `Downloads/KirinDownloader/Thumbnails/<fileName>.<ext>`, auto-numbering if a
      * file with that name already exists rather than overwriting it. Uses the exact same
-     * directory-under-SealPlus + [MediaScannerConnection] pattern already used by
+     * directory-under-KirinDownloader + [MediaScannerConnection] pattern already used by
      * [FileUtil.getDocsDirectory] for the video-info text export, so thumbnails show up in the
      * gallery/file manager the same way downloaded videos already do.
      */

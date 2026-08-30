@@ -870,7 +870,7 @@ private fun DownloadActionRow(
 ) {
     Column {
         // "Choose Location" was removed — thumbnails always save under the app's own
-        // Downloads/SealPlus/Thumbnails folder (same convention as every other tool in the
+        // Downloads/KirinDownloader/Thumbnails folder (same convention as every other tool in the
         // app), so a destination picker was redundant friction rather than a real choice.
         Button(
             onClick = onDownloadHere,

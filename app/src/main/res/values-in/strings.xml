@@ -127,7 +127,7 @@
     <string name="audio_directory">Folder audio</string>
     <string name="download_directory">Direktori unduhan</string>
     <string name="permission_issue_desc">Direktori di luar Unduhan/ dan Dokumen/ tidak didukung</string>
-    <string name="service_title">Seal Plus sedang mengunduh…</string>
+    <string name="service_title">KirinDownloader sedang mengunduh…</string>
     <string name="unknown_error">Kesalahan tidak diketahui</string>
     <string name="translate_desc">Bantu terjemahkan aplikasi ini pada Hosted Weblate</string>
     <string name="prefix">Awalan</string>
@@ -281,7 +281,7 @@
     <string name="temporary_directory_desc">Simpan berkas sementara di direktori internal</string>
     <string name="sponsor">Sponsor</string>
     <string name="sponsor_desc">Dukung aplikasi ini dengan mensponsori di GitHub</string>
-    <string name="sponsor_msg">Seal Plus akan selalu gratis dan sumbernya terbuka untuk semua orang. Jika Anda menyukainya, silakan sponsori saya di GitHub!</string>
+    <string name="sponsor_msg">KirinDownloader akan selalu gratis dan sumbernya terbuka untuk semua orang. Jika Anda menyukainya, silakan sponsori saya di GitHub!</string>
     <string name="feedback">Masukan</string>
     <string name="sponsors">Sponsor</string>
     <string name="no_downloaded_media">Tidak ada media yang terunduh</string>
@@ -292,7 +292,7 @@
     <string name="clip_video_dialog_msg">Pengunduhan menggunakan fitur ini akan didelegasikan ke FFmpeg untuk mengunduh bagian video yang dipilih, fitur ini masih tahap percobaan dan pemotongan tidak akan sepenuhnya akurat, tidak semua format mendukung fitur ini dan Anda mungkin mengalami kecepatan pengunduhan yang lebih lambat.</string>
     <string name="got_it">Mengerti</string>
     <string name="feature_unavailable">Fitur tidak tersedia</string>
-    <string name="auto_update_disabled_msg">Pembaruan otomatis tidak tersedia untuk versi %1$s. Jika Anda belum memasang %1$s di perangkat Anda, atau ingin melihat pratinjau fitur-fitur baru yang akan datang di Seal Plus, silahkan pertimbangkan %2$s.</string>
+    <string name="auto_update_disabled_msg">Pembaruan otomatis tidak tersedia untuk versi %1$s. Jika Anda belum memasang %1$s di perangkat Anda, atau ingin melihat pratinjau fitur-fitur baru yang akan datang di KirinDownloader, silahkan pertimbangkan %2$s.</string>
     <string name="switch_to_github_builds">beralih ke versi GitHub</string>
     <string name="okay">Oke</string>
     <string name="no_custom_command_tasks">Tidak ada tugas perintah khusus</string>
@@ -338,7 +338,7 @@
     </plurals>
     <string name="ua_header">Tajuk User-Agent</string>
     <string name="export_to_file">Ekspor ke berkas</string>
-    <string name="custom_command_usage_msg">yt-dlp adalah alat baris perintah yang hebat untuk mengunduh video. Seal Plus membuatnya lebih mudah untuk memakai yt-dlp dengan menyediakan GUI yang intuitif, prasetel untuk perintah umum, dan fitur tambahan lainnya.
+    <string name="custom_command_usage_msg">yt-dlp adalah alat baris perintah yang hebat untuk mengunduh video. KirinDownloader membuatnya lebih mudah untuk memakai yt-dlp dengan menyediakan GUI yang intuitif, prasetel untuk perintah umum, dan fitur tambahan lainnya.
 \n
 \nUntuk pengguna yt-dlp tingkat lanjut, Seal memungkinkan Anda untuk membuat, menyimpan, dan menjalankan templat perintah khusus secara langsung, seperti dalam terminal.
 \n

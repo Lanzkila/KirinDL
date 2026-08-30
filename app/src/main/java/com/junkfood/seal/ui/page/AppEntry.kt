@@ -73,6 +73,7 @@ import com.junkfood.seal.ui.page.tools.BatchUrlImportPage
 import com.junkfood.seal.ui.page.tools.MoreToolsPage
 import com.junkfood.seal.ui.page.tools.CommentDetailPage
 import com.junkfood.seal.ui.page.tools.CommentDownloadPage
+import com.junkfood.seal.ui.page.tools.GalleryDlPage
 import com.junkfood.seal.ui.page.tools.ThumbnailDownloadPage
 import com.junkfood.seal.ui.page.tools.VideoInfoDetailPage
 import com.junkfood.seal.ui.page.tools.VideoInfoDownloadPage
@@ -216,7 +217,15 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                                 launchSingleTop = true
                             }
                         },
+                        onNavigateToGalleryDl = {
+                            navController.navigate(Route.GALLERY_DL) {
+                                launchSingleTop = true
+                            }
+                        },
                     )
+                }
+                animatedComposable(Route.GALLERY_DL) {
+                    GalleryDlPage(onNavigateBack = onNavigateBack)
                 }
                 animatedComposable(Route.THUMBNAIL_DOWNLOAD) {
                     ThumbnailDownloadPage(onNavigateBack = onNavigateBack)

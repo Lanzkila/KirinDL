@@ -26,7 +26,7 @@ import com.junkfood.seal.ui.theme.SealTheme
 import kotlinx.coroutines.delay
 
 /**
- * Modern Professional Splash Screen for Seal Plus
+ * Modern Professional Splash Screen for KirinDownloader
  * 
  * Features:
  * - Smooth spring animations for logo entrance
@@ -161,7 +161,7 @@ fun SplashScreen(
                 // Main Logo
                 Image(
                     painter = painterResource(id = R.drawable.splash_logo),
-                    contentDescription = "Seal Plus Logo",
+                    contentDescription = "KirinDownloader Logo",
                     modifier = Modifier
                         .size(160.dp)
                         .scale(logoScale)
@@ -215,7 +215,7 @@ fun SplashScreen(
                 .alpha(taglineAlpha)
         ) {
             Text(
-                text = "Powered by Mahesh Technicals",
+                text = "KirinDownloader • Open Source",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (isGradientDark) {
                     GradientDarkColors.OnSurface.copy(alpha = 0.6f)
@@ -227,7 +227,7 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(4.dp))
             
             Text(
-                text = "© 2026 Seal Plus",
+                text = "© 2026 KirinDownloader",
                 style = MaterialTheme.typography.labelSmall,
                 color = if (isGradientDark) {
                     GradientDarkColors.OnSurface.copy(alpha = 0.4f)

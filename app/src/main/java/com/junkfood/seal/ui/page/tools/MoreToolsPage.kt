@@ -132,6 +132,14 @@ private val tools = listOf(
         icon = Icons.Outlined.Chat,
         isComingSoon = false,
     ),
+    ToolItem(
+        id = 5,
+        titleRes = R.string.gallery_dl,
+        shortDescRes = R.string.gallery_dl_short_desc,
+        descRes = R.string.gallery_dl_desc,
+        icon = Icons.Outlined.AutoAwesome,
+        isComingSoon = false,
+    ),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -142,6 +150,7 @@ fun MoreToolsPage(
     onNavigateToVideoInfoDownload: (() -> Unit)? = null,
     onNavigateToThumbnailDownload: (() -> Unit)? = null,
     onNavigateToCommentDownload: (() -> Unit)? = null,
+    onNavigateToGalleryDl: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -208,6 +217,7 @@ fun MoreToolsPage(
                                 2 -> onNavigateToVideoInfoDownload?.invoke()
                                 3 -> onNavigateToCommentDownload?.invoke()
                                 4 -> onNavigateToThumbnailDownload?.invoke()
+                                5 -> onNavigateToGalleryDl?.invoke()
                                 else -> {
                                     context.makeToast(
                                         "${context.getString(tool.titleRes)} — ${context.getString(R.string.feature_unavailable)}"

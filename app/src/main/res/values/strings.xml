@@ -266,7 +266,7 @@
     <string name="custom_command_enabled_hint">Some options are unavailable when using custom command</string>
     <string name="how_does_it_work">How does it work?</string>
     <string name="cookies_usage_msg">Downloading from some sites requires account authentication information. Click \"Generate new cookies\", enter the URL of the website and then log in with your account in the browser page, the app will generate it for you.</string>
-    <string name="custom_command_usage_msg">yt-dlp is a powerful command-line tool for downloading videos. Seal Plus makes it easier to use yt-dlp by providing an intuitive GUI, presets for common commands, and other additional features.\n\nFor advanced usage of yt-dlp, Seal Plus allows you to create, save and execute custom command templates directly, just like in a terminal.\n\nWhen using custom commands, most of the GUI options and features would be disabled.</string>
+    <string name="custom_command_usage_msg">yt-dlp is a powerful command-line tool for downloading videos. KirinDownloader makes it easier to use yt-dlp by providing an intuitive GUI, presets for common commands, and other additional features.\n\nFor advanced usage of yt-dlp, KirinDownloader allows you to create, save and execute custom command templates directly, just like in a terminal.\n\nWhen using custom commands, most of the GUI options and features would be disabled.</string>
     <string name="telegram_channel">Telegram channel</string>
     <string name="youtube_channel">YouTube channel</string>
     <string name="matrix_space">Matrix space</string>
@@ -326,7 +326,7 @@
     <string name="temporary_directory_desc">Store temporary files in the internal directory</string>
     <string name="sponsor">Sponsor</string>
     <string name="sponsor_desc">Support this app by sponsoring on GitHub</string>
-    <string name="sponsor_msg">Seal Plus will be always free and open source for everyone. If you like it, please consider sponsoring me on GitHub!</string>
+    <string name="sponsor_msg">KirinDownloader is free and open source. You can support the project by reporting bugs, suggesting features, and contributing improvements.</string>
     <string name="feedback">Feedback</string>
     <string name="sponsors">Sponsors</string>
     <string name="audio_format">Audio format</string>
@@ -338,7 +338,7 @@
     <string name="clip_video_desc">Make video clips in the format selection page</string>
     <string name="embed_thumbnail" translatable="false">Embed thumbnail</string>
     <string name="embed_thumbnail_desc" translatable="false">Embed thumbnails into videos</string>
-    <string name="auto_update_disabled_msg">Auto-update is not available for %1$s builds. If you don\'t have %1$s installed on your device, or would like to preview upcoming new features in Seal Plus, please consider %2$s.</string>
+    <string name="auto_update_disabled_msg">Auto-update is not available for %1$s builds. If you don\'t have %1$s installed on your device, or would like to preview upcoming new features in KirinDownloader, please consider %2$s.</string>
     <string name="switch_to_github_builds">switching to GitHub builds</string>
     <string name="okay">Okay</string>
     <string name="got_it">Got it</string>
@@ -486,8 +486,8 @@
     <string name="trouble_shooting_desc">Fix common errors and check for known issues</string>
     <string name="issue_tracker_hint">Encountered an error? Before reporting a new issue, please search our issue tracker. Many common problems have already been addressed and documented there.</string>
     
-    <!-- Sealplus Extras -->
-    <string name="sealplus_extras">Sealplus Extras</string>
+    <!-- KirinDownloader Extras -->
+    <string name="sealplus_extras">KirinDownloader Extras</string>
     <string name="sealplus_extras_desc">Premium features and advanced settings</string>
     <string name="format_selection_layout">Format Selection Layout</string>
     <string name="format_list_view_title">Enable list view</string>
@@ -560,7 +560,7 @@
     <string name="auth_timeout_description">Require authentication after %d minutes of inactivity</string>
     <string name="auth_timeout_immediately">Require authentication every time app is opened</string>
     <string name="immediately">Immediately</string>
-    <string name="security_info_message">App lock protects your privacy by requiring authentication to access Seal Plus. Your PIN is securely stored on your device.</string>
+    <string name="security_info_message">App lock protects your privacy by requiring authentication to access KirinDownloader. Your PIN is securely stored on your device.</string>
     <string name="disable_security">Disable Security</string>
     <string name="disable_security_warning">Are you sure you want to disable app lock? This will remove all security restrictions.</string>
     <string name="security_enabled">Security enabled</string>
@@ -570,10 +570,10 @@
     <string name="timeout_minutes">%d minutes</string>
     
     <!-- Lock Screen strings -->
-    <string name="seal_plus" translatable="false">Seal Plus</string>
-    <string name="unlock_seal_plus">Unlock Seal Plus</string>
+    <string name="seal_plus" translatable="false">KirinDownloader</string>
+    <string name="unlock_seal_plus">Unlock KirinDownloader</string>
     <string name="enter_pin_to_unlock">Enter PIN to unlock</string>
-    <string name="biometric_prompt_subtitle">Authenticate to access Seal Plus</string>
+    <string name="biometric_prompt_subtitle">Authenticate to access KirinDownloader</string>
     <string name="biometric_prompt_description">Use your fingerprint or face to unlock</string>
     <string name="use_biometric">Use Biometric</string>
     <string name="backspace">Backspace</string>
@@ -613,7 +613,7 @@
     <string name="app_lock_reset_success">App Lock has been reset successfully</string>
     
     <!-- Exit Confirmation strings -->
-    <string name="exit_app_title">Exit Seal Plus?</string>
+    <string name="exit_app_title">Exit KirinDownloader?</string>
     <string name="exit_app_message">Are you sure you want to exit the app? Any ongoing downloads will continue in the background.</string>
     <string name="exit">Exit</string>
     
@@ -635,9 +635,9 @@
     <!-- Sponsor Support Dialog -->
     <string name="support_us">Support Us ✨</string>
     <string name="maybe_later">Maybe Later</string>
-    <string name="sponsor_dialog_title">Keep Seal Plus Free &amp; Thriving</string>
+    <string name="sponsor_dialog_title">Support KirinDownloader</string>
     <string name="sponsor_dialog_subtitle">Powered by your support</string>
-    <string name="sponsor_dialog_message">Seal Plus is built with passion — free, open-source, and ad-free. Your support helps fund active development, faster updates, better performance, and exciting new features. Every contribution, big or small, makes a real difference.</string>
+    <string name="sponsor_dialog_message">KirinDownloader is free and open source. Help improve it by reporting issues, testing updates, and contributing code or translations.</string>
     <string name="sponsor_dialog_frequency_title">Support Reminder</string>
     <string name="sponsor_dialog_frequency_desc">Choose how often to show the sponsor reminder</string>
     <string name="sponsor_dialog_off">Off</string>
@@ -650,7 +650,7 @@
 
     <!-- Permission strings -->
     <string name="notification_permission_required">Notification Permission Required</string>
-    <string name="notification_permission_desc">Seal Plus needs notification permission to show download progress and completion status. Please grant this permission for the best experience.</string>
+    <string name="notification_permission_desc">KirinDownloader needs notification permission to show download progress and completion status. Please grant this permission for the best experience.</string>
     <string name="grant_permission">Grant Permission</string>
     <string name="skip">Skip</string>
 
@@ -660,7 +660,7 @@
     <string name="hidden_content">Hidden Content</string>
     <string name="hidden_content_desc">View and manage your hidden media files</string>
     <string name="no_hidden_content">No hidden content</string>
-    <string name="hidden_content_requires_app_lock">Enable App Lock first to use Hidden Content. Go to Settings > SealPlus Extras > App Lock</string>
+    <string name="hidden_content_requires_app_lock">Enable App Lock first to use Hidden Content. Go to Settings > KirinDownloader Extras > App Lock</string>
 
     <!-- More Tools strings -->
     <string name="more_tools">More Tools</string>
@@ -728,7 +728,7 @@
     <string name="download_summary">Download Summary</string>
     <string name="file_name_hint">Enter a file name</string>
     <string name="choose_location">Choose Location</string>
-    <string name="default_location">Downloads/SealPlus/Thumbnails</string>
+    <string name="default_location">Downloads/KirinDownloader/Thumbnails</string>
     <string name="download_thumbnail">Download Thumbnail</string>
     <string name="downloading_thumbnail">Downloading…</string>
     <string name="view_thumbnail">View</string>
@@ -765,5 +765,23 @@
     <string name="pinned_badge">Pinned</string>
     <string name="no_comments_available">No comments to show</string>
     <string name="more_comments_export_hint">+%1$d more comments — export to view all</string>
+    <!-- Gallery DL tool strings -->
+    <string name="gallery_dl">Gallery DL</string>
+    <string name="gallery_dl_short_desc">Download image galleries &amp; collections</string>
+    <string name="gallery_dl_desc">Download supported image galleries and collections with the optional gallery-dl engine.</string>
+    <string name="gallery_dl_subtitle">Optional gallery and image downloader</string>
+    <string name="gallery_dl_engine">gallery-dl Engine</string>
+    <string name="gallery_dl_engine_installed">Installed: %1$s</string>
+    <string name="gallery_dl_engine_not_installed">Not installed yet</string>
+    <string name="gallery_dl_install_update">Install / Update Engine</string>
+    <string name="gallery_dl_installing">Installing from PyPI…</string>
+    <string name="gallery_dl_engine_note">The engine is downloaded only when you request it, verified with PyPI's SHA-256 checksum, and stored inside the app.</string>
+    <string name="gallery_dl_url">Gallery URL</string>
+    <string name="gallery_dl_url_hint">Paste a supported gallery or collection URL</string>
+    <string name="gallery_dl_download">Download Gallery</string>
+    <string name="gallery_dl_downloading">Downloading…</string>
+    <string name="gallery_dl_saved_to">Saved to</string>
+    <string name="gallery_dl_permission_note">Only save content you have permission or rights to download. Gallery DL supports image and collection sites handled by gallery-dl.</string>
+
 </resources>
 

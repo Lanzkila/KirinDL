@@ -247,7 +247,7 @@ class ThumbnailDownloadViewModel : ViewModel() {
     /**
      * Downloads, converts, and saves the current preview's thumbnail. When [targetUri] is
      * provided (from a system "Save As" picker) the file is written there; otherwise it's
-     * auto-saved under `Downloads/SealPlus/Thumbnails/`.
+     * auto-saved under `Downloads/KirinDownloader/Thumbnails/`.
      */
     fun downloadThumbnail(targetUri: Uri? = null) {
         val state = mutableViewStateFlow.value

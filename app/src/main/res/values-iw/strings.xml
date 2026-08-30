@@ -145,7 +145,7 @@
     <string name="show_logs">הצג יומן</string>
     <string name="logs">לוג</string>
     <string name="edit_shortcuts_desc">ערוך את הקיצורים המותאמים אישית שניתן להשתמש בהם כדי ליצור תבניות פקודות.</string>
-    <string name="sponsor_msg">Seal Plus יהיה תמיד קוד פתוח ובחינם לכולם. אם אתה אוהב את זה, בבקשה שקול לתת לי חסות ב-GitHub!</string>
+    <string name="sponsor_msg">KirinDownloader יהיה תמיד קוד פתוח ובחינם לכולם. אם אתה אוהב את זה, בבקשה שקול לתת לי חסות ב-GitHub!</string>
     <string name="clear_all_cookies_desc">האם למחוק לצמיתות את כל העוגיות המאוחסנות באפליקציה?</string>
     <string name="clip_video_desc">צור קטעי וידאו בדף בחירת הפורמט</string>
     <string name="legacy">מיושן</string>
@@ -250,7 +250,7 @@
     <string name="beta_features">בטא</string>
     <string name="split_video_msg">הסרטון יפוצל ל-%1$d פרקים</string>
     <string name="cookies_usage_msg">הורדה מאתרים מסוימים דורשת אימות חשבון. לחץ על \"צור עוגיות חדשות\", הזן את כתובת האתר ולאחר מכן התחבר עם חשבונך בדף הדפדפן, והאפליקציה תייצר אותן עבורך.</string>
-    <string name="custom_command_usage_msg">yt-dlp הוא כלי שורת פקודה רב עוצמה להורדת סרטונים. Seal Plus מקל על השימוש ב-yt-dlp על ידי מתן GUI אינטואיטיבי, הגדרות קבועות מראש לפקודות נפוצות ותכונות נוספות אחרות.
+    <string name="custom_command_usage_msg">yt-dlp הוא כלי שורת פקודה רב עוצמה להורדת סרטונים. KirinDownloader מקל על השימוש ב-yt-dlp על ידי מתן GUI אינטואיטיבי, הגדרות קבועות מראש לפקודות נפוצות ותכונות נוספות אחרות.
 \n
 \nלשימוש מתקדם ב-yt-dlp, אפליקציית Seal מאפשרת ליצור, לשמור ולבצע תבניות פקודות מותאמות אישית ישירות, ממש כמו בטרמינל.
 \n
@@ -300,7 +300,7 @@
     <string name="aria2_desc">השתמש ב-aria2c בתור מוריד חיצוני</string>
     <string name="start_execute">התחל הרצת פקודה</string>
     <string name="download_range_desc">ציין את טווח הסרטונים להורדה מהפלייליסט \"%3$s\" (מ-%1$d עד %2$d).</string>
-    <string name="service_title">Seal Plus מוריד…</string>
+    <string name="service_title">KirinDownloader מוריד…</string>
     <string name="download_with_cellular">הורדה באמצעות חיבור סלולרי</string>
     <string name="export_to_file">ייצוא לקובץ</string>
     <string name="sponsorblock_desc">הסר או סמן קטעים בסרטונים באמצעות SponsorBlock API</string>
@@ -354,7 +354,7 @@
     <string name="prefer_quality_desc">העדף פורמט AV1, VP9 או H.265 לצפייה באפליקציות תואמות</string>
     <string name="multiselect_item_count">%1$d סרטונים, %2$d קובצי שמע</string>
     <string name="embed_subtitles_mkv_msg">כדי להטמיע כתוביות רכות, סרטונים יבוצעו מחדש לתוך מיכל mkv. אתה יכול להשתמש ב-VLC Media Player או באפליקציות תואמות אחרות כדי לצפות בסרטונים עם כתוביות רכות.</string>
-    <string name="auto_update_disabled_msg">עדכון אוטומטי אינו זמין עבור בניית %1$s. אם אין לך %1$s מותקן במכשיר שלך, או אם תרצה לקבל תצוגה מקדימה של תכונות חדשות של Seal Plus, שקול להשתמש ב-%2$s.</string>
+    <string name="auto_update_disabled_msg">עדכון אוטומטי אינו זמין עבור בניית %1$s. אם אין לך %1$s מותקן במכשיר שלך, או אם תרצה לקבל תצוגה מקדימה של תכונות חדשות של KirinDownloader, שקול להשתמש ב-%2$s.</string>
     <string name="ua_header">כותרת User-Agent</string>
     <string name="dynamic_color_desc">החל צבעים מהטפט על ערכת הנושא של האפליקציה</string>
     <string name="custom_command_enabled_hint">חלק מהאפשרויות אינן זמינות בעת שימוש בפקודה מותאמת אישית</string>
@@ -464,7 +464,7 @@
     <string name="biometric_no_hardware">לא זוהתה חומרה ביומטרית</string>
     <string name="biometric_none_enrolled">לא נרשמו פרטי ביומטריה. אנא הגדר טביעת אצבע או זיהוי פנים בהגדרות המכשיר.</string>
     <string name="biometric_prompt_description">השתמש בטביעת אצבע או פנים לפתיחה</string>
-    <string name="biometric_prompt_subtitle">אמת זהות לגישה אל Seal Plus</string>
+    <string name="biometric_prompt_subtitle">אמת זהות לגישה אל KirinDownloader</string>
     <string name="biometric_security_update_required">נדרש עדכון אבטחה לאימות ביומטרי</string>
     <string name="biometric_status_unknown">מצב ביומטרי לא ידוע</string>
     <string name="biometric_unavailable">אימות ביומטרי אינו זמין</string>
@@ -494,7 +494,7 @@
     <string name="error_setting_pin">שגיאה בהגדרת קוד PIN. אנא נסה שוב.</string>
     <string name="exit">יציאה</string>
     <string name="exit_app_message">האם אתה בטוח שברצונך לצאת? הורדות פעילות ימשיכו ברקע.</string>
-    <string name="exit_app_title">לצאת מ-Seal Plus?</string>
+    <string name="exit_app_title">לצאת מ-KirinDownloader?</string>
     <string name="file_format">פורמט קובץ</string>
     <string name="file_name">שם קובץ</string>
     <string name="file_path">נתיב קובץ</string>
@@ -519,7 +519,7 @@
     <string name="notification_error_sound_settings">צליל שגיאה</string>
     <string name="notification_led_desc">הצג נורית LED עם סיום הורדות</string>
     <string name="notification_led_settings">נורית LED</string>
-    <string name="notification_permission_desc">Seal Plus זקוק להרשאת התראות להצגת התקדמות וסיום הורדות. אנא הענק הרשאה זו לחוויה מיטבית.</string>
+    <string name="notification_permission_desc">KirinDownloader זקוק להרשאת התראות להצגת התקדמות וסיום הורדות. אנא הענק הרשאה זו לחוויה מיטבית.</string>
     <string name="notification_permission_required">נדרשת הרשאת התראות</string>
     <string name="notification_settings">הגדרות התראות</string>
     <string name="notification_sound_desc">הפעל צליל לכל ההתראות</string>
@@ -546,13 +546,13 @@
     <string name="resolution">רזולוציה</string>
     <string name="retry">נסה שוב</string>
     <string name="saved_urls">קישורים שמורים</string>
-    <string name="seal_plus" translatable="false">Seal Plus</string>
-    <string name="sealplus_extras">תוספות Sealplus</string>
+    <string name="seal_plus" translatable="false">KirinDownloader</string>
+    <string name="sealplus_extras">תוספות KirinDownloader</string>
     <string name="sealplus_extras_desc">תכונות פרמיום והגדרות מתקדמות</string>
     <string name="security_and_privacy">אבטחה ופרטיות</string>
     <string name="security_disabled">האבטחה מושבתת</string>
     <string name="security_enabled">האבטחה מופעלת</string>
-    <string name="security_info_message">נעילת האפליקציה מגינה על פרטיותך על ידי דרישת אימות לגישה אל Seal Plus. קוד ה-PIN שמור בצורה מאובטחת במכשיר.</string>
+    <string name="security_info_message">נעילת האפליקציה מגינה על פרטיותך על ידי דרישת אימות לגישה אל KirinDownloader. קוד ה-PIN שמור בצורה מאובטחת במכשיר.</string>
     <string name="security_options">אפשרויות אבטחה</string>
     <string name="security_settings">הגדרות אבטחה</string>
     <string name="select_timeout_duration">בחר משך פסק הזמן:</string>
@@ -562,11 +562,11 @@
     <string name="source_url">כתובת מקור</string>
     <string name="sponsor_dialog_frequency_desc">בחר כמה פעמים להציג את תזכורת התמיכה</string>
     <string name="sponsor_dialog_frequency_title">תזכורת תמיכה</string>
-    <string name="sponsor_dialog_message">Seal Plus נבנה בלב ונשמה — חינמי, קוד פתוח, וללא פרסומות. התמיכה שלך עוזרת לממן פיתוח פעיל, עדכונים מהירים, ביצועים טובים יותר ותכונות חדשות מרגשות.</string>
+    <string name="sponsor_dialog_message">KirinDownloader נבנה בלב ונשמה — חינמי, קוד פתוח, וללא פרסומות. התמיכה שלך עוזרת לממן פיתוח פעיל, עדכונים מהירים, ביצועים טובים יותר ותכונות חדשות מרגשות.</string>
     <string name="sponsor_dialog_monthly">חודשי</string>
     <string name="sponsor_dialog_off">כבוי</string>
     <string name="sponsor_dialog_subtitle">מונע על ידי התמיכה שלך</string>
-    <string name="sponsor_dialog_title">שמור על Seal Plus חינמי ופורח</string>
+    <string name="sponsor_dialog_title">שמור על KirinDownloader חינמי ופורח</string>
     <string name="sponsor_dialog_weekly">שבועי</string>
     <string name="sponsor_feature_features">תכונות חדשות ותיקוני באגים</string>
     <string name="sponsor_feature_performance">שיפורי ביצועים</string>
@@ -580,7 +580,7 @@
     <string name="timeout_updated">פסק הזמן עודכן</string>
     <string name="too_many_attempts">יותר מדי ניסיונות שגויים. אנא נסה שוב מאוחר יותר.</string>
     <string name="unlimited_concurrent">הורדות בו-זמניות ללא הגבלה</string>
-    <string name="unlock_seal_plus">פתח את Seal Plus</string>
+    <string name="unlock_seal_plus">פתח את KirinDownloader</string>
     <string name="unlock_with_fingerprint_face">פתח עם טביעת אצבע או זיהוי פנים</string>
     <string name="update_your_pin_code">עדכן את קוד ה-PIN שלך</string>
     <string name="use_biometric">השתמש בביומטריה</string>

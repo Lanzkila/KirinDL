@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.room)
     alias(libs.plugins.ktfmt.gradle)
+    alias(libs.plugins.chaquopy)
 }
 
 val keystorePropertiesFile: File = rootProject.file("keystore.properties")
@@ -52,6 +53,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
 
+        // Chaquopy embeds a native Python runtime, so it needs an explicit ABI list.
+        // Keep this identical to the existing APK split coverage.
+        ndk {
+            abiFilters += if (splitApks) {
+                listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            } else {
+                abiFilterList
+            }
+        }
+
         if (splitApks) {
             splits {
                 abi {
@@ -61,8 +72,6 @@ android {
                     isUniversalApk = true
                 }
             }
-        } else {
-            ndk { abiFilters.addAll(abiFilterList) }
         }
     }
 
@@ -136,6 +145,18 @@ android {
     androidResources { generateLocaleConfig = true }
 
     namespace = "com.junkfood.seal"
+}
+
+chaquopy {
+    defaultConfig {
+        // Python 3.11 keeps both 32-bit and 64-bit Android ABIs available.
+        version = "3.11"
+        pip {
+            // gallery-dl itself is installed by the user at runtime from official PyPI.
+            // requests is the only required Python dependency bundled in the APK.
+            install("requests==2.32.5")
+        }
+    }
 }
 
 ktfmt { kotlinLangStyle() }

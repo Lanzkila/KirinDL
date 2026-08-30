@@ -20,6 +20,11 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v4
 
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
     - uses: gradle/actions/setup-gradle@v4
       with:
         build-scan-publish: true
@@ -32,7 +37,7 @@ jobs:
         ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
       run: |
         echo "? Decoding Key..."
-        echo "$ANDROID_SIGNING_KEY" | tr -d '\n\r ' | base64 --decode > "${{ github.workspace }}/Mahesh.jks"
+        echo "$ANDROID_SIGNING_KEY" | tr -d '\n\r ' | base64 --decode > "${{ github.workspace }}/KirinDownloader.jks"
 
     # --- UPDATED STEP: Fast Build aur Native Signing Ek Sath ---
     - name: Build and Sign Release APKs
@@ -42,7 +47,7 @@ jobs:
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       run: |
         ./gradlew assembleRelease --parallel --build-cache --no-daemon \
-          -Pandroid.injected.signing.store.file="${{ github.workspace }}/Mahesh.jks" \
+          -Pandroid.injected.signing.store.file="${{ github.workspace }}/KirinDownloader.jks" \
           -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
           -Pandroid.injected.signing.key.alias="$ANDROID_ALIAS" \
           -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
@@ -81,9 +86,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: v${{ steps.version.outputs.VERSION }}
-        name: Seal Plus v${{ steps.version.outputs.VERSION }}
+        name: KirinDownloader v${{ steps.version.outputs.VERSION }}
         body: |
-          ## ✨ Seal Plus v3.0.0 - Dedicated Tools Hub, Swipeable Details Sheet, Battery Re-Arming
+          ## ✨ KirinDownloader v3.0.0 - Dedicated Tools Hub, Swipeable Details Sheet, Battery Re-Arming
           
           ---
           
@@ -116,7 +121,7 @@ jobs:
           ### 🍪 Cookie & Network Enhancements
           
           * **Cookie Domain Matching Fix** — Aligned dot-prefixed domains (`.youtube.com`) with `includeSubdomains` flag
-          * **Removed Legacy Proxy Feature** — Completely removed outdated Proxy settings and `ProxyManager` from Sealplus Extras
+          * **Removed Legacy Proxy Feature** — Completely removed outdated Proxy settings and `ProxyManager` from KirinDownloader Extras
           
           ### 💖 Crypto Donation Support & Sponsors
           
@@ -150,7 +155,7 @@ jobs:
           - ⚡ **Task Memory Pruning** - Automatic in-memory state cleanup for long download sessions
           
           ### 📜 Full Changelog
-          See [CHANGELOG.md](https://github.com/MaheshTechnicals/Sealplus/blob/main/CHANGELOG.md) for complete version history.
+          See [CHANGELOG.md](https://github.com/Lanzkila/KirinDownloader-Seal/blob/main/CHANGELOG.md) for complete version history.
           
           ---
           
@@ -183,7 +188,7 @@ jobs:
         # Create a beautiful Telegram message with HTML formatting
         MESSAGE="<b>🎉 New Release Available!</b> 🚀\n\n"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        MESSAGE+="📱 <b>App Name:</b> Seal Plus\n\n"
+        MESSAGE+="📱 <b>App Name:</b> KirinDownloader\n\n"
         MESSAGE+="🏷️ <b>Version:</b> v${{ steps.version.outputs.VERSION }}\n\n"
         MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         MESSAGE+="📋 <b>Changelog (v3.0):</b>\n\n"
@@ -241,7 +246,7 @@ jobs:
       if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
       uses: actions/upload-artifact@v4
       with:
-        name: SealPlus-${{ steps.version.outputs.VERSION }}-universal
+        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-universal
         path: app/build/outputs/apk/generic/release/*universal*.apk
         if-no-files-found: warn
         retention-days: 30
@@ -250,7 +255,7 @@ jobs:
       if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
       uses: actions/upload-artifact@v4
       with:
-        name: SealPlus-${{ steps.version.outputs.VERSION }}-arm64-v8a
+        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-arm64-v8a
         path: app/build/outputs/apk/generic/release/*arm64-v8a*.apk
         if-no-files-found: warn
         retention-days: 30
@@ -259,7 +264,7 @@ jobs:
       if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
       uses: actions/upload-artifact@v4
       with:
-        name: SealPlus-${{ steps.version.outputs.VERSION }}-armeabi-v7a
+        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-armeabi-v7a
         path: app/build/outputs/apk/generic/release/*armeabi-v7a*.apk
         if-no-files-found: warn
         retention-days: 30
@@ -268,7 +273,7 @@ jobs:
       if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
       uses: actions/upload-artifact@v4
       with:
-        name: SealPlus-${{ steps.version.outputs.VERSION }}-x86_64
+        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-x86_64
         path: app/build/outputs/apk/generic/release/*x86_64*.apk
         if-no-files-found: warn
         retention-days: 30
@@ -277,7 +282,7 @@ jobs:
       if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
       uses: actions/upload-artifact@v4
       with:
-        name: SealPlus-${{ steps.version.outputs.VERSION }}-x86
+        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-x86
         # NOTE: must be "*-x86.apk", not "*x86*.apk" — the latter also matches
         # "...-x86_64.apk" (substring collision), which bundled the x86_64 APK
         # into the "x86" artifact as well.

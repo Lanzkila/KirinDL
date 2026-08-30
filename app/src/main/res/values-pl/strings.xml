@@ -128,7 +128,7 @@
     <string name="permission_issue_desc">Foldery poza Download/ i Documents/ nie są wspierane</string>
     <string name="battery_configuration">Ustawienia baterii</string>
     <string name="battery_configuration_desc">Ignoruj optymalizację baterii dla tej aplikacji, aby pobierać w tle</string>
-    <string name="service_title">Seal Plus pobiera…</string>
+    <string name="service_title">KirinDownloader pobiera…</string>
     <string name="download_range_desc">Określ zakres filmów z playlisty „%3$s”, które chcesz pobrać (od %1$d do %2$d).</string>
     <string name="prefix">Szablon folderu wyjściowego</string>
     <string name="audio_format_preference">Preferowany format audio</string>
@@ -244,7 +244,7 @@
     <string name="enable_experimental_feature">Włączyć funkcje eksperymentalne\?</string>
     <string name="feature_unavailable">Funkcja niedostępna</string>
     <string name="clip_video_dialog_msg">Pobieranie przy użyciu tej funkcji będzie delegowane do FFmpeg w celu pobrania wybranych fragmentów wideo, ta funkcja jest nadal w fazie eksperymentalnej, a przycinanie nie będzie całkowicie dokładne, nie wszystkie formaty obsługują tę funkcję i możesz doświadczać wolniejszych prędkości pobierania.</string>
-    <string name="auto_update_disabled_msg">Automatyczna aktualizacja nie jest dostępna dla %1$s kompilacji. Jeżeli nie masz %1$s zainstalowanej na telefonie lub chciałbyś zobaczyć nadchodzące nowe funkcje w Seal Plus, rozważ %2$s.</string>
+    <string name="auto_update_disabled_msg">Automatyczna aktualizacja nie jest dostępna dla %1$s kompilacji. Jeżeli nie masz %1$s zainstalowanej na telefonie lub chciałbyś zobaczyć nadchodzące nowe funkcje w KirinDownloader, rozważ %2$s.</string>
     <string name="no_custom_command_tasks">Brak niestandardowych rozkazów poleceń</string>
     <string name="export_to_clipboard">Eksportuj do schowka</string>
     <string name="update">Aktualizacja</string>
@@ -283,7 +283,7 @@
     <string name="running_tasks">Uruchomione zadania</string>
     <string name="show_logs">Pokaż logi</string>
     <string name="sponsors">Sponsorzy</string>
-    <string name="sponsor_msg">Seal Plus zawsze będzie darmowy i z otwartym kodem źródłowym. Jeśli Ci się spodoba, rozważ wsparcie mnie na GitHub!</string>
+    <string name="sponsor_msg">KirinDownloader zawsze będzie darmowy i z otwartym kodem źródłowym. Jeśli Ci się spodoba, rozważ wsparcie mnie na GitHub!</string>
     <string name="feedback">Informacja zwrotna</string>
     <string name="subtitle_sponsorblock">Podczas usuwania segmentów SponsorBlock napisy mogą wyświetlać się w niewłaściwym czasie.</string>
     <string name="filesize_mb">%.2f MB</string>
@@ -363,7 +363,7 @@
     <string name="proxy_desc">Użyj serwer proxy do połączenia z internetem</string>
     <string name="enable_notifications_desc">Aplikacja potrzebuje Twojej zgody, by wyświetlać powiadomienia o statusie i postępie pobierania.</string>
     <string name="show_all_items">Pokaż wszystkie %1$d elementów</string>
-    <string name="custom_command_usage_msg">yt-dlp to potężne narzędzie wiersza poleceń do pobierania plików wideo. Seal Plus ułatwia korzystanie z yt-dlp, zapewniając intuicyjny graficzny interfejs użytkownika, gotowe presety dla często używanych poleceń i inne dodatkowe funkcje.
+    <string name="custom_command_usage_msg">yt-dlp to potężne narzędzie wiersza poleceń do pobierania plików wideo. KirinDownloader ułatwia korzystanie z yt-dlp, zapewniając intuicyjny graficzny interfejs użytkownika, gotowe presety dla często używanych poleceń i inne dodatkowe funkcje.
 \n
 \nW celu zaawansowanego korzystania z yt-dlp Seal umożliwia tworzenie, zapisywanie i wykonywanie niestandardowych szablonów poleceń tak jak w terminalu.
 \n

@@ -54,7 +54,7 @@
     <string name="download_directory_desc">Выберите место для хранения видео- и аудио-файлов</string>
     <string name="permission_issue">Запрет доступа к хранилищу</string>
     <string name="battery_configuration">Настройки энергопотребления</string>
-    <string name="service_title">Seal Plus скачивает…</string>
+    <string name="service_title">KirinDownloader скачивает…</string>
     <string name="unknown_error">Неизвестная ошибка</string>
     <string name="translate">Перевод</string>
     <string name="translate_desc">Помогите с переводом на Hosted Weblate</string>
@@ -283,7 +283,7 @@
     <string name="sponsor_desc">Поддержать приложение путём спонсирования на GitHub</string>
     <string name="feedback">Обратная связь</string>
     <string name="sponsors">Спонсоры</string>
-    <string name="sponsor_msg">Seal Plus всегда будет бесплатным и с открытым исходным кодом для всех. Если вам нравится это приложение, пожалуйста, подумайте о спонсорстве на GitHub!</string>
+    <string name="sponsor_msg">KirinDownloader всегда будет бесплатным и с открытым исходным кодом для всех. Если вам нравится это приложение, пожалуйста, подумайте о спонсорстве на GitHub!</string>
     <string name="audio_format">Формат аудио</string>
     <string name="beta_features">Бета</string>
     <string name="enable_experimental_feature">Включить экспериментальную функцию\?</string>
@@ -294,7 +294,7 @@
     <string name="okay">Ок</string>
     <string name="got_it">Понятно</string>
     <string name="clip_video_dialog_msg">Загрузки с использованием этой функции будут делегированы FFmpeg для загрузки выбранных фрагментов видео, эта функция все ещё является экспериментальной, и нарезка будет не совсем точной, не все форматы поддерживают эту функцию, и вы можете столкнуться с более низкой скоростью загрузки.</string>
-    <string name="auto_update_disabled_msg">Автообновление недоступно для сборок %1$s. Если на вашем устройстве не установлено приложение %1$s или вы хотите предварительно ознакомиться с новыми функциями Seal Plus, рассмотрите вариант %2$s.</string>
+    <string name="auto_update_disabled_msg">Автообновление недоступно для сборок %1$s. Если на вашем устройстве не установлено приложение %1$s или вы хотите предварительно ознакомиться с новыми функциями KirinDownloader, рассмотрите вариант %2$s.</string>
     <string name="no_custom_command_tasks">Нет пользовательских командных задач</string>
     <string name="sponsor_msg2">Большое спасибо!</string>
     <string name="msg_from_developer">Сообщение от разработчика</string>
@@ -341,9 +341,9 @@
     </plurals>
     <string name="ua_header">Заголовок User-Agent</string>
     <string name="export_to_file">Экспорт в файл</string>
-    <string name="custom_command_usage_msg">yt-dlp — мощный инструмент командной строки для загрузки видео. Seal Plus упрощает использование yt-dlp, предоставляя интуитивно понятный графический интерфейс, предустановки для общих команд и другие дополнительные функции.
+    <string name="custom_command_usage_msg">yt-dlp — мощный инструмент командной строки для загрузки видео. KirinDownloader упрощает использование yt-dlp, предоставляя интуитивно понятный графический интерфейс, предустановки для общих команд и другие дополнительные функции.
 \n
-\nДля расширенного использования yt-dlp Seal Plus позволяет создавать, сохранять и выполнять собственные шаблоны команд напрямую, как в терминале.
+\nДля расширенного использования yt-dlp KirinDownloader позволяет создавать, сохранять и выполнять собственные шаблоны команд напрямую, как в терминале.
 \n
 \nПри использовании пользовательских команд большинство параметров и функций графического интерфейса будут отключены.</string>
     <string name="presets">Пресеты</string>

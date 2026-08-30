@@ -150,7 +150,7 @@ object DatabaseUtil {
     suspend fun unhideItem(info: DownloadedVideoInfo) {
         val hiddenFile = File(info.videoPath)
         if (hiddenFile.exists()) {
-            // Restore to the original SealPlus download directory
+            // Restore to the original KirinDownloader download directory
             val downloadDir = FileUtil.getExternalDownloadDirectory()
             val destFile = File(downloadDir, hiddenFile.name).let { candidate ->
                 if (!candidate.exists()) candidate

@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Centralized themed toast manager for Seal Plus.
+ * Centralized themed toast manager for KirinDownloader.
  *
  * When a [ThemedToastHost] composable is active in the composition tree,
  * toasts are rendered with the custom themed UI. When no host is active

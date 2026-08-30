@@ -129,7 +129,7 @@
     <string name="close">Fechar</string>
     <string name="download_notification">Notificação de download</string>
     <string name="download_range_selection">Seleção de playlist</string>
-    <string name="service_title">Seal Plus está fazendo o download…</string>
+    <string name="service_title">KirinDownloader está fazendo o download…</string>
     <string name="prefix">Prefixo</string>
     <string name="open_file">Abrir arquivo</string>
     <string name="restart">Reiniciar</string>
@@ -283,7 +283,7 @@
     <string name="sponsor">Patrocinar</string>
     <string name="temporary_directory_desc">Armazenar arquivos temporários no diretório interno</string>
     <string name="feedback">Feedback</string>
-    <string name="sponsor_msg">Seal Plus sempre será livre e de código aberto para todos. Se você gostou, por favor, considere me patrocinar no GitHub!</string>
+    <string name="sponsor_msg">KirinDownloader sempre será livre e de código aberto para todos. Se você gostou, por favor, considere me patrocinar no GitHub!</string>
     <string name="audio_format">Formato de áudio</string>
     <string name="no_downloaded_media">Nenhuma mídia baixada</string>
     <string name="beta_features">Beta</string>
@@ -294,7 +294,7 @@
     <string name="okay">Certo</string>
     <string name="got_it">Entendi</string>
     <string name="feature_unavailable">Recurso não disponível</string>
-    <string name="auto_update_disabled_msg">A atualização automática não está disponível para as versões do %1$s. Se você não tem o %1$s instalado em seu dispositivo, ou gostaria de visualizar novos recursos em desenvolvimento no aplicativo Seal Plus, por favor, considere %2$s.</string>
+    <string name="auto_update_disabled_msg">A atualização automática não está disponível para as versões do %1$s. Se você não tem o %1$s instalado em seu dispositivo, ou gostaria de visualizar novos recursos em desenvolvimento no aplicativo KirinDownloader, por favor, considere %2$s.</string>
     <string name="sponsor_msg2">Muito obrigado!</string>
     <string name="msg_from_developer">Mensagem do desenvolvedor</string>
     <string name="convert_subtitle">Converter legendas</string>
@@ -340,7 +340,7 @@
     </plurals>
     <string name="ua_header">Cabeçalho de requisição User-Agent</string>
     <string name="export_to_file">Exportar como arquivo</string>
-    <string name="custom_command_usage_msg">O yt-dlp é uma poderosa ferramenta de linha de comando para fazer download de vídeos. Seal Plus facilita o uso do yt-dlp, fornecendo uma GUI intuitiva, predefinições para comandos comuns e outros recursos adicionais.
+    <string name="custom_command_usage_msg">O yt-dlp é uma poderosa ferramenta de linha de comando para fazer download de vídeos. KirinDownloader facilita o uso do yt-dlp, fornecendo uma GUI intuitiva, predefinições para comandos comuns e outros recursos adicionais.
 \n
 \nPara uso avançado do yt-dlp, o Seal permite criar, salvar e executar modelos de comandos personalizados diretamente, como em um terminal.
 \n

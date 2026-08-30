@@ -127,7 +127,7 @@
     <string name="share_success_msg">Videó link olvasása megosztott tartalomból…</string>
     <string name="show_more_actions">További műveletek megjelenítése</string>
     <string name="battery_configuration_desc">A háttérben történő letöltéshez kapcsold ki az alkalmazás akkumulátor-optimalizálását</string>
-    <string name="service_title">Seal Plus letöltése folyamatban van…</string>
+    <string name="service_title">KirinDownloader letöltése folyamatban van…</string>
     <string name="download_error_msg">A fájlt nem sikerült letölteni</string>
     <string name="channel_description">Értesítés a letöltött fájlokról és annak a folyamatról</string>
     <string name="battery_configuration">Akkumulátor beállítások</string>
@@ -267,7 +267,7 @@
     <string name="quality">Minőség</string>
     <string name="use_cookies">Sütik használata</string>
     <string name="custom_command_enabled_hint">Néhány opció nem elérhatő testreszabott parancsok mellett</string>
-    <string name="custom_command_usage_msg">A yt-dlp egy hatékony parancssori eszköz videók letöltéséhez. A Seal Plus megkönnyíti a yt-dlp használatát úgy, hogy egy intuitív GUI-t, előbeállításokat gyakran használt parancsokhoz és sok mást kínál.
+    <string name="custom_command_usage_msg">A yt-dlp egy hatékony parancssori eszköz videók letöltéséhez. A KirinDownloader megkönnyíti a yt-dlp használatát úgy, hogy egy intuitív GUI-t, előbeállításokat gyakran használt parancsokhoz és sok mást kínál.
 \n
 \nA yt-dlp haladó használatához a Seal lehetővé teszi egyedi parancssablonok létrehozását, elmentését és lefuttatását, akárcsak egy terminálban.
 \n
