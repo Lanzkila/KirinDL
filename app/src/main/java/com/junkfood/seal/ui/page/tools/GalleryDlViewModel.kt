@@ -7,6 +7,8 @@ import com.junkfood.seal.App
 import com.junkfood.seal.util.GalleryDlConfig
 import com.junkfood.seal.util.GalleryDlEngine
 import com.junkfood.seal.util.GalleryDlRunner
+import com.junkfood.seal.util.GalleryDlStore
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +29,9 @@ class GalleryDlViewModel : ViewModel() {
         val runtimeVersion: String? = null,
         val runtimeReadyModules: List<String> = emptyList(),
         val runtimeMissingOptionalModules: List<String> = emptyList(),
+        val queue: List<GalleryDlStore.QueueRecord> = emptyList(),
+        val history: List<GalleryDlStore.HistoryRecord> = emptyList(),
+        val isQueueRunning: Boolean = false,
         val isInstalling: Boolean = false,
         val isDownloading: Boolean = false,
         val isSavingConfig: Boolean = false,
@@ -49,7 +54,8 @@ class GalleryDlViewModel : ViewModel() {
                     isImportingCookies ||
                     isCheckingExtractor ||
                     isCheckingRuntime ||
-                    isManagingCache
+                    isManagingCache ||
+                    isQueueRunning
 
         val canDownload: Boolean
             get() =
@@ -69,9 +75,27 @@ class GalleryDlViewModel : ViewModel() {
                 cookiesImported = initialConfig.cookiesImported,
                 cookiesSize = initialConfig.cookiesSize,
                 cacheSize = initialConfig.cacheSize,
+                queue = GalleryDlStore.loadQueue(App.context),
+                history = GalleryDlStore.loadHistory(App.context),
             )
         )
     val state = mutableState.asStateFlow()
+
+    fun refreshFromDisk() {
+        val snapshot = GalleryDlConfig.snapshot(App.context)
+        mutableState.update {
+            it.copy(
+                installedVersion = GalleryDlEngine.installedVersion(App.context),
+                configText = snapshot.configText,
+                configValid = snapshot.configValid,
+                cookiesImported = snapshot.cookiesImported,
+                cookiesSize = snapshot.cookiesSize,
+                cacheSize = snapshot.cacheSize,
+                queue = GalleryDlStore.loadQueue(App.context),
+                history = GalleryDlStore.loadHistory(App.context),
+            )
+        }
+    }
 
     fun updateUrl(value: String) {
         mutableState.update {
@@ -85,6 +109,179 @@ class GalleryDlViewModel : ViewModel() {
                 destinationDirectory = null,
             )
         }
+    }
+
+    fun addCurrentToQueue() {
+        val url = mutableState.value.url.trim()
+        if (!GalleryDlRunner.isCandidateUrl(url)) {
+            mutableState.update { it.copy(errorMessage = "Enter a valid Gallery URL") }
+            return
+        }
+        addQueueUrls(listOf(url))
+    }
+
+    fun addBatch(text: String) {
+        val urls =
+            text.lines()
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
+        val valid = urls.filter(GalleryDlRunner::isCandidateUrl)
+        val invalidCount = urls.size - valid.size
+
+        if (valid.isEmpty()) {
+            mutableState.update {
+                it.copy(errorMessage = "No valid gallery URLs found in batch input")
+            }
+            return
+        }
+
+        addQueueUrls(valid)
+        mutableState.update {
+            it.copy(
+                statusMessage =
+                    buildString {
+                        append("Added ${valid.size} URL(s) to queue")
+                        if (invalidCount > 0) append(" • skipped $invalidCount invalid")
+                    }
+            )
+        }
+    }
+
+    private fun addQueueUrls(urls: List<String>) {
+        val currentUrls = mutableState.value.queue.map { it.url }.toSet()
+        val additions =
+            urls.filterNot(currentUrls::contains).map { url ->
+                GalleryDlStore.QueueRecord(
+                    id = UUID.randomUUID().toString(),
+                    url = url,
+                    state = "pending",
+                )
+            }
+
+        if (additions.isEmpty()) {
+            mutableState.update { it.copy(statusMessage = "Those URLs are already in the queue") }
+            return
+        }
+
+        val updated = mutableState.value.queue + additions
+        GalleryDlStore.saveQueue(App.context, updated)
+        mutableState.update {
+            it.copy(
+                queue = updated,
+                statusMessage = "Added ${additions.size} URL(s) to queue",
+                errorMessage = null,
+            )
+        }
+    }
+
+    fun removeQueueItem(id: String) {
+        if (mutableState.value.isQueueRunning) return
+        val updated = mutableState.value.queue.filterNot { it.id == id }
+        GalleryDlStore.saveQueue(App.context, updated)
+        mutableState.update { it.copy(queue = updated) }
+    }
+
+    fun clearFinishedQueue() {
+        if (mutableState.value.isQueueRunning) return
+        val updated = mutableState.value.queue.filter { it.state == "pending" || it.state == "running" }
+        GalleryDlStore.saveQueue(App.context, updated)
+        mutableState.update { it.copy(queue = updated) }
+    }
+
+    fun runQueue() {
+        val current = mutableState.value
+        if (
+            current.isBusy ||
+                !current.isInstalled ||
+                current.queue.none { it.state == "pending" || it.state == "failed" }
+        ) return
+
+        mutableState.update {
+            it.copy(isQueueRunning = true, statusMessage = "Queue started", errorMessage = null)
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val ids =
+                mutableState.value.queue
+                    .filter { it.state == "pending" || it.state == "failed" }
+                    .map { it.id }
+
+            ids.forEach { id ->
+                val record = mutableState.value.queue.firstOrNull { it.id == id } ?: return@forEach
+                updateQueueRecord(record.copy(state = "running", error = ""))
+
+                GalleryDlRunner.download(App.context, record.url)
+                    .onSuccess { result ->
+                        updateQueueRecord(
+                            record.copy(
+                                state = "completed",
+                                extractor = result.extractorLabel,
+                                error = "",
+                            )
+                        )
+                        addHistory(record.url, result, true, "")
+                    }
+                    .onFailure { error ->
+                        val message = error.message ?: "Download failed"
+                        updateQueueRecord(record.copy(state = "failed", error = message))
+                        addHistory(record.url, null, false, message)
+                    }
+            }
+
+            val snapshot = GalleryDlConfig.snapshot(App.context)
+            mutableState.update {
+                it.copy(
+                    isQueueRunning = false,
+                    cacheSize = snapshot.cacheSize,
+                    statusMessage = "Queue finished",
+                )
+            }
+        }
+    }
+
+    private fun updateQueueRecord(record: GalleryDlStore.QueueRecord) {
+        val updated =
+            mutableState.value.queue.map { current ->
+                if (current.id == record.id) record else current
+            }
+        GalleryDlStore.saveQueue(App.context, updated)
+        mutableState.update { it.copy(queue = updated) }
+    }
+
+    fun clearHistory() {
+        if (mutableState.value.isBusy) return
+        GalleryDlStore.clearHistory(App.context)
+        mutableState.update {
+            it.copy(history = emptyList(), statusMessage = "Gallery history cleared", errorMessage = null)
+        }
+    }
+
+    fun reuseHistoryUrl(url: String) {
+        updateUrl(url)
+        mutableState.update { it.copy(statusMessage = "URL copied back to Download") }
+    }
+
+    private fun addHistory(
+        url: String,
+        result: GalleryDlRunner.DownloadResult?,
+        success: Boolean,
+        error: String,
+    ) {
+        val record =
+            GalleryDlStore.HistoryRecord(
+                id = UUID.randomUUID().toString(),
+                url = url,
+                extractor = result?.extractorLabel.orEmpty(),
+                destination = result?.destinationDirectory.orEmpty(),
+                fileCount = result?.savedFiles?.size ?: 0,
+                success = success,
+                error = error,
+                finishedAt = System.currentTimeMillis(),
+            )
+        val updated = listOf(record) + mutableState.value.history.filterNot { it.url == url }
+        GalleryDlStore.saveHistory(App.context, updated)
+        mutableState.update { it.copy(history = GalleryDlStore.loadHistory(App.context)) }
     }
 
     fun updateConfigText(value: String) {
@@ -103,23 +300,15 @@ class GalleryDlViewModel : ViewModel() {
     fun saveConfig() {
         val current = mutableState.value
         if (current.isBusy || !current.configValid) return
-        mutableState.update {
-            it.copy(isSavingConfig = true, errorMessage = null, statusMessage = null)
-        }
+        mutableState.update { it.copy(isSavingConfig = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlConfig.saveConfig(App.context, current.configText)
-                .onSuccess {
-                    refreshSnapshot(
-                        statusMessage = "gallery-dl configuration saved",
-                        finishConfigAction = true,
-                    )
-                }
+                .onSuccess { refreshSnapshot("gallery-dl configuration saved", true) }
                 .onFailure { error ->
                     mutableState.update {
                         it.copy(
                             isSavingConfig = false,
-                            errorMessage =
-                                error.message ?: "Could not save gallery-dl configuration",
+                            errorMessage = error.message ?: "Could not save gallery-dl configuration",
                         )
                     }
                 }
@@ -128,23 +317,15 @@ class GalleryDlViewModel : ViewModel() {
 
     fun resetConfig() {
         if (mutableState.value.isBusy) return
-        mutableState.update {
-            it.copy(isSavingConfig = true, errorMessage = null, statusMessage = null)
-        }
+        mutableState.update { it.copy(isSavingConfig = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlConfig.resetConfig(App.context)
-                .onSuccess {
-                    refreshSnapshot(
-                        statusMessage = "gallery-dl configuration reset",
-                        finishConfigAction = true,
-                    )
-                }
+                .onSuccess { refreshSnapshot("gallery-dl configuration reset", true) }
                 .onFailure { error ->
                     mutableState.update {
                         it.copy(
                             isSavingConfig = false,
-                            errorMessage =
-                                error.message ?: "Could not reset gallery-dl configuration",
+                            errorMessage = error.message ?: "Could not reset gallery-dl configuration",
                         )
                     }
                 }
@@ -153,9 +334,7 @@ class GalleryDlViewModel : ViewModel() {
 
     fun importConfig(uri: Uri) {
         if (mutableState.value.isBusy) return
-        mutableState.update {
-            it.copy(isSavingConfig = true, errorMessage = null, statusMessage = null)
-        }
+        mutableState.update { it.copy(isSavingConfig = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlConfig.importConfig(App.context, uri)
                 .onSuccess { snapshot ->
@@ -178,8 +357,7 @@ class GalleryDlViewModel : ViewModel() {
                     mutableState.update {
                         it.copy(
                             isSavingConfig = false,
-                            errorMessage =
-                                error.message ?: "Could not import gallery-dl configuration",
+                            errorMessage = error.message ?: "Could not import gallery-dl configuration",
                         )
                     }
                 }
@@ -188,26 +366,19 @@ class GalleryDlViewModel : ViewModel() {
 
     fun exportConfig(uri: Uri) {
         if (mutableState.value.isBusy) return
-        mutableState.update {
-            it.copy(isSavingConfig = true, errorMessage = null, statusMessage = null)
-        }
+        mutableState.update { it.copy(isSavingConfig = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlConfig.exportConfig(App.context, uri)
                 .onSuccess {
                     mutableState.update {
-                        it.copy(
-                            isSavingConfig = false,
-                            statusMessage = "gallery-dl configuration exported",
-                            errorMessage = null,
-                        )
+                        it.copy(isSavingConfig = false, statusMessage = "gallery-dl configuration exported", errorMessage = null)
                     }
                 }
                 .onFailure { error ->
                     mutableState.update {
                         it.copy(
                             isSavingConfig = false,
-                            errorMessage =
-                                error.message ?: "Could not export gallery-dl configuration",
+                            errorMessage = error.message ?: "Could not export gallery-dl configuration",
                         )
                     }
                 }
@@ -216,9 +387,7 @@ class GalleryDlViewModel : ViewModel() {
 
     fun importCookies(uri: Uri) {
         if (mutableState.value.isBusy) return
-        mutableState.update {
-            it.copy(isImportingCookies = true, errorMessage = null, statusMessage = null)
-        }
+        mutableState.update { it.copy(isImportingCookies = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlConfig.importCookies(App.context, uri)
                 .onSuccess {
@@ -238,10 +407,7 @@ class GalleryDlViewModel : ViewModel() {
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(
-                            isImportingCookies = false,
-                            errorMessage = error.message ?: "Could not import cookies.txt",
-                        )
+                        it.copy(isImportingCookies = false, errorMessage = error.message ?: "Could not import cookies.txt")
                     }
                 }
         }
@@ -249,9 +415,7 @@ class GalleryDlViewModel : ViewModel() {
 
     fun clearCookies() {
         if (mutableState.value.isBusy) return
-        mutableState.update {
-            it.copy(isImportingCookies = true, errorMessage = null, statusMessage = null)
-        }
+        mutableState.update { it.copy(isImportingCookies = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlConfig.clearCookies(App.context)
                 .onSuccess {
@@ -271,10 +435,7 @@ class GalleryDlViewModel : ViewModel() {
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(
-                            isImportingCookies = false,
-                            errorMessage = error.message ?: "Could not clear Gallery DL cookies",
-                        )
+                        it.copy(isImportingCookies = false, errorMessage = error.message ?: "Could not clear Gallery DL cookies")
                     }
                 }
         }
@@ -282,9 +443,7 @@ class GalleryDlViewModel : ViewModel() {
 
     fun clearCache() {
         if (mutableState.value.isBusy) return
-        mutableState.update {
-            it.copy(isManagingCache = true, errorMessage = null, statusMessage = null)
-        }
+        mutableState.update { it.copy(isManagingCache = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlConfig.clearCache(App.context)
                 .onSuccess {
@@ -302,10 +461,7 @@ class GalleryDlViewModel : ViewModel() {
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(
-                            isManagingCache = false,
-                            errorMessage = error.message ?: "Could not clear gallery-dl cache",
-                        )
+                        it.copy(isManagingCache = false, errorMessage = error.message ?: "Could not clear gallery-dl cache")
                     }
                 }
         }
@@ -313,9 +469,7 @@ class GalleryDlViewModel : ViewModel() {
 
     fun checkExtractor() {
         val current = mutableState.value
-        if (current.isBusy || !current.isInstalled || !GalleryDlRunner.isCandidateUrl(current.url)) {
-            return
-        }
+        if (current.isBusy || !current.isInstalled || !GalleryDlRunner.isCandidateUrl(current.url)) return
 
         mutableState.update {
             it.copy(
@@ -334,29 +488,15 @@ class GalleryDlViewModel : ViewModel() {
                         it.copy(
                             isCheckingExtractor = false,
                             extractorSupported = info.supported,
-                            extractorLabel = info.label.takeIf { label -> label.isNotBlank() },
-                            statusMessage =
-                                if (info.supported) {
-                                    "Extractor ready: ${info.label}"
-                                } else {
-                                    null
-                                },
-                            errorMessage =
-                                if (info.supported) {
-                                    null
-                                } else {
-                                    "No gallery-dl extractor matched this URL"
-                                },
+                            extractorLabel = info.label.takeIf(String::isNotBlank),
+                            statusMessage = if (info.supported) "Extractor ready: ${info.label}" else null,
+                            errorMessage = if (info.supported) null else "No gallery-dl extractor matched this URL",
                         )
                     }
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(
-                            isCheckingExtractor = false,
-                            extractorSupported = false,
-                            errorMessage = error.message ?: "Could not check this URL",
-                        )
+                        it.copy(isCheckingExtractor = false, extractorSupported = false, errorMessage = error.message ?: "Could not check this URL")
                     }
                 }
         }
@@ -366,14 +506,7 @@ class GalleryDlViewModel : ViewModel() {
         val current = mutableState.value
         if (current.isBusy || !current.isInstalled) return
 
-        mutableState.update {
-            it.copy(
-                isCheckingRuntime = true,
-                errorMessage = null,
-                statusMessage = null,
-            )
-        }
-
+        mutableState.update { it.copy(isCheckingRuntime = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlRunner.diagnostics(App.context)
                 .onSuccess { diagnostics ->
@@ -392,11 +525,7 @@ class GalleryDlViewModel : ViewModel() {
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(
-                            isCheckingRuntime = false,
-                            errorMessage =
-                                error.message ?: "Gallery DL compatibility check failed",
-                        )
+                        it.copy(isCheckingRuntime = false, errorMessage = error.message ?: "Gallery DL compatibility check failed")
                     }
                 }
         }
@@ -405,12 +534,7 @@ class GalleryDlViewModel : ViewModel() {
     fun installOrUpdateEngine() {
         if (mutableState.value.isBusy) return
         mutableState.update {
-            it.copy(
-                isInstalling = true,
-                errorMessage = null,
-                statusMessage = null,
-                savedFiles = emptyList(),
-            )
+            it.copy(isInstalling = true, errorMessage = null, statusMessage = null, savedFiles = emptyList())
         }
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlEngine.installLatest(App.context)
@@ -431,10 +555,7 @@ class GalleryDlViewModel : ViewModel() {
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(
-                            isInstalling = false,
-                            errorMessage = error.message ?: "Could not install gallery-dl",
-                        )
+                        it.copy(isInstalling = false, errorMessage = error.message ?: "Could not install gallery-dl")
                     }
                 }
         }
@@ -457,6 +578,7 @@ class GalleryDlViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             GalleryDlRunner.download(App.context, current.url)
                 .onSuccess { result ->
+                    addHistory(current.url, result, true, "")
                     val snapshot = GalleryDlConfig.snapshot(App.context)
                     mutableState.update {
                         it.copy(
@@ -465,37 +587,29 @@ class GalleryDlViewModel : ViewModel() {
                             savedFiles = result.savedFiles,
                             destinationDirectory = result.destinationDirectory,
                             extractorSupported = true,
-                            extractorLabel =
-                                result.extractorLabel.takeIf { label -> label.isNotBlank() },
+                            extractorLabel = result.extractorLabel.takeIf(String::isNotBlank),
                             cacheSize = snapshot.cacheSize,
                             statusMessage =
                                 buildString {
                                     append("Saved ${result.savedFiles.size} file(s)")
-                                    if (result.extractorLabel.isNotBlank()) {
-                                        append(" • ${result.extractorLabel}")
-                                    }
+                                    if (result.extractorLabel.isNotBlank()) append(" • ${result.extractorLabel}")
                                 },
                             errorMessage = null,
                         )
                     }
                 }
                 .onFailure { error ->
+                    val message = error.message ?: "Download failed"
+                    addHistory(current.url, null, false, message)
                     val snapshot = GalleryDlConfig.snapshot(App.context)
                     mutableState.update {
-                        it.copy(
-                            isDownloading = false,
-                            cacheSize = snapshot.cacheSize,
-                            errorMessage = error.message ?: "gallery-dl download failed",
-                        )
+                        it.copy(isDownloading = false, cacheSize = snapshot.cacheSize, errorMessage = message)
                     }
                 }
         }
     }
 
-    private fun refreshSnapshot(
-        statusMessage: String,
-        finishConfigAction: Boolean = false,
-    ) {
+    private fun refreshSnapshot(statusMessage: String, finishConfigAction: Boolean = false) {
         val snapshot = GalleryDlConfig.snapshot(App.context)
         mutableState.update {
             it.copy(

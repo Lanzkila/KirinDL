@@ -46,6 +46,7 @@ object Route {
     const val COMMENT_DOWNLOAD = "comment_download"
     const val COMMENT_DETAIL = "comment_detail"
     const val GALLERY_DL = "gallery_dl"
+    const val GALLERY_DL_SETTINGS = "gallery_dl_settings"
 
     const val TASK_HASHCODE = "task_hashcode"
     const val TEMPLATE_ID = "template_id"

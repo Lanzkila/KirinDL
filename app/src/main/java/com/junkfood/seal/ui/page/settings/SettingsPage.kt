@@ -80,8 +80,7 @@ fun SettingsPage(onNavigateBack: () -> Unit, onNavigateTo: (String) -> Unit) {
     val batteryIntent = remember { BatteryUtil.buildBatterySettingsIntent(context) }
     val isActivityAvailable: Boolean = remember {
         if (Build.VERSION.SDK_INT < 23) false
-        else context.packageManager
-            .resolveActivity(batteryIntent, 0) != null
+        else context.packageManager.resolveActivity(batteryIntent, 0) != null
     }
 
     val launcher =
@@ -234,6 +233,15 @@ fun SettingsPage(onNavigateBack: () -> Unit, onNavigateTo: (String) -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            item {
+                PreferenceItem(
+                    title = "Gallery DL",
+                    description = "Engine, cookies, compatibility and expert config",
+                    icon = Icons.Rounded.SettingsApplications,
+                    trailingIcon = { trailingChevron() },
+                    onClick = { onNavigateTo(Route.GALLERY_DL_SETTINGS) },
+                )
+            }
             item {
                 PreferenceItem(
                     title = stringResource(id = R.string.sealplus_extras),

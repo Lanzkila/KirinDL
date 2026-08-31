@@ -43,6 +43,7 @@ import com.junkfood.seal.ui.page.command.TaskLogPage
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel
 import com.junkfood.seal.ui.page.home.NewHomePage
 import com.junkfood.seal.ui.page.onboarding.OnboardingScreen
+import com.junkfood.seal.ui.page.settings.GalleryDlSettingsPage
 import com.junkfood.seal.ui.page.settings.SettingsPage
 import com.junkfood.seal.ui.page.settings.about.AboutPage
 import com.junkfood.seal.ui.page.settings.about.CreditsPage
@@ -225,7 +226,14 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                     )
                 }
                 animatedComposable(Route.GALLERY_DL) {
-                    GalleryDlPage(onNavigateBack = onNavigateBack)
+                    GalleryDlPage(
+                        onNavigateBack = onNavigateBack,
+                        onOpenSettings = {
+                            navController.navigate(Route.GALLERY_DL_SETTINGS) {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
                 }
                 animatedComposable(Route.THUMBNAIL_DOWNLOAD) {
                     ThumbnailDownloadPage(onNavigateBack = onNavigateBack)
@@ -309,6 +317,9 @@ fun NavGraphBuilder.settingsGraph(
         }
         animatedComposable(Route.SETTINGS_PAGE) {
             SettingsPage(onNavigateBack = onNavigateBack, onNavigateTo = onNavigateTo)
+        }
+        animatedComposable(Route.GALLERY_DL_SETTINGS) {
+            GalleryDlSettingsPage(onNavigateBack = onNavigateBack)
         }
         animatedComposable(Route.GENERAL_DOWNLOAD_PREFERENCES) {
             GeneralDownloadPreferences(onNavigateBack = { onNavigateBack() }) {
