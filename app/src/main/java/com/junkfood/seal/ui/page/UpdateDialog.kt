@@ -1,6 +1,7 @@
 package com.junkfood.seal.ui.page
 
-import android.os.Build
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -17,58 +18,41 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import com.junkfood.seal.App
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.junkfood.seal.R
 import com.junkfood.seal.util.UpdateUtil
-import com.junkfood.seal.util.makeToast
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+
+private const val KIRIN_RELEASES_URL =
+    "https://github.com/Lanzkila/KirinDownloader-Seal/releases"
 
 @Composable
 fun UpdateDialog(onDismissRequest: () -> Unit, release: UpdateUtil.Release) {
-    var currentDownloadStatus by remember {
-        mutableStateOf(UpdateUtil.DownloadStatus.NotYet as UpdateUtil.DownloadStatus)
-    }
     val context = LocalContext.current
 
-    val scope = rememberCoroutineScope()
     UpdateDialogImpl(
         onDismissRequest = onDismissRequest,
         title = release.name.toString(),
         onConfirmUpdate = {
-            scope.launch(Dispatchers.IO) {
-                runCatching {
-                        UpdateUtil.downloadApk(release = release).collect { downloadStatus ->
-                            currentDownloadStatus = downloadStatus
-                            if (downloadStatus is UpdateUtil.DownloadStatus.Finished) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                    UpdateUtil.installLatestApk()
-                                }
-                            }
-                        }
+            val target = release.htmlUrl?.takeIf { it.startsWith("https://") } ?: KIRIN_RELEASES_URL
+            runCatching {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse(target)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
-                    .onFailure {
-                        it.printStackTrace()
-                        currentDownloadStatus = UpdateUtil.DownloadStatus.NotYet
-                        App.applicationScope.launch(Dispatchers.Main) {
-                            context.makeToast(R.string.app_update_failed)
-                        }
-                        return@launch
-                    }
+                )
             }
+            onDismissRequest()
         },
         releaseNote = release.body.toString(),
-        downloadStatus = currentDownloadStatus,
+        downloadStatus = UpdateUtil.DownloadStatus.NotYet,
     )
 }
 
@@ -81,19 +65,21 @@ fun UpdateDialogImpl(
     downloadStatus: UpdateUtil.DownloadStatus,
 ) {
     AlertDialog(
-        onDismissRequest = {},
+        onDismissRequest = onDismissRequest,
         title = { Text(title) },
         icon = { Icon(Icons.Outlined.NewReleases, null) },
         confirmButton = {
             Button(
                 onClick = {
-                    if (downloadStatus !is UpdateUtil.DownloadStatus.Progress) onConfirmUpdate()
+                    if (downloadStatus !is UpdateUtil.DownloadStatus.Progress) {
+                        onConfirmUpdate()
+                    }
                 }
             ) {
                 Text(
                     when (downloadStatus) {
                         is UpdateUtil.DownloadStatus.Progress -> "${downloadStatus.percent} %"
-                        else -> stringResource(R.string.update)
+                        else -> "Open release"
                     },
                     modifier = Modifier.animateContentSize(),
                 )
@@ -131,9 +117,9 @@ private fun Preview() {
 
     UpdateDialogImpl(
         onDismissRequest = { b = false },
-        title = "v1.12.0",
+        title = "v3.0.4",
         onConfirmUpdate = { b = true },
-        releaseNote = "ReleaseNoteHTML",
+        releaseNote = "A new KirinDownloader release is available.",
         downloadStatus = status,
     )
 }

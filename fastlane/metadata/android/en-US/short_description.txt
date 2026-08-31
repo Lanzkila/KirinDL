@@ -1,1 +1,1 @@
-Video/Audio downloader designed and themed with Material You
+Open-source media and gallery downloader powered by yt-dlp and gallery-dl.

@@ -65,22 +65,19 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
             rememberTopAppBarState(),
             canScroll = { true },
         )
-    var autoUpdate by remember { mutableStateOf(PreferenceUtil.isAutoUpdateEnabled()) }
+    var automaticChecks by remember { mutableStateOf(PreferenceUtil.isAutoUpdateEnabled()) }
     var updateChannel by UPDATE_CHANNEL.intState
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     var release by remember { mutableStateOf(UpdateUtil.Release()) }
     var showUpdateDialog by remember { mutableStateOf(false) }
-    var showUnavailableDialog by remember { mutableStateOf(App.isFDroidBuild()) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = {
-                    Text(modifier = Modifier, text = stringResource(id = R.string.auto_update))
-                },
+                title = { Text(text = "Update checks") },
                 navigationIcon = { BackButton { onNavigateBack() } },
                 scrollBehavior = scrollBehavior,
             )
@@ -89,20 +86,22 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
             LazyColumn(modifier = Modifier.padding(paddings)) {
                 item {
                     PreferenceSwitchWithContainer(
-                        title = stringResource(id = R.string.enable_auto_update),
+                        title = "Check for KirinDownloader updates automatically",
                         icon = null,
-                        isChecked = autoUpdate,
+                        isChecked = automaticChecks,
                     ) {
-                        autoUpdate = !autoUpdate
-                        AUTO_UPDATE.updateBoolean(autoUpdate)
+                        automaticChecks = !automaticChecks
+                        AUTO_UPDATE.updateBoolean(automaticChecks)
                     }
                 }
+
                 item {
                     PreferenceSubtitle(
                         modifier = Modifier.padding(horizontal = 4.dp),
                         text = stringResource(id = R.string.update_channel),
                     )
                 }
+
                 item {
                     PreferenceSingleChoiceItem(
                         text = stringResource(id = R.string.stable_channel),
@@ -124,6 +123,7 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                         UPDATE_CHANNEL.updateInt(updateChannel)
                     }
                 }
+
                 item {
                     var isLoading by remember { mutableStateOf(false) }
                     Row(
@@ -139,7 +139,7 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                             icon = Icons.Outlined.Update,
                             isLoading = isLoading,
                         ) {
-                            if (!isLoading)
+                            if (!isLoading) {
                                 scope.launch {
                                     runCatching {
                                             isLoading = true
@@ -148,7 +148,9 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                                                     release = it
                                                     showUpdateDialog = true
                                                 }
-                                                    ?: App.applicationScope.launch(Dispatchers.Main) {
+                                                    ?: App.applicationScope.launch(
+                                                        Dispatchers.Main
+                                                    ) {
                                                         context.makeToast(R.string.app_up_to_date)
                                                     }
                                             }
@@ -162,27 +164,27 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                                             isLoading = false
                                         }
                                 }
+                            }
                         }
                     }
                     androidx.compose.material3.HorizontalDivider()
                 }
+
                 item {
                     PreferenceInfo(
                         modifier = Modifier.padding(horizontal = 4.dp),
-                        text = stringResource(id = R.string.update_channel_desc),
+                        text =
+                            "KirinDownloader checks its official GitHub releases for new versions. " +
+                                "The app does not request permission to install APK packages. " +
+                                "When an update is available, you can open the release page in your browser.",
                     )
                 }
             }
         },
     )
-    if (showUpdateDialog)
-        UpdateDialog(onDismissRequest = { showUpdateDialog = false }, release = release)
 
-    if (showUnavailableDialog) {
-        AutoUpdateUnavailableDialog {
-            showUnavailableDialog = false
-            onNavigateBack()
-        }
+    if (showUpdateDialog) {
+        UpdateDialog(onDismissRequest = { showUpdateDialog = false }, release = release)
     }
 }
 
@@ -199,14 +201,21 @@ fun ProgressIndicatorButton(
         onClick = onClick,
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
     ) {
-        if (isLoading)
+        if (isLoading) {
             Box(modifier = Modifier.size(18.dp)) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(16.dp).align(Alignment.Center),
                     strokeWidth = 3.dp,
                 )
             }
-        else Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        } else {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
         Text(text = text, modifier = Modifier.padding(start = 8.dp))
     }
 }

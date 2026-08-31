@@ -1,10 +1,16 @@
-<b>Features</b>
-Download videos and audio files from video platforms supported by yt-dlp
-Embed metadata and video thumbnail into extracted audio files
-Download all videos in the playlist with one click
-Use embedded aria2c as external downloader for all your downloads
-Embed subtitles into downloaded videos
-Execute custom yt-dlp commands with templates
-Manage in-app downloads and custom command templates
-Easy to use and user-friendly
-Material Design 3 style UI, with dynamic color theme
+KirinDownloader is an open-source media and gallery downloader for Android.
+
+Features include:
+• Media downloads powered by yt-dlp
+• Gallery downloads powered by gallery-dl
+• Gallery batch queue and history
+• Download format and output controls
+• Optional cookies and advanced configuration
+• KirinDownloader visual identity with adaptive and themed icons
+
+KirinDownloader does not request Android package-install permission for self-updates. Update checks
+open the official GitHub release page so installation remains an explicit user action outside the
+app.
+
+This project is based on open-source software. Upstream projects and licenses remain credited in
+the app.
