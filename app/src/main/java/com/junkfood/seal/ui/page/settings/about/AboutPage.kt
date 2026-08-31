@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -227,7 +228,21 @@ fun AboutPage(
                                 onClick = onNavigateToDonatePage,
                                 modifier = Modifier.weight(1f),
                             )
-                            if (telegramChannelUrl.isNotBlank()) {
+                            CommunityCard(
+                                title = stringResource(R.string.credits),
+                                description = stringResource(R.string.credits_desc),
+                                icon = Icons.Outlined.AutoAwesome,
+                                onClick = onNavigateToCreditsPage,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+
+                        // Any future optional/community cards start below Sponsor + Credits.
+                        if (telegramChannelUrl.isNotBlank()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
                                 CommunityCard(
                                     title = stringResource(R.string.telegram_channel),
                                     description = telegramChannelUrl,
@@ -235,7 +250,6 @@ fun AboutPage(
                                     onClick = { openUrl(telegramChannelUrl) },
                                     modifier = Modifier.weight(1f),
                                 )
-                            } else {
                                 Spacer(modifier = Modifier.weight(1f))
                             }
                         }
@@ -269,19 +283,6 @@ fun AboutPage(
                                 }
                             }
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            CommunityCard(
-                                title = stringResource(R.string.credits),
-                                description = stringResource(R.string.credits_desc),
-                                icon = Icons.Outlined.AutoAwesome,
-                                onClick = onNavigateToCreditsPage,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
                     }
                 }
 
@@ -310,7 +311,7 @@ private fun CommunityCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 168.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,

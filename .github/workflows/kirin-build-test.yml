@@ -35,8 +35,8 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      - name: Build stable-signed debug ARM64
-        run: ./gradlew assembleGenericDebug -PnoSplits -PABI_FILTERS=arm64-v8a --stacktrace --no-daemon --no-configuration-cache
+      - name: Build stable-signed Universal Debug
+        run: ./gradlew assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache
 
       - name: Prepare KirinDownloader-Seal release signing
         shell: bash
@@ -60,7 +60,10 @@ jobs:
             fi
           done
 
-          printf '%s' "$KIRIN_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/kirin-release.jks"
+          printf '%s' "$KIRIN_KEYSTORE_BASE64" \
+            | base64 --decode \
+            > "$GITHUB_WORKSPACE/kirin-release.jks"
+
           chmod 600 "$GITHUB_WORKSPACE/kirin-release.jks"
 
           printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n' \
@@ -77,39 +80,61 @@ jobs:
 
           echo "KirinDownloader-Seal release keystore is valid."
 
-      - name: Build signed release ARM64
-        run: ./gradlew assembleGenericRelease -PnoSplits -PABI_FILTERS=arm64-v8a --stacktrace --no-daemon --no-configuration-cache
+      - name: Build signed Universal Release
+        run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
-      - name: Verify release APK signature
+      - name: Locate Universal APKs
         shell: bash
         run: |
           set -euo pipefail
-          APK="$(find app/build/outputs/apk/generic/release -type f -name '*.apk' | head -n 1)"
-          if [[ -z "$APK" ]]; then
-            echo "::error::Signed release APK was not generated."
+
+          DEBUG_APK="$(find app/build/outputs/apk/generic/debug \
+            -type f -name '*universal*.apk' | head -n 1)"
+
+          RELEASE_APK="$(find app/build/outputs/apk/generic/release \
+            -type f -name '*universal*.apk' | head -n 1)"
+
+          if [[ -z "$DEBUG_APK" ]]; then
+            echo "::error::Universal debug APK was not generated."
             exit 1
           fi
 
+          if [[ -z "$RELEASE_APK" ]]; then
+            echo "::error::Universal release APK was not generated."
+            exit 1
+          fi
+
+          mkdir -p artifacts/debug artifacts/release
+          cp "$DEBUG_APK" "artifacts/debug/KirinDownloader-Universal-Debug.apk"
+          cp "$RELEASE_APK" "artifacts/release/KirinDownloader-Universal-Release.apk"
+
+      - name: Verify Universal Release signature
+        shell: bash
+        run: |
+          set -euo pipefail
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
           "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" \
-            verify --verbose --print-certs "$APK"
+            verify \
+            --verbose \
+            --print-certs \
+            "artifacts/release/KirinDownloader-Universal-Release.apk"
 
       - name: Show generated APKs
         run: find app/build/outputs/apk -type f -name "*.apk" -print
 
-      - name: Upload debug APK
+      - name: Upload Universal Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: KirinDownloader-debug-arm64-${{ github.run_number }}
-          path: app/build/outputs/apk/generic/debug/*.apk
+          name: KirinDownloader-Universal-Debug-${{ github.run_number }}
+          path: artifacts/debug/KirinDownloader-Universal-Debug.apk
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload signed release APK
+      - name: Upload Signed Universal Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: KirinDownloader-release-arm64-${{ github.run_number }}
-          path: app/build/outputs/apk/generic/release/*.apk
+          name: KirinDownloader-Universal-Release-${{ github.run_number }}
+          path: artifacts/release/KirinDownloader-Universal-Release.apk
           if-no-files-found: error
           retention-days: 30
 
