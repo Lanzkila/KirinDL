@@ -36,6 +36,13 @@ object GalleryDlRunner {
                         GalleryDlEngine.installedVersion(context)
                             ?: throw IllegalStateException("Install the gallery-dl engine first")
 
+                    val compatibility = GalleryDlConfig.prepare(context)
+                    val cookiesPath =
+                        compatibility.cookiesFile
+                            .takeIf { it.isFile && it.length() > 0L }
+                            ?.absolutePath
+                            .orEmpty()
+
                     val jobDir = File(context.cacheDir, "gallery-dl-jobs/${UUID.randomUUID()}")
                     val outputDir = File(jobDir, "output").apply { mkdirs() }
 
@@ -50,6 +57,9 @@ object GalleryDlRunner {
                                     trimmedUrl,
                                     outputDir.absolutePath,
                                     engineDir.absolutePath,
+                                    compatibility.configFile.absolutePath,
+                                    cookiesPath,
+                                    compatibility.cacheFile.absolutePath,
                                 )
                                 .toString()
                         val result = JSONObject(raw)
@@ -66,7 +76,10 @@ object GalleryDlRunner {
                         if (jsonFiles != null) {
                             for (index in 0 until jsonFiles.length()) {
                                 val file = File(jsonFiles.getString(index)).canonicalFile
-                                if (file.isFile && file.toPath().startsWith(outputDir.canonicalFile.toPath())) {
+                                if (
+                                    file.isFile &&
+                                        file.toPath().startsWith(outputDir.canonicalFile.toPath())
+                                ) {
                                     files += file
                                 }
                             }
@@ -76,7 +89,9 @@ object GalleryDlRunner {
                         }
 
                         val destination =
-                            File(FileUtil.getExternalDownloadDirectory(), "GalleryDL").apply { mkdirs() }
+                            File(FileUtil.getExternalDownloadDirectory(), "GalleryDL").apply {
+                                mkdirs()
+                            }
                         val saved = files.map { source -> exportFile(source, outputDir, destination) }
                         runCatching {
                             MediaScannerConnection.scanFile(
@@ -119,7 +134,8 @@ object GalleryDlRunner {
         val base = file.nameWithoutExtension
         var index = 1
         while (true) {
-            val name = if (extension.isBlank()) "$base ($index)" else "$base ($index).$extension"
+            val name =
+                if (extension.isBlank()) "$base ($index)" else "$base ($index).$extension"
             val candidate = File(parent, name)
             if (!candidate.exists()) return candidate
             index++

@@ -1,8 +1,8 @@
-"""Small Chaquopy bridge for KirinDownloader's optional gallery-dl engine.
+"""Chaquopy bridge for KirinDownloader's optional Codeberg gallery-dl engine.
 
-The gallery-dl package itself is deliberately not bundled in the APK. The Android side
-installs a verified pure-Python wheel from official PyPI into app-private storage only when
-the user asks for it, then this module imports it from that directory.
+The gallery-dl source package is installed on demand from the official Codeberg repository into
+app-private storage. This bridge keeps Android-specific paths and compatibility settings separate
+from the upstream extractor package.
 """
 
 import json
@@ -22,7 +22,47 @@ def _load_engine(engine_dir):
             del sys.modules[name]
 
     import gallery_dl
+
     return gallery_dl
+
+
+def _prepare_config(config, util, output_dir, config_path, cookies_path, cache_path):
+    """Load app-private settings, then enforce Android safety/runtime invariants."""
+    config.clear()
+
+    config_loaded = False
+    if config_path:
+        config_path = os.path.abspath(config_path)
+        if os.path.isfile(config_path):
+            # Validate with gallery-dl's own JSON loader first so malformed settings fail with a
+            # normal error instead of terminating the embedded Python interpreter.
+            with open(config_path, encoding="utf-8") as fp:
+                util.json_loads(fp.read())
+            config.load((config_path,), strict=False)
+            config_loaded = True
+
+    cookies_loaded = False
+    if cookies_path:
+        cookies_path = os.path.abspath(cookies_path)
+        if os.path.isfile(cookies_path) and os.path.getsize(cookies_path) > 0:
+            # gallery-dl natively accepts a Mozilla/Netscape cookies.txt path.
+            config.set(("extractor",), "cookies", cookies_path)
+            cookies_loaded = True
+
+    if cache_path:
+        cache_path = os.path.abspath(cache_path)
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        # Keep extractor sessions/cache across jobs and across Codeberg engine updates.
+        config.set(("cache",), "file", cache_path)
+
+    # User config is loaded first. These settings are deliberately applied last so a config file
+    # cannot redirect Android output outside the job sandbox or disable TLS verification.
+    config.set(("extractor",), "base-directory", output_dir)
+    config.set(("extractor",), "input", False)
+    config.set(("extractor",), "verify", True)
+    config.set(("downloader",), "verify", True)
+
+    return config_loaded, cookies_loaded
 
 
 def engine_version(engine_dir):
@@ -33,19 +73,30 @@ def engine_version(engine_dir):
         return ""
 
 
-def download(url, output_dir, engine_dir):
+def download(
+    url,
+    output_dir,
+    engine_dir,
+    config_path="",
+    cookies_path="",
+    cache_path="",
+):
     """Run one gallery-dl job and return a JSON result to Kotlin."""
     try:
         gallery_dl = _load_engine(engine_dir)
-        from gallery_dl import config, job
+        from gallery_dl import config, job, util
 
         output_dir = os.path.abspath(output_dir)
         os.makedirs(output_dir, exist_ok=True)
 
-        # Start every Android job from a clean gallery-dl configuration so an earlier request
-        # cannot leak settings into a later one.
-        config.clear()
-        config.set(("extractor",), "base-directory", output_dir)
+        config_loaded, cookies_loaded = _prepare_config(
+            config,
+            util,
+            output_dir,
+            config_path,
+            cookies_path,
+            cache_path,
+        )
 
         status = int(job.DownloadJob(url).run() or 0)
 
@@ -63,6 +114,8 @@ def download(url, output_dir, engine_dir):
                 "status": status,
                 "version": str(gallery_dl.__version__),
                 "files": files,
+                "config_loaded": config_loaded,
+                "cookies_loaded": cookies_loaded,
                 "error": "" if status == 0 else "gallery-dl finished with status %d" % status,
             },
             ensure_ascii=False,
@@ -74,6 +127,8 @@ def download(url, output_dir, engine_dir):
                 "status": -1,
                 "version": "",
                 "files": [],
+                "config_loaded": False,
+                "cookies_loaded": False,
                 "error": "%s: %s" % (type(exc).__name__, str(exc)),
                 "trace": traceback.format_exc(limit=8),
             },
