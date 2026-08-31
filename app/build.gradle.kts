@@ -27,10 +27,24 @@ val currentVersionCode = currentVersion.code.toInt()
 android {
     compileSdk = 37
 
-    if (keystorePropertiesFile.exists()) {
-        val keystoreProperties = Properties()
-        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-        signingConfigs {
+    signingConfigs {
+        // Public debug-only key committed with the fork.
+        //
+        // This is intentional: GitHub Actions runners are ephemeral and otherwise create a new
+        // ~/.android/debug.keystore on different runs. Android then rejects the next debug APK as
+        // an update because its certificate changed.
+        //
+        // NEVER use this config for release builds.
+        create("kirinDebug") {
+            keyAlias = "kirin-debug"
+            keyPassword = "kirindebug"
+            storeFile = file("keystore/kirin-debug.jks")
+            storePassword = "kirindebug"
+        }
+
+        if (keystorePropertiesFile.exists()) {
+            val keystoreProperties = Properties()
+            keystoreProperties.load(FileInputStream(keystorePropertiesFile))
             create("githubPublish") {
                 keyAlias = keystoreProperties["keyAlias"].toString()
                 keyPassword = keystoreProperties["keyPassword"].toString()
@@ -84,7 +98,10 @@ android {
                 val name =
                     if (splitApks) {
                         output.filters
-                            .find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }
+                            .find {
+                                it.filterType ==
+                                    com.android.build.api.variant.FilterConfiguration.FilterType.ABI
+                            }
                             ?.identifier
                     } else {
                         abiFilterList.firstOrNull()
@@ -96,7 +113,9 @@ android {
                     output.versionCode.set(baseAbiCode + (output.versionCode.get() ?: 0))
                 }
 
-                output.outputFileName.set("KirinDownloader-${baseVersionName}-${name ?: "universal"}.apk")
+                output.outputFileName.set(
+                    "KirinDownloader-${baseVersionName}-${name ?: "universal"}.apk"
+                )
             }
         }
     }
@@ -109,14 +128,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+
+            // Release signing stays completely separate from the public debug key.
+            // A real release is signed only when this fork later provides its own
+            // keystore.properties.
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("githubPublish")
             }
         }
+
         debug {
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.getByName("githubPublish")
-            }
+            // Stable certificate for every GitHub Actions debug build of this fork.
+            signingConfig = signingConfigs.getByName("kirinDebug")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
@@ -152,8 +175,7 @@ chaquopy {
         // Python 3.11 keeps both 32-bit and 64-bit Android ABIs available.
         version = "3.11"
         pip {
-            // gallery-dl itself is installed by the user at runtime from official PyPI.
-            // requests is the only required Python dependency bundled in the APK.
+            // requests is the required Python dependency bundled for gallery-dl.
             install("requests==2.32.5")
         }
     }
@@ -161,9 +183,9 @@ chaquopy {
 
 ktfmt { kotlinLangStyle() }
 
-kotlin { 
+kotlin {
     jvmToolchain(21)
-    
+
     compilerOptions {
         freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
     }
@@ -199,9 +221,7 @@ dependencies {
 
     implementation(libs.androidx.documentfile)
 
-    // AndroidX WebKit — provides WebViewCompat.addDocumentStartJavaScript() which
-    // injects JavaScript BEFORE any page script runs. Required to inject the
-    // window.chrome shim that bypasses Meta's (Facebook/Instagram) bot detection.
+    // AndroidX WebKit — provides WebViewCompat.addDocumentStartJavaScript().
     implementation("androidx.webkit:webkit:1.16.0")
 
     testImplementation(libs.junit4)
