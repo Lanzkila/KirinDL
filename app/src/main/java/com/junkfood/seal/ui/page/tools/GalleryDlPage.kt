@@ -1,5 +1,7 @@
 package com.junkfood.seal.ui.page.tools
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,9 +19,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Cookie
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SystemUpdateAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -53,6 +59,10 @@ fun GalleryDlPage(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val palette = rememberToolPalette()
     val clipboard = LocalClipboardManager.current
+    val cookiesLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let(viewModel::importCookies)
+        }
 
     Scaffold(
         containerColor = palette.background,
@@ -95,6 +105,21 @@ fun GalleryDlPage(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             EngineCard(state = state, palette = palette, onInstall = viewModel::installOrUpdateEngine)
+
+            ConfigCard(
+                state = state,
+                palette = palette,
+                onConfigChanged = viewModel::updateConfigText,
+                onSave = viewModel::saveConfig,
+                onReset = viewModel::resetConfig,
+            )
+
+            CookiesCard(
+                state = state,
+                palette = palette,
+                onImport = { cookiesLauncher.launch(arrayOf("text/plain", "application/octet-stream")) },
+                onClear = viewModel::clearCookies,
+            )
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -266,6 +291,166 @@ private fun EngineCard(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = stringResource(R.string.gallery_dl_engine_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.textSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfigCard(
+    state: GalleryDlViewModel.ViewState,
+    palette: ToolPalette,
+    onConfigChanged: (String) -> Unit,
+    onSave: () -> Unit,
+    onReset: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+        color = palette.surface,
+        border = BorderStroke(1.dp, palette.border.copy(alpha = 0.5f)),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Settings, contentDescription = null, tint = palette.primary)
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.gallery_dl_configuration),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = palette.textPrimary,
+                    )
+                    Text(
+                        text = stringResource(R.string.gallery_dl_config_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.textSecondary,
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = state.configText,
+                onValueChange = onConfigChanged,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isBusy,
+                minLines = 7,
+                maxLines = 14,
+                isError = !state.configValid,
+                supportingText = {
+                    Text(
+                        text =
+                            if (state.configValid) {
+                                stringResource(R.string.gallery_dl_config_valid)
+                            } else {
+                                stringResource(R.string.gallery_dl_config_invalid)
+                            },
+                        color = if (state.configValid) palette.success else palette.error,
+                    )
+                },
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onSave,
+                    enabled = state.configValid && !state.isBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (state.isSavingConfig) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Outlined.Save, contentDescription = null)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.gallery_dl_save_config))
+                }
+                OutlinedButton(
+                    onClick = onReset,
+                    enabled = !state.isBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.gallery_dl_reset_config))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CookiesCard(
+    state: GalleryDlViewModel.ViewState,
+    palette: ToolPalette,
+    onImport: () -> Unit,
+    onClear: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+        color = palette.surface,
+        border = BorderStroke(1.dp, palette.border.copy(alpha = 0.5f)),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Cookie, contentDescription = null, tint = palette.primary)
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.gallery_dl_cookies),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = palette.textPrimary,
+                    )
+                    Text(
+                        text = stringResource(R.string.gallery_dl_cookies_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.textSecondary,
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text =
+                    if (state.cookiesImported) {
+                        stringResource(R.string.gallery_dl_cookies_imported_size, state.cookiesSize)
+                    } else {
+                        stringResource(R.string.gallery_dl_cookies_not_imported)
+                    },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (state.cookiesImported) palette.success else palette.textSecondary,
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onImport,
+                    enabled = !state.isBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (state.isImportingCookies) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Outlined.Cookie, contentDescription = null)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.gallery_dl_import_cookies))
+                }
+                OutlinedButton(
+                    onClick = onClear,
+                    enabled = state.cookiesImported && !state.isBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Outlined.Delete, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.gallery_dl_clear_cookies))
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.gallery_dl_cookies_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.textSecondary,
             )

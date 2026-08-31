@@ -783,5 +783,21 @@
     <string name="gallery_dl_saved_to">Saved to</string>
     <string name="gallery_dl_permission_note">Only save content you have permission or rights to download. Gallery DL supports image and collection sites handled by gallery-dl.</string>
 
+
+    <!-- Gallery DL Stage 2: configuration and cookies -->
+    <string name="gallery_dl_configuration">Configuration</string>
+    <string name="gallery_dl_config_desc">Optional gallery-dl JSON settings stored separately from the engine.</string>
+    <string name="gallery_dl_config_valid">Valid JSON configuration</string>
+    <string name="gallery_dl_config_invalid">Invalid JSON configuration</string>
+    <string name="gallery_dl_save_config">Save Config</string>
+    <string name="gallery_dl_reset_config">Reset</string>
+    <string name="gallery_dl_cookies">Cookies</string>
+    <string name="gallery_dl_cookies_desc">Optional cookies.txt for sites that require your existing session.</string>
+    <string name="gallery_dl_cookies_not_imported">No cookies.txt imported</string>
+    <string name="gallery_dl_cookies_imported_size">cookies.txt ready (%1$d bytes)</string>
+    <string name="gallery_dl_import_cookies">Import</string>
+    <string name="gallery_dl_clear_cookies">Clear</string>
+    <string name="gallery_dl_cookies_note">Use a Netscape-format cookies.txt file only from an account and site you are allowed to use.</string>
+
 </resources>
 
