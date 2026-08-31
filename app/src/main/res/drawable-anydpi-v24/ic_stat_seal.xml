@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Notification small icon for Android 7.0+ (API 24+).
-    Uses a bitmap reference for density-independent rendering.
-    Generated from splashlogo/logo.png.
--->
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/ic_stat_seal_base"
-    android:gravity="center"
-    android:tileMode="disabled" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2 L14.1,5.2 L17.4,3.7 L16.2,7.1 C18.7,8.3 20,10.2 20,12.4 C20,13.2 19.8,14 19.5,14.7 L16.9,14.7 C17.3,14 17.5,13.3 17.5,12.5 C17.5,9.7 15.1,8.1 12,8.1 C8.9,8.1 6.5,9.7 6.5,12.5 C6.5,13.3 6.7,14 7.1,14.7 L4.5,14.7 C4.2,14 4,13.2 4,12.4 C4,10.2 5.3,8.3 7.8,7.1 L6.6,3.7 L9.9,5.2 Z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10.5,10.8 L13.5,10.8 L13.5,16 L16.3,16 L12,20.5 L7.7,16 L10.5,16 Z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5,21 L19,21 L19,23 L5,23 Z"/>
+</vector>
