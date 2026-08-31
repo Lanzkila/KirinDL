@@ -2,7 +2,6 @@ package com.junkfood.seal.ui.page.tools
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +35,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -51,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +60,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.util.GalleryDlStore
+import com.junkfood.seal.util.GalleryDlThemePreference
+import com.junkfood.seal.util.GalleryDlThemeStyle
 import java.text.DateFormat
 import java.util.Date
 import org.koin.androidx.compose.koinViewModel
@@ -69,6 +72,7 @@ private data class KirinGalleryColors(
     val panelAlt: Color,
     val accent: Color,
     val accentSoft: Color,
+    val onAccent: Color,
     val text: Color,
     val muted: Color,
     val success: Color,
@@ -76,32 +80,46 @@ private data class KirinGalleryColors(
 )
 
 @Composable
-private fun kirinGalleryColors(): KirinGalleryColors =
-    if (isSystemInDarkTheme()) {
-        KirinGalleryColors(
-            background = Color(0xFF071116),
-            panel = Color(0xFF0D1B22),
-            panelAlt = Color(0xFF10252E),
-            accent = Color(0xFF47D2FF),
-            accentSoft = Color(0xFF123541),
-            text = Color(0xFFF2F7F9),
-            muted = Color(0xFF92AAB3),
-            success = Color(0xFF6EE7B7),
-            error = Color(0xFFFF7D86),
-        )
-    } else {
-        KirinGalleryColors(
-            background = Color(0xFFF2F7F9),
-            panel = Color.White,
-            panelAlt = Color(0xFFE8F2F5),
-            accent = Color(0xFF007EA4),
-            accentSoft = Color(0xFFD9F2FA),
-            text = Color(0xFF102027),
-            muted = Color(0xFF607780),
-            success = Color(0xFF16835D),
-            error = Color(0xFFB42331),
-        )
-    }
+private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
+    val scheme = MaterialTheme.colorScheme
+
+    val accent =
+        when (style) {
+            GalleryDlThemeStyle.APP_DEFAULT -> scheme.primary
+            GalleryDlThemeStyle.KIRIN_CYAN -> Color(0xFF18BFEA)
+            GalleryDlThemeStyle.OCEAN -> Color(0xFF4B8DFF)
+            GalleryDlThemeStyle.EMERALD -> Color(0xFF2DBF85)
+            GalleryDlThemeStyle.VIOLET -> Color(0xFF8B7CFF)
+        }
+
+    val onAccent =
+        if (style == GalleryDlThemeStyle.APP_DEFAULT) {
+            scheme.onPrimary
+        } else if (accent.luminance() > 0.179f) {
+            Color(0xFF071116)
+        } else {
+            Color.White
+        }
+
+    return KirinGalleryColors(
+        // IMPORTANT: these always follow the real app MaterialTheme, not Android's system setting.
+        background = scheme.background,
+        panel = scheme.surface,
+        panelAlt = scheme.surfaceVariant,
+        accent = accent,
+        accentSoft =
+            if (style == GalleryDlThemeStyle.APP_DEFAULT) {
+                scheme.primaryContainer
+            } else {
+                accent.copy(alpha = 0.14f)
+            },
+        onAccent = onAccent,
+        text = scheme.onSurface,
+        muted = scheme.onSurfaceVariant,
+        success = Color(0xFF2CA879),
+        error = scheme.error,
+    )
+}
 
 @Composable
 fun GalleryDlPage(
@@ -110,7 +128,8 @@ fun GalleryDlPage(
     viewModel: GalleryDlViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val colors = kirinGalleryColors()
+    val themeStyle by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
+    val colors = kirinGalleryColors(themeStyle)
     val clipboard = LocalClipboardManager.current
     var tab by remember { mutableIntStateOf(0) }
     var showBatch by remember { mutableStateOf(false) }
@@ -284,7 +303,12 @@ private fun DownloadTab(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Download a gallery", color = colors.text, fontSize = 24.sp, fontWeight = FontWeight.Black)
+        Text(
+            "Download a gallery",
+            color = colors.text,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Black,
+        )
         Text(
             "Paste one URL, analyze its extractor, or add several URLs into the queue.",
             color = colors.muted,
@@ -304,9 +328,22 @@ private fun DownloadTab(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isBusy,
                     singleLine = true,
-                    placeholder = { Text("Gallery or collection URL") },
+                    textStyle =
+                        MaterialTheme.typography.bodyLarge.copy(
+                            color = colors.text,
+                        ),
+                    placeholder = {
+                        Text(
+                            "Gallery or collection URL",
+                            color = colors.muted,
+                        )
+                    },
                     leadingIcon = {
-                        Icon(Icons.Outlined.Link, contentDescription = null, tint = colors.accent)
+                        Icon(
+                            Icons.Outlined.Link,
+                            contentDescription = null,
+                            tint = colors.accent,
+                        )
                     },
                 )
                 Row(
@@ -331,7 +368,10 @@ private fun DownloadTab(
                         modifier = Modifier.weight(1f),
                     ) {
                         if (state.isCheckingExtractor) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                            )
                         } else {
                             Icon(Icons.Outlined.Check, contentDescription = null)
                         }
@@ -343,7 +383,13 @@ private fun DownloadTab(
         }
 
         when (state.extractorSupported) {
-            true -> FlatInfoRow("Extractor", state.extractorLabel ?: "Ready", colors.success, colors)
+            true ->
+                FlatInfoRow(
+                    "Extractor",
+                    state.extractorLabel ?: "Ready",
+                    colors.success,
+                    colors,
+                )
             false -> FlatInfoRow("Extractor", "No match", colors.error, colors)
             null -> Unit
         }
@@ -355,12 +401,16 @@ private fun DownloadTab(
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor = colors.accent,
-                    contentColor = Color(0xFF00151C),
+                    contentColor = colors.onAccent,
                 ),
             shape = RoundedCornerShape(12.dp),
         ) {
             if (state.isDownloading) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = colors.onAccent,
+                )
                 Spacer(Modifier.width(8.dp))
                 Text("Downloading")
             } else {
@@ -385,7 +435,11 @@ private fun DownloadTab(
                 Spacer(Modifier.width(6.dp))
                 Text("Add to Queue")
             }
-            OutlinedButton(onClick = onBatch, enabled = !state.isBusy, modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = onBatch,
+                enabled = !state.isBusy,
+                modifier = Modifier.weight(1f),
+            ) {
                 Icon(Icons.Outlined.Queue, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
                 Text("Batch URLs")
@@ -420,16 +474,33 @@ private fun QueueTab(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Download queue", color = colors.text, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text("${state.queue.size} item(s) • sequential jobs", color = colors.muted, fontSize = 12.sp)
+                Text(
+                    "Download queue",
+                    color = colors.text,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    "${state.queue.size} item(s) • sequential jobs",
+                    color = colors.muted,
+                    fontSize = 12.sp,
+                )
             }
             IconButton(onClick = onClearFinished, enabled = !state.isQueueRunning) {
-                Icon(Icons.Outlined.ClearAll, contentDescription = "Clear finished", tint = colors.muted)
+                Icon(
+                    Icons.Outlined.ClearAll,
+                    contentDescription = "Clear finished",
+                    tint = colors.muted,
+                )
             }
         }
 
         if (state.queue.isEmpty()) {
-            EmptyState("Queue is empty", "Add a URL or use Batch URLs from Download.", colors)
+            EmptyState(
+                "Queue is empty",
+                "Add a URL or use Batch URLs from Download.",
+                colors,
+            )
         } else {
             Button(
                 onClick = onRun,
@@ -441,11 +512,15 @@ private fun QueueTab(
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = colors.accent,
-                        contentColor = Color(0xFF00151C),
+                        contentColor = colors.onAccent,
                     ),
             ) {
                 if (state.isQueueRunning) {
-                    CircularProgressIndicator(modifier = Modifier.size(17.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(17.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.onAccent,
+                    )
                 } else {
                     Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                 }
@@ -479,26 +554,51 @@ private fun QueueRow(
             "running" -> colors.accent
             else -> colors.muted
         }
+
     Row(
-        modifier = Modifier.fillMaxWidth().background(colors.panel, RoundedCornerShape(12.dp)).padding(12.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(colors.panel, RoundedCornerShape(12.dp))
+                .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(9.dp).background(statusColor, RoundedCornerShape(99.dp)))
+        Box(
+            modifier =
+                Modifier.size(9.dp)
+                    .background(statusColor, RoundedCornerShape(99.dp))
+        )
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(item.url, color = colors.text, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
-                item.state.uppercase() + item.extractor.takeIf(String::isNotBlank)?.let { " • $it" }.orEmpty(),
+                item.url,
+                color = colors.text,
+                fontSize = 12.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                item.state.uppercase() +
+                    item.extractor.takeIf(String::isNotBlank)?.let { " • $it" }.orEmpty(),
                 color = statusColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
             )
             if (item.error.isNotBlank()) {
-                Text(item.error, color = colors.error, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    item.error,
+                    color = colors.error,
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         IconButton(onClick = onRemove, enabled = removeEnabled) {
-            Icon(Icons.Outlined.Delete, contentDescription = "Remove", tint = colors.muted)
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = "Remove",
+                tint = colors.muted,
+            )
         }
     }
 }
@@ -516,16 +616,32 @@ private fun HistoryTab(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("History", color = colors.text, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text("Latest ${state.history.size} Gallery DL job(s)", color = colors.muted, fontSize = 12.sp)
+                Text(
+                    "History",
+                    color = colors.text,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    "Latest ${state.history.size} Gallery DL job(s)",
+                    color = colors.muted,
+                    fontSize = 12.sp,
+                )
             }
-            TextButton(onClick = onClear, enabled = state.history.isNotEmpty() && !state.isBusy) {
+            TextButton(
+                onClick = onClear,
+                enabled = state.history.isNotEmpty() && !state.isBusy,
+            ) {
                 Text("Clear", color = colors.error)
             }
         }
 
         if (state.history.isEmpty()) {
-            EmptyState("No history yet", "Finished and failed jobs will appear here.", colors)
+            EmptyState(
+                "No history yet",
+                "Finished and failed jobs will appear here.",
+                colors,
+            )
         } else {
             state.history.forEach { record ->
                 HistoryRow(record, colors) { onReuse(record.url) }
@@ -541,6 +657,7 @@ private fun HistoryRow(
     onReuse: () -> Unit,
 ) {
     val stateColor = if (record.success) colors.success else colors.error
+
     Column(
         modifier =
             Modifier.fillMaxWidth()
@@ -558,15 +675,27 @@ private fun HistoryRow(
             )
             Spacer(Modifier.weight(1f))
             Text(
-                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(record.finishedAt)),
+                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+                    .format(Date(record.finishedAt)),
                 color = colors.muted,
                 fontSize = 10.sp,
             )
         }
-        Text(record.url, color = colors.text, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+
+        Text(
+            record.url,
+            color = colors.text,
+            fontSize = 12.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
         Text(
             if (record.success) {
-                listOf(record.extractor.takeIf(String::isNotBlank), "${record.fileCount} file(s)")
+                listOf(
+                        record.extractor.takeIf(String::isNotBlank),
+                        "${record.fileCount} file(s)",
+                    )
                     .filterNotNull()
                     .joinToString(" • ")
             } else {
@@ -581,29 +710,56 @@ private fun HistoryRow(
 }
 
 @Composable
-private fun FlatInfoRow(label: String, value: String, valueColor: Color, colors: KirinGalleryColors) {
+private fun FlatInfoRow(
+    label: String,
+    value: String,
+    valueColor: Color,
+    colors: KirinGalleryColors,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().background(colors.panelAlt, RoundedCornerShape(10.dp)).padding(12.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(colors.panelAlt, RoundedCornerShape(10.dp))
+                .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, color = colors.muted, fontSize = 11.sp)
         Spacer(Modifier.weight(1f))
-        Text(value, color = valueColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            value,
+            color = valueColor,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
 @Composable
-private fun Notice(text: String, color: Color, colors: KirinGalleryColors) {
+private fun Notice(
+    text: String,
+    color: Color,
+    colors: KirinGalleryColors,
+) {
     Text(
         text,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).background(colors.panelAlt, RoundedCornerShape(10.dp)).padding(12.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .background(colors.panelAlt, RoundedCornerShape(10.dp))
+                .padding(12.dp),
         color = color,
         fontSize = 11.sp,
     )
 }
 
 @Composable
-private fun EmptyState(title: String, description: String, colors: KirinGalleryColors) {
+private fun EmptyState(
+    title: String,
+    description: String,
+    colors: KirinGalleryColors,
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 44.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -615,27 +771,59 @@ private fun EmptyState(title: String, description: String, colors: KirinGalleryC
 }
 
 @Composable
-private fun BatchDialog(colors: KirinGalleryColors, onDismiss: () -> Unit, onAdd: (String) -> Unit) {
+private fun BatchDialog(
+    colors: KirinGalleryColors,
+    onDismiss: () -> Unit,
+    onAdd: (String) -> Unit,
+) {
     var text by remember { mutableStateOf("") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Batch Gallery URLs") },
+        title = {
+            Text(
+                "Batch Gallery URLs",
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("One URL per line. Valid links go into the Gallery DL queue.", color = colors.muted, fontSize = 11.sp)
+                Text(
+                    "One URL per line. Valid links go into the Gallery DL queue.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                )
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 8,
                     maxLines = 14,
-                    placeholder = { Text("https://...\nhttps://...\nhttps://...") },
+                    textStyle =
+                        MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    placeholder = {
+                        Text(
+                            "https://...\nhttps://...\nhttps://...",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onAdd(text) }, enabled = text.isNotBlank()) { Text("Add to Queue") }
+            TextButton(
+                onClick = { onAdd(text) },
+                enabled = text.isNotBlank(),
+            ) {
+                Text("Add to Queue")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
     )
 }
