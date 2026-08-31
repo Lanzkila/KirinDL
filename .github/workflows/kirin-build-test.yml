@@ -38,13 +38,84 @@ jobs:
       - name: Build stable-signed debug ARM64
         run: ./gradlew assembleGenericDebug -PnoSplits -PABI_FILTERS=arm64-v8a --stacktrace --no-daemon --no-configuration-cache
 
+      - name: Prepare KirinDownloader-Seal release signing
+        shell: bash
+        env:
+          KIRIN_KEYSTORE_BASE64: ${{ secrets.KIRIN_KEYSTORE_BASE64 }}
+          KIRIN_KEYSTORE_PASSWORD: ${{ secrets.KIRIN_KEYSTORE_PASSWORD }}
+          KIRIN_KEY_ALIAS: ${{ secrets.KIRIN_KEY_ALIAS }}
+          KIRIN_KEY_PASSWORD: ${{ secrets.KIRIN_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          for name in \
+            KIRIN_KEYSTORE_BASE64 \
+            KIRIN_KEYSTORE_PASSWORD \
+            KIRIN_KEY_ALIAS \
+            KIRIN_KEY_PASSWORD
+          do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::$name is missing from GitHub Actions secrets."
+              exit 1
+            fi
+          done
+
+          printf '%s' "$KIRIN_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/kirin-release.jks"
+          chmod 600 "$GITHUB_WORKSPACE/kirin-release.jks"
+
+          printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n' \
+            "$KIRIN_KEY_ALIAS" \
+            "$KIRIN_KEY_PASSWORD" \
+            "$KIRIN_KEYSTORE_PASSWORD" \
+            > "$GITHUB_WORKSPACE/keystore.properties"
+
+          keytool -list \
+            -keystore "$GITHUB_WORKSPACE/kirin-release.jks" \
+            -storepass "$KIRIN_KEYSTORE_PASSWORD" \
+            -alias "$KIRIN_KEY_ALIAS" \
+            >/dev/null
+
+          echo "KirinDownloader-Seal release keystore is valid."
+
+      - name: Build signed release ARM64
+        run: ./gradlew assembleGenericRelease -PnoSplits -PABI_FILTERS=arm64-v8a --stacktrace --no-daemon --no-configuration-cache
+
+      - name: Verify release APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/generic/release -type f -name '*.apk' | head -n 1)"
+          if [[ -z "$APK" ]]; then
+            echo "::error::Signed release APK was not generated."
+            exit 1
+          fi
+
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" \
+            verify --verbose --print-certs "$APK"
+
       - name: Show generated APKs
         run: find app/build/outputs/apk -type f -name "*.apk" -print
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: KirinDownloader-debug-arm64-${{ github.run_number }}
           path: app/build/outputs/apk/generic/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload signed release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDownloader-release-arm64-${{ github.run_number }}
+          path: app/build/outputs/apk/generic/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$GITHUB_WORKSPACE/kirin-release.jks"
+          rm -f "$GITHUB_WORKSPACE/keystore.properties"
