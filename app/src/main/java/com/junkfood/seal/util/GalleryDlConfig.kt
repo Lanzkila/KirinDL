@@ -9,14 +9,15 @@ import org.json.JSONObject
 /**
  * App-private compatibility files used by gallery-dl.
  *
- * The config is intentionally stored outside the downloaded engine directory so updating the
- * Codeberg engine never removes user settings, cookies, or the persistent gallery-dl cache.
+ * These files live outside the downloaded Codeberg engine directory so engine updates never remove
+ * user configuration, cookies, or the persistent gallery-dl cache.
  */
 object GalleryDlConfig {
     private const val ROOT_DIR = "gallery-dl-config"
     private const val CONFIG_FILE = "config.json"
     private const val COOKIES_FILE = "cookies.txt"
     private const val CACHE_FILE = "cache.sqlite3"
+    private const val MAX_CONFIG_BYTES = 1024 * 1024
 
     private val defaultConfig =
         """
@@ -39,6 +40,7 @@ object GalleryDlConfig {
         val configValid: Boolean,
         val cookiesImported: Boolean,
         val cookiesSize: Long,
+        val cacheSize: Long,
     )
 
     fun defaultConfigText(): String = defaultConfig
@@ -62,11 +64,13 @@ object GalleryDlConfig {
         val paths = prepare(context)
         val configText = paths.configFile.readText()
         val cookiesSize = paths.cookiesFile.takeIf { it.isFile }?.length() ?: 0L
+        val cacheSize = paths.cacheFile.takeIf { it.isFile }?.length() ?: 0L
         return Snapshot(
             configText = configText,
             configValid = validateConfig(configText).isSuccess,
             cookiesImported = cookiesSize > 0L,
             cookiesSize = cookiesSize,
+            cacheSize = cacheSize,
         )
     }
 
@@ -74,6 +78,9 @@ object GalleryDlConfig {
         runCatching {
             if (text.isBlank()) {
                 throw IllegalArgumentException("Configuration cannot be empty")
+            }
+            if (text.toByteArray(Charsets.UTF_8).size > MAX_CONFIG_BYTES) {
+                throw IllegalArgumentException("Configuration is too large")
             }
             JSONObject(text)
             Unit
@@ -88,6 +95,27 @@ object GalleryDlConfig {
     fun resetConfig(context: Context): Result<Unit> =
         runCatching {
             prepare(context).configFile.writeText(defaultConfig)
+        }
+
+    fun importConfig(context: Context, uri: Uri): Result<Snapshot> =
+        runCatching {
+            val text =
+                context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use {
+                    it.readText()
+                } ?: throw IOException("Could not open the selected configuration file")
+
+            validateConfig(text).getOrThrow()
+            prepare(context).configFile.writeText(text.trimEnd() + "\n")
+            snapshot(context)
+        }
+
+    fun exportConfig(context: Context, uri: Uri): Result<Unit> =
+        runCatching {
+            val text = prepare(context).configFile.readText()
+            validateConfig(text).getOrThrow()
+            context.contentResolver.openOutputStream(uri, "w")?.bufferedWriter(Charsets.UTF_8)?.use {
+                it.write(text)
+            } ?: throw IOException("Could not create the configuration file")
         }
 
     fun importCookies(context: Context, uri: Uri): Result<Long> =
@@ -125,6 +153,14 @@ object GalleryDlConfig {
             val cookies = prepare(context).cookiesFile
             if (cookies.exists() && !cookies.delete()) {
                 throw IOException("Could not remove the imported cookies file")
+            }
+        }
+
+    fun clearCache(context: Context): Result<Unit> =
+        runCatching {
+            val cache = prepare(context).cacheFile
+            if (cache.exists() && !cache.delete()) {
+                throw IOException("Could not clear the gallery-dl cache")
             }
         }
 }
