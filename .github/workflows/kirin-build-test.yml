@@ -78,7 +78,7 @@ jobs:
             -alias "$KIRIN_KEY_ALIAS" \
             >/dev/null
 
-          echo "KirinDownloader-Seal release keystore is valid."
+          echo "KirinDL release keystore is valid."
 
       - name: Build signed Universal Release
         run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
@@ -105,8 +105,8 @@ jobs:
           fi
 
           mkdir -p artifacts/debug artifacts/release
-          cp "$DEBUG_APK" "artifacts/debug/KirinDownloader-Universal-Debug.apk"
-          cp "$RELEASE_APK" "artifacts/release/KirinDownloader-Universal-Release.apk"
+          cp "$DEBUG_APK" "artifacts/debug/KirinDL-Universal-Debug.apk"
+          cp "$RELEASE_APK" "artifacts/release/KirinDL-Universal-Release.apk"
 
       - name: Verify Universal Release signature
         shell: bash
@@ -117,7 +117,7 @@ jobs:
             verify \
             --verbose \
             --print-certs \
-            "artifacts/release/KirinDownloader-Universal-Release.apk"
+            "artifacts/release/KirinDL-Universal-Release.apk"
 
       - name: Show generated APKs
         run: find app/build/outputs/apk -type f -name "*.apk" -print
@@ -125,16 +125,16 @@ jobs:
       - name: Upload Universal Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: KirinDownloader-Universal-Debug-${{ github.run_number }}
-          path: artifacts/debug/KirinDownloader-Universal-Debug.apk
+          name: KirinDL-Universal-Debug-${{ github.run_number }}
+          path: artifacts/debug/KirinDL-Universal-Debug.apk
           if-no-files-found: error
           retention-days: 14
 
       - name: Upload Signed Universal Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: KirinDownloader-Universal-Release-${{ github.run_number }}
-          path: artifacts/release/KirinDownloader-Universal-Release.apk
+          name: KirinDL-Universal-Release-${{ github.run_number }}
+          path: artifacts/release/KirinDL-Universal-Release.apk
           if-no-files-found: error
           retention-days: 30
 
