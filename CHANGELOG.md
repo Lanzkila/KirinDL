@@ -5,6 +5,206 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-09-01
+
+### ✦ KirinDL Rebrand & Visual Identity
+
+- Renamed the visible application branding from **KirinDownloader** to **KirinDL**
+- Preserved Android package ID `com.kirin.downloader` for release-update compatibility
+- Preserved debug package ID `com.kirin.downloader.debug`
+- Added Kirin-focused launcher, adaptive, themed, splash, and notification icon branding
+- Updated splash branding to **KirinDL • Media • Gallery • Batch**
+- Updated APK and GitHub Actions artifact names to use `KirinDL`
+- Updated Fastlane/store display titles to `KirinDL`
+- Kept upstream/legal attribution and internal implementation identifiers where required for compatibility
+
+### ✦ Gallery DL Hub
+
+- Added a dedicated **Gallery DL** workflow separate from the normal media downloader
+- Added Gallery tabs:
+  - Download
+  - Queue
+  - History
+- Added single Gallery URL downloads
+- Added multi-URL batch input
+- Added sequential queue processing
+- Added persistent Gallery queue
+- Added persistent Gallery history
+- Added extractor preflight / compatibility checks
+- Added Gallery runtime diagnostics
+- Added persistent Gallery cache
+- Added cache status and clear action
+- Added optional `cookies.txt` import and clear controls
+- Added Gallery configuration import/export
+- Added raw expert `gallery-dl` JSON configuration editor
+- Added safe output-path handling and sanitized export filenames
+- Added organized Gallery output layout under `Download/GalleryDL/`
+
+### ✦ Gallery DL Engine Updates
+
+- Moved Gallery DL engine updates to the active **Codeberg** source
+- Gallery DL updater now resolves the latest Codeberg `master` commit
+- Added exact commit-ID validation before installation
+- Added immutable commit archive download
+- Added staged engine install with backup/restore protection
+- Added installed version and source-commit tracking
+- Kept Gallery engine updates independent from KirinDL APK updates
+- Confirmed compatibility with current gallery-dl development builds
+
+### ✦ Gallery Theme & Contrast Fixes
+
+- Gallery DL now follows KirinDL's active `MaterialTheme`
+- Removed direct dependency on Android system dark-mode detection for Gallery page colors
+- Fixed white Gallery panels with unreadable URL input text
+- Fixed Gallery URL placeholder contrast
+- Fixed Batch URL editor contrast
+- Added Gallery appearance variants:
+  - Follow app
+  - Kirin Cyan
+  - Ocean Blue
+  - Emerald
+  - Violet
+- Theme variants only change Gallery accents while preserving app background, surface, and text colors
+
+### ✦ yt-dlp Updates
+
+- Kept built-in yt-dlp update support
+- Kept both **Stable** and **Nightly** update channels
+- Preserved official yt-dlp Android update mechanism
+- Verified the updater remains independent from KirinDL APK releases
+- Updated project documentation to reflect current yt-dlp update behavior
+
+### ✦ App Update & Play Protect Cleanup
+
+- Removed `REQUEST_INSTALL_PACKAGES`
+- Removed the in-app `Install unknown apps` permission flow
+- Removed direct APK self-install behavior from normal app update flow
+- KirinDL now checks GitHub releases and opens the official release page in the browser
+- Kept app updates separate from yt-dlp and Gallery DL engine updates
+- Updated release fallback URLs to the current `Lanzkila/KirinDL` repository
+- Removed stale references to `KirinDownloader-Seal` from About and updater links
+
+### ✦ Stable Debug Signing
+
+- Added a dedicated stable debug certificate for KirinDL development builds
+- Prevents a new GitHub Actions runner from producing an incompatible debug certificate on each build
+- Future debug APKs can update/overwrite earlier KirinDL debug builds that use the same stable debug key
+- Debug signing remains separate from production release signing
+
+### ✦ Private Release Signing
+
+- Added fork-specific private release signing support
+- GitHub Actions uses:
+  - `KIRIN_KEYSTORE_BASE64`
+  - `KIRIN_KEYSTORE_PASSWORD`
+  - `KIRIN_KEY_ALIAS`
+  - `KIRIN_KEY_PASSWORD`
+- Release JKS is reconstructed only on the temporary GitHub Actions runner
+- Added keystore alias validation
+- Added APK signature verification using Android `apksigner`
+- Temporary signing files are removed after the workflow completes
+- Release signing identity remains stable for future Android app updates
+
+### ✦ Universal APK Builds
+
+- Added Universal Debug APK output
+- Added signed Universal Release APK output
+- Universal builds include supported native ABIs:
+  - `arm64-v8a`
+  - `armeabi-v7a`
+  - `x86`
+  - `x86_64`
+- Recommended normal-use artifact:
+  - `KirinDL-Universal-Release.apk`
+- Verified **Kirin Build Test #24** successfully produced both Universal Debug and signed Universal Release artifacts
+
+### ✦ GitHub Actions Workflow Cleanup
+
+- Reworked `kirin-build-test.yml` around the proven KirinDL Universal build flow
+- Reworked `android.yml` into the official KirinDL release workflow
+- Official release workflow now uses the same `KIRIN_*` signing secrets as the tested build workflow
+- Added explicit `publish_release` option
+- Release publishing defaults to disabled for safer testing
+- Signed release artifact is always generated before optional GitHub Release publishing
+- Removed old `ANDROID_SIGNING_KEY`, `ANDROID_ALIAS`, and related SealPlus signing configuration
+- Removed hardcoded old KirinDownloader v3.0 release body
+- Removed old Telegram release-notification dependency
+- Reworked `android_ci.yml` to use `assembleGenericDebug`
+- Removed obsolete `buildGenericRelease` CI task
+- Added workflow concurrency controls and timeouts
+
+### ✦ Repository Workflow Maintenance
+
+- Reworked old Issue Handler behavior
+- Removed keyword-based automatic issue closing inherited from upstream
+- Removed hardcoded upstream issue reference
+- New issues now receive a safe `needs-triage` label
+- Updated stale issue/PR workflow for KirinDL
+- Added manual stale-workflow trigger
+- Added exemptions for `pinned`, `security`, and `keep-open`
+- Neutralized the old upstream sponsor workflow
+- Removed old PAT-based README rewriting and GitHub Pages deployment from sponsor automation
+
+### ✦ About Page Improvements
+
+- Rearranged About cards into a balanced two-column grid
+- Current layout:
+  - README | Latest release
+  - Sponsor | Credits
+- Future optional cards now start on the next row
+- Added consistent minimum card height for cleaner alignment
+- Updated About links to the current `Lanzkila/KirinDL` repository
+
+### ✦ README & Repository Documentation
+
+- Reworked README around the KirinDL identity
+- Added live GitHub badges for:
+  - Build status
+  - Stars
+  - Forks
+  - Latest release
+  - License
+- Added yt-dlp Stable / Nightly status badges
+- Added gallery-dl upstream status badge
+- Added Media / Gallery / Batch project overview
+- Added Gallery DL architecture and output documentation
+- Added Universal APK and release-signing documentation
+- Added current engine-update documentation
+- Added `UPSTREAM-STATUS.md` for yt-dlp, gallery-dl, and YTDLnis tracking
+- Preserved Seal, SealPlus, yt-dlp, youtubedl-android, gallery-dl, aria2, and FFmpeg credits
+
+### ✦ Upstream Status Review
+
+Checked on **2026-09-01**:
+
+- yt-dlp Stable: `2026.08.19`
+- yt-dlp Nightly: `2026.08.30.232658`
+- gallery-dl Stable: `1.32.10`
+- Gallery DL development source: Codeberg `master`
+
+KirinDL already receives most extractor-level fixes through its independent engine updaters, so normal yt-dlp/gallery-dl extractor updates do not require rebuilding the KirinDL APK.
+
+### ✦ YTDLnis Review
+
+- Reviewed current YTDLnis development for useful architecture ideas
+- Noted BGUtils PO-token service work
+- Noted Node integration for BGUtils
+- Noted terminal rework
+- Noted modular runtime/package architecture
+- These larger runtime additions are intentionally **not bundled yet** to avoid expanding KirinDL's runtime surface without a specific compatibility need
+
+### ✦ Compatibility & Safety
+
+- Preserved `applicationId = "com.kirin.downloader"`
+- Preserved internal namespace `com.junkfood.seal`
+- Preserved working Gallery DL engine/runner/config behavior
+- Preserved yt-dlp core download behavior
+- Preserved ABI configuration
+- Preserved release-key continuity
+- Preserved open-source attribution and GPL licensing requirements
+
+---
+
 ## [3.0.0] - 2026-07-30
 
 ### 🧰 Dedicated "More Tools" Section & Tool Suite
