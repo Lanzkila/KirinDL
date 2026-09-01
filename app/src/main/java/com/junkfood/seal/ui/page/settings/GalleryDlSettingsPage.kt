@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.SystemUpdateAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +40,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.junkfood.seal.ui.component.BackButton
+import com.junkfood.seal.ui.page.settings.general.YtdlpUpdateChannelDialog
 import com.junkfood.seal.ui.page.tools.GalleryDlViewModel
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
@@ -62,6 +65,7 @@ fun GalleryDlSettingsPage(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val selectedTheme by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var showYtdlpSettings by remember { mutableStateOf(false) }
 
     val cookiesLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -84,7 +88,7 @@ fun GalleryDlSettingsPage(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             LargeTopAppBar(
-                title = { Text("Gallery DL") },
+                title = { Text("Engine Update Center") },
                 navigationIcon = { BackButton(onNavigateBack) },
                 scrollBehavior = scrollBehavior,
             )
@@ -98,11 +102,17 @@ fun GalleryDlSettingsPage(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
+            EngineUpdateCenterSection(
+                galleryBusy = state.isBusy,
+                onOpenYtdlpSettings = { showYtdlpSettings = true },
+                onGalleryUpdated = viewModel::refreshFromDisk,
+            )
+
             SettingsSection(
                 icon = Icons.Outlined.Palette,
                 title = "Gallery appearance",
                 description =
-                    "Gallery DL follows KirinDownloader's active Light/Dark/Dynamic theme. " +
+                    "Gallery DL follows KirinDL's active Light/Dark/Dynamic theme. " +
                         "Choose an optional accent variation below.",
             ) {
                 GalleryDlThemeStyle.entries.forEach { style ->
@@ -112,29 +122,6 @@ fun GalleryDlSettingsPage(
                         onClick = { GalleryDlThemePreference.setStyle(style) },
                     )
                     Spacer(Modifier.height(8.dp))
-                }
-            }
-
-            SettingsSection(
-                icon = Icons.Outlined.SystemUpdateAlt,
-                title = "Engine",
-                description =
-                    state.installedVersion?.let { "Codeberg engine installed: $it" }
-                        ?: "Install the optional Codeberg gallery-dl engine.",
-            ) {
-                OutlinedButton(
-                    onClick = viewModel::installOrUpdateEngine,
-                    enabled = !state.isBusy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (state.isInstalling) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Text(if (state.isInstalling) "Installing…" else "Install / Update Engine")
                 }
             }
 
@@ -308,6 +295,14 @@ fun GalleryDlSettingsPage(
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (showYtdlpSettings) {
+        YtdlpUpdateChannelDialog(
+            onDismissRequest = {
+                showYtdlpSettings = false
+            }
+        )
     }
 }
 

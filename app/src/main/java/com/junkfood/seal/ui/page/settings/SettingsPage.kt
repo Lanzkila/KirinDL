@@ -235,8 +235,8 @@ fun SettingsPage(onNavigateBack: () -> Unit, onNavigateTo: (String) -> Unit) {
 
             item {
                 PreferenceItem(
-                    title = "Gallery DL",
-                    description = "Engine, cookies, compatibility and expert config",
+                    title = "Engine Updates",
+                    description = "yt-dlp, gallery-dl, cookies and compatibility",
                     icon = Icons.Rounded.SettingsApplications,
                     trailingIcon = { trailingChevron() },
                     onClick = { onNavigateTo(Route.GALLERY_DL_SETTINGS) },

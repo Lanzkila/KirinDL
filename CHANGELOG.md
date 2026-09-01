@@ -5,7 +5,40 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2026-09-01
+## [3.1.0] - 2026-09-01
+
+### ✦ Engine Update Center
+
+- Added a unified **Engine Updates** entry in Settings
+- yt-dlp and gallery-dl can now be checked and updated from one page
+- Shows the installed yt-dlp version and active Stable/Nightly channel
+- Adds a remote yt-dlp version check without changing the selected channel
+- Shows the installed gallery-dl version and Codeberg source commit
+- Adds a Codeberg `master` commit check
+- Added **Update All** for sequential yt-dlp + gallery-dl updates
+- Existing yt-dlp channel / auto-update controls remain available
+- Gallery compatibility, cookies, cache and expert config remain on the same page
+
+### ✦ Legacy App Updater Cleanup
+
+- Removed the unused `latest.apk` cache path
+- Removed dead APK download progress code
+- Removed `downloadApk()`
+- Removed `installLatestApk()`
+- Replaced legacy `deleteOutdatedApk()` startup cleanup with a harmless no-op compatibility shim
+- The existing startup hook now performs no APK file operation
+- Simplified the app update dialog to open the official KirinDL GitHub Release page only
+- Kept yt-dlp Stable/Nightly engine updates fully intact
+- Kept gallery-dl Codeberg engine updates fully intact
+
+### ✦ 3.1.0 Release Preparation
+
+- Bumped app version from `3.0.0` to `3.1.0`
+- Updated Android version code to `301000400`
+- Preserved package ID `com.kirin.downloader`
+- Preserved the existing KirinDL release signing identity
+- Preserved Universal APK ABI coverage
+
 
 ### ✦ KirinDL Rebrand & Visual Identity
 

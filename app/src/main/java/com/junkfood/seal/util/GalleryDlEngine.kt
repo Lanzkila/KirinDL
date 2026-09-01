@@ -16,7 +16,7 @@ import org.json.JSONObject
 /**
  * Installs gallery-dl on demand from the official Codeberg source repository.
  *
- * KirinDownloader follows the current Codeberg master branch instead of relying on a package
+ * KirinDL follows the current Codeberg master branch instead of relying on a package
  * mirror. The updater first resolves the exact master commit from Codeberg's Forgejo API, then
  * downloads the archive for that immutable commit and extracts only the gallery_dl Python package
  * into app-private storage.
@@ -26,7 +26,7 @@ object GalleryDlEngine {
         "https://codeberg.org/api/v1/repos/mikf/gallery-dl/branches/master"
     private const val CODEBERG_ARCHIVE_BASE_URL =
         "https://codeberg.org/api/v1/repos/mikf/gallery-dl/archive/"
-    private const val USER_AGENT = "KirinDownloader gallery-dl updater"
+    private const val USER_AGENT = "KirinDL gallery-dl updater"
 
     private const val ENGINE_ROOT = "gallery-dl-engine"
     private const val CURRENT_DIR = "current"
@@ -57,6 +57,17 @@ object GalleryDlEngine {
     }
 
     fun isInstalled(context: Context): Boolean = installedVersion(context) != null
+
+    fun installedSource(context: Context): String? {
+        if (!isInstalled(context)) return null
+        val marker = File(File(context.filesDir, ENGINE_ROOT), SOURCE_FILE)
+        return marker.takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotBlank() }
+    }
+
+    suspend fun latestMasterCommit(): Result<String> =
+        withContext(Dispatchers.IO) {
+            runCatching { resolveCodebergMasterCommit() }
+        }
 
     suspend fun installLatest(context: Context): Result<InstallInfo> =
         withContext(Dispatchers.IO) {
