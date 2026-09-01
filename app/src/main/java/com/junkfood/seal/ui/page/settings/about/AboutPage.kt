@@ -70,11 +70,11 @@ import com.junkfood.seal.ui.component.ConfirmButton
 import com.junkfood.seal.util.AUTO_UPDATE
 import com.junkfood.seal.util.PreferenceUtil
 
-private const val releaseURL = "https://github.com/Lanzkila/KirinDownloader-Seal/releases"
-private const val repoUrl = "https://github.com/Lanzkila/KirinDownloader-Seal/blob/main/README.md"
+private const val releaseURL = "https://github.com/Lanzkila/KirinDL/releases"
+private const val repoUrl = "https://github.com/Lanzkila/KirinDL/blob/main/README.md"
 const val weblate = "https://hosted.weblate.org/engage/seal/"
 const val YtdlpRepository = "https://github.com/yt-dlp/yt-dlp"
-private const val githubIssueUrl = "https://github.com/Lanzkila/KirinDownloader-Seal/issues"
+private const val githubIssueUrl = "https://github.com/Lanzkila/KirinDL/issues"
 private const val telegramChannelUrl = ""
 private const val youtubeChannelUrl = ""
 private const val websiteUrl = ""
@@ -370,7 +370,7 @@ fun AutoUpdateUnavailableDialog(onDismissRequest: () -> Unit = {}) {
         val startIndex = text.indexOf(hyperLinkText)
         val endIndex = startIndex + hyperLinkText.length
         addUrlAnnotation(
-            UrlAnnotation("https://github.com/Lanzkila/KirinDownloader-Seal/releases/latest"),
+            UrlAnnotation("https://github.com/Lanzkila/KirinDL/releases/latest"),
             start = startIndex,
             end = endIndex,
         )

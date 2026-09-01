@@ -38,7 +38,7 @@ jobs:
       - name: Build stable-signed Universal Debug
         run: ./gradlew assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache
 
-      - name: Prepare KirinDownloader-Seal release signing
+      - name: Prepare KirinDL release signing
         shell: bash
         env:
           KIRIN_KEYSTORE_BASE64: ${{ secrets.KIRIN_KEYSTORE_BASE64 }}

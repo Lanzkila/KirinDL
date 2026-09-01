@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit
 object UpdateUtil {
 
     private const val OWNER = "Lanzkila"
-    private const val REPO = "KirinDownloader-Seal"
+    private const val REPO = "KirinDL"
     private const val ARM64 = "arm64-v8a"
     private const val ARM32 = "armeabi-v7a"
     private const val X86 = "x86"

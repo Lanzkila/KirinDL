@@ -31,7 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
 private const val KIRIN_RELEASES_URL =
-    "https://github.com/Lanzkila/KirinDownloader-Seal/releases"
+    "https://github.com/Lanzkila/KirinDL/releases"
 
 @Composable
 fun UpdateDialog(onDismissRequest: () -> Unit, release: UpdateUtil.Release) {
@@ -119,7 +119,7 @@ private fun Preview() {
         onDismissRequest = { b = false },
         title = "v3.0.4",
         onConfirmUpdate = { b = true },
-        releaseNote = "A new KirinDownloader release is available.",
+        releaseNote = "A new KirinDL release is available.",
         downloadStatus = status,
     )
 }
