@@ -1,300 +1,157 @@
-name: Build Release APK
+name: KirinDL Release
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish a GitHub Release after the signed build succeeds"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kirindl-release
+  cancel-in-progress: false
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: 'gradle'
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: gradle
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v4
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - uses: gradle/actions/setup-gradle@v4
-      with:
-        build-scan-publish: true
-        build-scan-terms-of-use-url: "https://gradle.com/help/legal-terms-of-use"
-        build-scan-terms-of-use-agree: "yes"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-    # --- NAYA STEP: Keystore Decode Karna ---
-    - name: Decode Keystore
-      env:
-        ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
-      run: |
-        echo "? Decoding Key..."
-        echo "$ANDROID_SIGNING_KEY" | tr -d '\n\r ' | base64 --decode > "${{ github.workspace }}/KirinDownloader.jks"
+      - name: Grant execute permission
+        run: chmod +x gradlew
 
-    # --- UPDATED STEP: Fast Build aur Native Signing Ek Sath ---
-    - name: Build and Sign Release APKs
-      env:
-        ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        ANDROID_ALIAS: ${{ secrets.ANDROID_ALIAS }}
-        ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      run: |
-        ./gradlew assembleRelease --parallel --build-cache --no-daemon \
-          -Pandroid.injected.signing.store.file="${{ github.workspace }}/KirinDownloader.jks" \
-          -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
-          -Pandroid.injected.signing.key.alias="$ANDROID_ALIAS" \
-          -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
+      - name: Resolve KirinDL version
+        id: version
+        shell: python
+        run: |
+          import os, re
+          from pathlib import Path
+          text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
+          m = re.search(
+              r"Version\.(?:Stable|Alpha|Beta|ReleaseCandidate)\("
+              r"\s*versionMajor\s*=\s*(\d+),"
+              r"\s*versionMinor\s*=\s*(\d+),"
+              r"\s*versionPatch\s*=\s*(\d+)",
+              text, re.S
+          )
+          if not m:
+              raise SystemExit("Could not resolve currentVersion from Version.kt")
+          version = ".".join(m.groups())
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"version={version}\n")
+          print(f"KirinDL version: {version}")
 
-    - name: Get version name
-      id: version
-      run: |
-        VERSION=$(grep -A 1 'val currentVersion: Version =' buildSrc/src/main/kotlin/Version.kt | grep -oP 'versionMajor = \K\d+' | head -1).$(grep -A 1 'val currentVersion: Version =' buildSrc/src/main/kotlin/Version.kt | grep -oP 'versionMinor = \K\d+' | head -1).$(grep -A 1 'val currentVersion: Version =' buildSrc/src/main/kotlin/Version.kt | grep -oP 'versionPatch = \K\d+' | head -1)
-        echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-        echo "Version: ${VERSION}"
+      - name: Prepare KirinDL release signing
+        shell: bash
+        env:
+          KIRIN_KEYSTORE_BASE64: ${{ secrets.KIRIN_KEYSTORE_BASE64 }}
+          KIRIN_KEYSTORE_PASSWORD: ${{ secrets.KIRIN_KEYSTORE_PASSWORD }}
+          KIRIN_KEY_ALIAS: ${{ secrets.KIRIN_KEY_ALIAS }}
+          KIRIN_KEY_PASSWORD: ${{ secrets.KIRIN_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in KIRIN_KEYSTORE_BASE64 KIRIN_KEYSTORE_PASSWORD KIRIN_KEY_ALIAS KIRIN_KEY_PASSWORD
+          do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::$name is missing from GitHub Actions secrets."
+              exit 1
+            fi
+          done
 
-    - name: Read release configuration
-      id: release_config
-      run: |
-        SHOULD_RELEASE=$(jq -r '.release' release.json)
-        echo "SHOULD_RELEASE=${SHOULD_RELEASE}" >> $GITHUB_OUTPUT
-        echo "Release flag: ${SHOULD_RELEASE}"
-        if [ "${SHOULD_RELEASE}" = "true" ]; then
-          echo "? Release will be published"
-        else
-          echo "?? Release publishing is disabled - APKs will be uploaded as artifacts only"
-        fi
+          printf '%s' "$KIRIN_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/kirin-release.jks"
+          chmod 600 "$GITHUB_WORKSPACE/kirin-release.jks"
 
-    - name: List all APK files for debugging
-      run: |
-        echo "? All APK files in output directory:"
-        find app/build/outputs/apk -name "*.apk" -type f -exec ls -lh {} \;
-        echo ""
-        echo "? Directory structure:"
-        ls -R app/build/outputs/apk/
+          printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n' \
+            "$KIRIN_KEY_ALIAS" "$KIRIN_KEY_PASSWORD" "$KIRIN_KEYSTORE_PASSWORD" \
+            > "$GITHUB_WORKSPACE/keystore.properties"
 
-    - name: Create Release
-      if: steps.release_config.outputs.SHOULD_RELEASE == 'true'
-      uses: softprops/action-gh-release@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.version.outputs.VERSION }}
-        name: KirinDownloader v${{ steps.version.outputs.VERSION }}
-        body: |
-          ## ✨ KirinDownloader v3.0.0 - Dedicated Tools Hub, Swipeable Details Sheet, Battery Re-Arming
-          
-          ---
-          
-          ### 🧰 Dedicated "More Tools" Section & Tool Suite
-          
-          * **Dedicated "More Tools" Page** — Centralized tools hub accessible from the navigation drawer and quick-access toolbar on the home screen
-          * **Home Screen Quick-Access Toolbar** — Instant 1-tap shortcut icons on the main home screen to jump directly to dedicated utilities
-          * **Batch URL Import (Custom Playlist)** — Download multiple YouTube videos & audios simultaneously as a custom playlist with quality selection, animated color transitions, live URL line counter, paste success animations, and haptic feedback
-          * **Thumbnail Download Tool** — Extract and download high-resolution video thumbnails with image format conversion options (PNG / WebP / JPG)
-          * **Video Info Download Tool** — Download full video metadata (title, description, tags, view count, upload date) as structured `.txt` or `.json` files
-          * **Comment Download Tool** — Extract, download, and manage YouTube video comments as readable text or JSON files
-          * **Interactive Tool Cards** — Long-press action sheets, info dialogs, and reordered grid layouts
-          
-          ### 👆 Swipeable Download Details Sheet
-          
-          * **Spotify-Style Swipeable Sheet** — Switch between downloaded item details seamlessly by swiping left or right on the details bottom sheet
-          * **Smooth Pager Transitions** — Redesigned pager container to eliminate height flickering and improve item navigation
-          
-          ### 🧹 Streamlined Configure & Download Flow
-          
-          * **Removed Docs & Thumbnail Options from Dialogs** — Consolidated documentation and thumbnail downloads into their dedicated "More Tools" pages, cleaning up `DownloadDialogV2` and `FormatPage`
-          * **Format Page Enhancements** — Grid/list layout toggle, selection summary subtitle, M3 `SegmentedButton` controls, compact format cards, soft borders, and animated chip transitions
-          
-          ### 🔋 Battery Optimization & Background Execution
-          
-          * **Battery Optimization Re-Arming** — Centralized OEM detection (MIUI/HyperOS, ColorOS, iQOO, Samsung) that automatically re-prompts for battery optimization exclusions on app resume
-          * **Doze Mode Wake Lock Protection** — Prevents downloads from stalling in Deep Doze mode by maintaining CPU wake locks
-          * **Android 12+ Foreground Service Fix** — Resolved `ForegroundServiceStartNotAllowedException` during background execution
-          
-          ### 🍪 Cookie & Network Enhancements
-          
-          * **Cookie Domain Matching Fix** — Aligned dot-prefixed domains (`.youtube.com`) with `includeSubdomains` flag
-          * **Removed Legacy Proxy Feature** — Completely removed outdated Proxy settings and `ProxyManager` from KirinDownloader Extras
-          
-          ### 💖 Crypto Donation Support & Sponsors
-          
-          * **Crypto Donations Page** — Added dedicated Crypto Donation page with Bitcoin (BTC) wallet support, QR codes, and updated UPI payment details
-          * **Updated Sponsors List** — Added latest community supporters to `sponsors.json`
-          
-          ### ⚡ Memory & Performance Optimization
-          
-          * **In-Memory State Pruning** — Automatic pruning of completed/cancelled download tasks from memory map
-          
-          ---
-          
-          ### 📦 Installation
-          
-          Download the appropriate APK for your device:
-          - **Universal APK**: Works on all devices (recommended)
-          - **arm64-v8a**: For 64-bit ARM devices (most modern phones)
-          - **armeabi-v7a**: For 32-bit ARM devices
-          - **x86_64**: For 64-bit x86 devices
-          - **x86**: For 32-bit x86 devices
-          
-          ### ✨ Key Features (v3.0)
-          - 🧰 **Dedicated "More Tools" Hub** - Centralized suite for batch imports, thumbnails, video info, and comments
-          - 📋 **Batch URL Import** - Download multiple videos/audios as custom playlists with quality selection
-          - 👆 **Swipeable Download Details** - Spotify-style swipe left/right to switch between item details
-          - 🧹 **Streamlined Dialogs** - Cleaned up download dialogs by consolidating docs/thumbnail tools
-          - 🔋 **Battery Optimization Re-Arming** - OEM-specific re-prompting on resume, Doze mode wake locks
-          - 🍪 **Cookie Matching Fix** - Aligned dot-prefixed domains with subdomains flag
-          - 🚫 **Proxy Cleanup** - Removed legacy proxy handling for cleaner network architecture
-          - 💖 **Crypto Donations** - Bitcoin and crypto wallet support with QR codes
-          - ⚡ **Task Memory Pruning** - Automatic in-memory state cleanup for long download sessions
-          
-          ### 📜 Full Changelog
-          See [CHANGELOG.md](https://github.com/Lanzkila/KirinDownloader-Seal/blob/main/CHANGELOG.md) for complete version history.
-          
-          ---
-          
-          Built on: ${{ github.event.head_commit.timestamp }}
-          Commit: ${{ github.sha }}
-        draft: false
-        prerelease: false
-        make_latest: true
-        files: |
-          app/build/outputs/apk/generic/release/*.apk
+          keytool -list \
+            -keystore "$GITHUB_WORKSPACE/kirin-release.jks" \
+            -storepass "$KIRIN_KEYSTORE_PASSWORD" \
+            -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
-    - name: Send Telegram Notification to Channel
-      if: steps.release_config.outputs.SHOULD_RELEASE == 'true'
-      continue-on-error: true
-      env:
-        TGTOKEN: ${{ secrets.TGTOKEN }}
-        TGCHANNEL: ${{ secrets.TGCHANNEL }}
-      run: |
-        # Skip if Telegram credentials are not configured
-        if [ -z "$TGTOKEN" ] || [ -z "$TGCHANNEL" ]; then
-          echo "?? Telegram notification skipped (TGTOKEN or TGCHANNEL not configured)"
-          exit 0
-        fi
-        
-        echo "? Sending notification to Telegram Channel: $TGCHANNEL"
-        
-        # Prepare the release URL
-        RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.VERSION }}"
-        
-        # Create a beautiful Telegram message with HTML formatting
-        MESSAGE="<b>🎉 New Release Available!</b> 🚀\n\n"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        MESSAGE+="📱 <b>App Name:</b> KirinDownloader\n\n"
-        MESSAGE+="🏷️ <b>Version:</b> v${{ steps.version.outputs.VERSION }}\n\n"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        MESSAGE+="📋 <b>Changelog (v3.0):</b>\n\n"
-        MESSAGE+="<b>🧰 Dedicated More Tools Hub</b>\n"
-        MESSAGE+="  ➤ Batch URL import custom playlist with quality selection\n"
-        MESSAGE+="  ➤ Thumbnail download tool with PNG/WebP/JPG format conversion\n"
-        MESSAGE+="  ➤ Video info download tool for text/JSON metadata export\n"
-        MESSAGE+="  ➤ Comment download tool for video comments extraction\n\n"
-        MESSAGE+="<b>👆 Swipeable Download Details</b>\n"
-        MESSAGE+="  ➤ Spotify-style swipe left/right between item details\n"
-        MESSAGE+="  ➤ Smooth pager height transitions\n\n"
-        MESSAGE+="<b>🧹 Streamlined Download Flow</b>\n"
-        MESSAGE+="  ➤ Consolidated docs & thumbnail tools out of download dialogs\n"
-        MESSAGE+="  ➤ Format page grid/list toggle & SegmentedButtons\n\n"
-        MESSAGE+="<b>🔋 Battery Optimization Re-Arming</b>\n"
-        MESSAGE+="  ➤ Auto re-prompts for battery exclusions on app resume\n"
-        MESSAGE+="  ➤ Doze mode CPU wake locks during downloads\n"
-        MESSAGE+="  ➤ Android 12+ foreground service crash fix\n\n"
-        MESSAGE+="<b>🍪 Cookie &amp; Network Improvements</b>\n"
-        MESSAGE+="  ➤ Dot-prefixed domain matching aligned with subdomains flag\n"
-        MESSAGE+="  ➤ Removed legacy proxy feature for cleaner architecture\n\n"
-        MESSAGE+="<b>💖 Crypto Donations</b>\n"
-        MESSAGE+="  ➤ Bitcoin (BTC) wallet support with QR codes & updated UPI\n\n"
-        MESSAGE+="<b>⚡ Memory Optimization</b>\n"
-        MESSAGE+="  ➤ Automatic in-memory state pruning for completed tasks\n\n"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        MESSAGE+="✨ <b>Key Features (v3.0):</b>\n"
-        MESSAGE+="🧰 More Tools Hub — Batch import, thumbnail, info, comments\n"
-        MESSAGE+="📋 Batch URL Import — Download custom playlists with quality options\n"
-        MESSAGE+="👆 Swipeable Details — Spotify-style swipe left/right\n"
-        MESSAGE+="🧹 Streamlined Flow — Cleaned download dialogs\n"
-        MESSAGE+="🔋 Battery Optimization — OEM re-arm on resume, wake locks\n"
-        MESSAGE+="🍪 Cookie Domain Fix — Aligned dot-prefixed domains\n"
-        MESSAGE+="🚫 Proxy Cleanup — Removed legacy proxy settings\n"
-        MESSAGE+="💖 Crypto Donations — BTC & QR codes support\n"
-        MESSAGE+="⚡ Memory Pruning — Automatic state map cleanup\n"
-        MESSAGE+="🌐 1000+ sites via yt-dlp — YouTube, TikTok, Instagram\n\n"
-        MESSAGE+="━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        MESSAGE+="💡 <b>Note:</b> v3.0 introduces a dedicated More Tools section with 4 tools (Batch URL Import custom playlist, Thumbnail Download, Video Info Download, Comment Download), home screen quick-access toolbar, Spotify-style swipeable download details sheet, battery optimization re-arming, cookie subdomain matching fix, legacy proxy cleanup, and crypto donations.\n\n"
-        MESSAGE+="🕐 <i>Released: $(date '+%B %d, %Y at %H:%M UTC')</i>"
-        
-        # URL encode the message to avoid HTML parsing issues
-        MESSAGE_ENCODED=$(echo -ne "$MESSAGE" | jq -sRr @uri)
-        
-        # Send ONLY to Channel
-        curl -s -X POST "https://api.telegram.org/bot${TGTOKEN}/sendMessage" \
-          -d "chat_id=${TGCHANNEL}" \
-          -d "text=${MESSAGE_ENCODED}" \
-          -d "parse_mode=HTML" \
-          -d "disable_web_page_preview=false" \
-          && echo "? Telegram Channel notification sent successfully!" \
-          || echo "? Failed to send Telegram notification"
+      - name: Build signed Universal Release
+        run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
-    - name: Upload Universal APK as Artifact
-      if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
-      uses: actions/upload-artifact@v4
-      with:
-        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-universal
-        path: app/build/outputs/apk/generic/release/*universal*.apk
-        if-no-files-found: warn
-        retention-days: 30
+      - name: Prepare Universal Release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_APK="$(find app/build/outputs/apk/generic/release -type f -name '*universal*.apk' | head -n 1)"
+          [[ -n "$RELEASE_APK" ]] || { echo "::error::Universal release APK was not generated."; exit 1; }
+          mkdir -p artifacts/release
+          cp "$RELEASE_APK" artifacts/release/KirinDL-Universal-Release.apk
 
-    - name: Upload arm64-v8a APK as Artifact
-      if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
-      uses: actions/upload-artifact@v4
-      with:
-        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-arm64-v8a
-        path: app/build/outputs/apk/generic/release/*arm64-v8a*.apk
-        if-no-files-found: warn
-        retention-days: 30
+      - name: Verify Universal Release signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose --print-certs \
+            artifacts/release/KirinDL-Universal-Release.apk
 
-    - name: Upload armeabi-v7a APK as Artifact
-      if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
-      uses: actions/upload-artifact@v4
-      with:
-        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-armeabi-v7a
-        path: app/build/outputs/apk/generic/release/*armeabi-v7a*.apk
-        if-no-files-found: warn
-        retention-days: 30
+      - name: Upload signed Universal Release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-Universal-Release-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          path: artifacts/release/KirinDL-Universal-Release.apk
+          if-no-files-found: error
+          retention-days: 30
 
-    - name: Upload x86_64 APK as Artifact
-      if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
-      uses: actions/upload-artifact@v4
-      with:
-        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-x86_64
-        path: app/build/outputs/apk/generic/release/*x86_64*.apk
-        if-no-files-found: warn
-        retention-days: 30
+      - name: Publish GitHub Release
+        if: ${{ inputs.publish_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: KirinDL v${{ steps.version.outputs.version }}
+          body: |
+            ## KirinDL v${{ steps.version.outputs.version }}
 
-    - name: Upload x86 APK as Artifact
-      if: steps.release_config.outputs.SHOULD_RELEASE == 'false'
-      uses: actions/upload-artifact@v4
-      with:
-        name: KirinDownloader-${{ steps.version.outputs.VERSION }}-x86
-        # NOTE: must be "*-x86.apk", not "*x86*.apk" — the latter also matches
-        # "...-x86_64.apk" (substring collision), which bundled the x86_64 APK
-        # into the "x86" artifact as well.
-        path: app/build/outputs/apk/generic/release/*-x86.apk
-        if-no-files-found: warn
-        retention-days: 30
+            Signed Universal Android release.
 
-    - name: Upload Artifacts (Backup - Always)
-      if: steps.release_config.outputs.SHOULD_RELEASE == 'true'
-      uses: actions/upload-artifact@v4
-      with:
-        name: signed-apks-backup
-        path: app/build/outputs/apk/generic/release/*.apk
-        if-no-files-found: error
-        retention-days: 20
+            **Package:** `com.kirin.downloader`
+
+            ### Engines
+            - yt-dlp with Stable / Nightly update support
+            - gallery-dl with Codeberg master update support
+
+            ### APK
+            - `KirinDL-Universal-Release.apk`
+
+            See the repository README and CHANGELOG for project details.
+          generate_release_notes: true
+          make_latest: true
+          fail_on_unmatched_files: true
+          files: artifacts/release/KirinDL-Universal-Release.apk
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f "$GITHUB_WORKSPACE/kirin-release.jks"
+          rm -f "$GITHUB_WORKSPACE/keystore.properties"

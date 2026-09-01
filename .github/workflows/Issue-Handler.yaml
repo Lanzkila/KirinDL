@@ -1,87 +1,46 @@
-# Name of the GitHub Action
-name: Check and Close Issues
+name: KirinDL Issue Intake
 
-# Trigger the action on issue events, specifically when an issue is opened
 on:
   issues:
-    types: [opened]
+    types:
+      - opened
+      - reopened
 
-# Job definitions
+permissions:
+  contents: read
+  issues: write
+
 jobs:
-  handle-issues:
-    # Run this job only for issues
-    if: github.event_name == 'issues'
-    # Specify the runner environment
+  triage:
     runs-on: ubuntu-latest
+
     steps:
-      # Step 1: Check out the repository code
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      # Step 2: Set up Node.js environment (version 16)
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 16
-
-      # Step 3: Custom script to check and close issues
-      - name: Check and close issues
-        id: close-issues
+      - name: Apply needs-triage label
         uses: actions/github-script@v7
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // Define keywords and labels for issue filtering
-            const keywordsToCheck = ['instagram', 'facebook', 'twitter', 'HTTP Error 403', 'not a bot'];
-            const requiredLabel = 'new issue';
-            const referenceIssueNumber = 1399;
-            const actionClosedLabel = 'action-closed'; // Unique label to track action-closed issues
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.issue.number;
+            const label = "needs-triage";
 
-            // Function to process each issue
-            async function processIssue(issue) {
-              const issueBody = issue.body.toLowerCase();
-              const issueLabels = issue.labels.map(label => label.name);
-              const wasClosedByAction = issueLabels.includes(actionClosedLabel);
-
-              // Determine if the issue should be closed
-              const shouldCloseIssue = !wasClosedByAction && 
-                keywordsToCheck.some(keyword => issueBody.includes(keyword)) && issueLabels.includes(requiredLabel);
-
-              // Close the issue if it meets the criteria
-              if (shouldCloseIssue) {
-                await github.rest.issues.update({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issue.number,
-                  state: 'closed'
-                });
-
-                // Add labels and comment to the closed issue
-                await github.rest.issues.addLabels({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issue.number,
-                  labels: ['duplicate', actionClosedLabel]
-                });
-
-                  await github.rest.issues.removeLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issue.number,
-                  name: requiredLabel
-                });
-
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issue.number,
-                  body: `This issue has been closed and labeled as duplicate. Please see issue #${referenceIssueNumber} for more details. If you believe this is not the case, you can reopen this issue.`
-                });
-              }
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: label });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: label,
+                color: "D4C5F9",
+                description: "New issue waiting for review",
+              });
             }
 
-            // Process newly opened issues
-            if (context.payload.action === 'opened') {
-              await processIssue(context.payload.issue);
-            }
-
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number,
+              labels: [label],
+            });

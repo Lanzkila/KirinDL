@@ -6,9 +6,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: kirindl-build-test
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -48,11 +53,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          for name in \
-            KIRIN_KEYSTORE_BASE64 \
-            KIRIN_KEYSTORE_PASSWORD \
-            KIRIN_KEY_ALIAS \
-            KIRIN_KEY_PASSWORD
+          for name in KIRIN_KEYSTORE_BASE64 KIRIN_KEYSTORE_PASSWORD KIRIN_KEY_ALIAS KIRIN_KEY_PASSWORD
           do
             if [[ -z "${!name:-}" ]]; then
               echo "::error::$name is missing from GitHub Actions secrets."
@@ -60,23 +61,17 @@ jobs:
             fi
           done
 
-          printf '%s' "$KIRIN_KEYSTORE_BASE64" \
-            | base64 --decode \
-            > "$GITHUB_WORKSPACE/kirin-release.jks"
-
+          printf '%s' "$KIRIN_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/kirin-release.jks"
           chmod 600 "$GITHUB_WORKSPACE/kirin-release.jks"
 
           printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n' \
-            "$KIRIN_KEY_ALIAS" \
-            "$KIRIN_KEY_PASSWORD" \
-            "$KIRIN_KEYSTORE_PASSWORD" \
+            "$KIRIN_KEY_ALIAS" "$KIRIN_KEY_PASSWORD" "$KIRIN_KEYSTORE_PASSWORD" \
             > "$GITHUB_WORKSPACE/keystore.properties"
 
           keytool -list \
             -keystore "$GITHUB_WORKSPACE/kirin-release.jks" \
             -storepass "$KIRIN_KEYSTORE_PASSWORD" \
-            -alias "$KIRIN_KEY_ALIAS" \
-            >/dev/null
+            -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
           echo "KirinDL release keystore is valid."
 
@@ -87,40 +82,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          DEBUG_APK="$(find app/build/outputs/apk/generic/debug -type f -name '*universal*.apk' | head -n 1)"
+          RELEASE_APK="$(find app/build/outputs/apk/generic/release -type f -name '*universal*.apk' | head -n 1)"
 
-          DEBUG_APK="$(find app/build/outputs/apk/generic/debug \
-            -type f -name '*universal*.apk' | head -n 1)"
-
-          RELEASE_APK="$(find app/build/outputs/apk/generic/release \
-            -type f -name '*universal*.apk' | head -n 1)"
-
-          if [[ -z "$DEBUG_APK" ]]; then
-            echo "::error::Universal debug APK was not generated."
-            exit 1
-          fi
-
-          if [[ -z "$RELEASE_APK" ]]; then
-            echo "::error::Universal release APK was not generated."
-            exit 1
-          fi
+          [[ -n "$DEBUG_APK" ]] || { echo "::error::Universal debug APK was not generated."; exit 1; }
+          [[ -n "$RELEASE_APK" ]] || { echo "::error::Universal release APK was not generated."; exit 1; }
 
           mkdir -p artifacts/debug artifacts/release
-          cp "$DEBUG_APK" "artifacts/debug/KirinDL-Universal-Debug.apk"
-          cp "$RELEASE_APK" "artifacts/release/KirinDL-Universal-Release.apk"
+          cp "$DEBUG_APK" artifacts/debug/KirinDL-Universal-Debug.apk
+          cp "$RELEASE_APK" artifacts/release/KirinDL-Universal-Release.apk
 
       - name: Verify Universal Release signature
         shell: bash
         run: |
           set -euo pipefail
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
-          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" \
-            verify \
-            --verbose \
-            --print-certs \
-            "artifacts/release/KirinDL-Universal-Release.apk"
-
-      - name: Show generated APKs
-        run: find app/build/outputs/apk -type f -name "*.apk" -print
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose --print-certs \
+            artifacts/release/KirinDL-Universal-Release.apk
 
       - name: Upload Universal Debug APK
         uses: actions/upload-artifact@v4
@@ -140,7 +118,6 @@ jobs:
 
       - name: Remove signing material
         if: always()
-        shell: bash
         run: |
           rm -f "$GITHUB_WORKSPACE/kirin-release.jks"
           rm -f "$GITHUB_WORKSPACE/keystore.properties"
