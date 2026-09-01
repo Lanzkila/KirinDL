@@ -13,11 +13,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Lightweight update checker for KirinDownloader.
+ * Lightweight update checker for KirinDL.
  *
  * The app intentionally does not request package-install permission and does not install APKs
- * itself. When an update is available, the user can open the official KirinDownloader GitHub
- * release in their browser and decide what to do there.
+ * itself. When an update is available, the user can open the official KirinDL GitHub release in
+ * their browser and decide what to do there.
  */
 @Composable
 fun AppUpdater() {

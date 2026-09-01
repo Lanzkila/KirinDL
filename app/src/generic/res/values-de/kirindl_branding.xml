@@ -1,4 +1,29 @@
 <resources>
+    <!-- KirinDL visible branding overrides for the Generic flavor. -->
     <string name="app_name" translatable="false">KirinDL</string>
-    <string name="service_title" translatable="false">KirinDL is downloading…</string>
+    <string name="service_title">KirinDL is downloading…</string>
+
+    <string name="custom_command_usage_msg">yt-dlp is a powerful command-line tool for downloading videos. KirinDL makes it easier to use yt-dlp by providing an intuitive GUI, presets for common commands, and other additional features.\n\nFor advanced usage of yt-dlp, KirinDL allows you to create, save and execute custom command templates directly, just like in a terminal.\n\nWhen using custom commands, most of the GUI options and features would be disabled.</string>
+
+    <string name="sponsor_msg">KirinDL is free and open source. You can support the project by reporting bugs, suggesting features, and contributing improvements.</string>
+
+    <string name="auto_update_disabled_msg">Auto-update is not available for %1$s builds. If you don\'t have %1$s installed on your device, or would like to preview upcoming new features in KirinDL, please consider %2$s.</string>
+
+    <!-- Keep the existing resource identifiers for source compatibility; only visible text changes. -->
+    <string name="sealplus_extras">KirinDL Extras</string>
+
+    <string name="security_info_message">App lock protects your privacy by requiring authentication to access KirinDL. Your PIN is securely stored on your device.</string>
+
+    <string name="seal_plus" translatable="false">KirinDL</string>
+    <string name="unlock_seal_plus">Unlock KirinDL</string>
+    <string name="biometric_prompt_subtitle">Authenticate to access KirinDL</string>
+
+    <string name="exit_app_title">Exit KirinDL?</string>
+
+    <string name="sponsor_dialog_title">Support KirinDL</string>
+    <string name="sponsor_dialog_message">KirinDL is free and open source. Help improve it by reporting issues, testing updates, and contributing code or translations.</string>
+
+    <string name="notification_permission_desc">KirinDL needs notification permission to show download progress and completion status. Please grant this permission for the best experience.</string>
+
+    <string name="hidden_content_requires_app_lock">Enable App Lock first to use Hidden Content. Go to Settings &gt; KirinDL Extras &gt; App Lock</string>
 </resources>
