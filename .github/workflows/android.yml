@@ -50,22 +50,59 @@ jobs:
         id: version
         shell: python
         run: |
-          import os, re
+          import os
+          import re
           from pathlib import Path
+
           text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
-          m = re.search(
+          match = re.search(
               r"Version\.(?:Stable|Alpha|Beta|ReleaseCandidate)\("
               r"\s*versionMajor\s*=\s*(\d+),"
               r"\s*versionMinor\s*=\s*(\d+),"
               r"\s*versionPatch\s*=\s*(\d+)",
-              text, re.S
+              text,
+              re.S,
           )
-          if not m:
+
+          if not match:
               raise SystemExit("Could not resolve currentVersion from Version.kt")
-          version = ".".join(m.groups())
+
+          version = ".".join(match.groups())
+          release_notes_path = f"release-notes/v{version}.md"
+
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"version={version}\n")
+              out.write(f"release_notes_path={release_notes_path}\n")
+
           print(f"KirinDL version: {version}")
+          print(f"Release notes: {release_notes_path}")
+
+      - name: Validate release notes
+        if: ${{ inputs.publish_release }}
+        shell: bash
+        env:
+          RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f "$RELEASE_NOTES_PATH" ]]; then
+            echo "::error::Missing release notes: $RELEASE_NOTES_PATH"
+            echo "::error::Create release-notes/v$RELEASE_VERSION.md before publishing."
+            exit 1
+          fi
+
+          if [[ ! -s "$RELEASE_NOTES_PATH" ]]; then
+            echo "::error::Release notes file is empty: $RELEASE_NOTES_PATH"
+            exit 1
+          fi
+
+          if ! grep -Fq "KirinDL v$RELEASE_VERSION" "$RELEASE_NOTES_PATH"; then
+            echo "::error::$RELEASE_NOTES_PATH does not contain the expected version heading: KirinDL v$RELEASE_VERSION"
+            exit 1
+          fi
+
+          echo "Release notes validated: $RELEASE_NOTES_PATH"
 
       - name: Prepare KirinDL release signing
         shell: bash
@@ -76,6 +113,7 @@ jobs:
           KIRIN_KEY_PASSWORD: ${{ secrets.KIRIN_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+
           for name in KIRIN_KEYSTORE_BASE64 KIRIN_KEYSTORE_PASSWORD KIRIN_KEY_ALIAS KIRIN_KEY_PASSWORD
           do
             if [[ -z "${!name:-}" ]]; then
@@ -87,14 +125,9 @@ jobs:
           printf '%s' "$KIRIN_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/kirin-release.jks"
           chmod 600 "$GITHUB_WORKSPACE/kirin-release.jks"
 
-          printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n' \
-            "$KIRIN_KEY_ALIAS" "$KIRIN_KEY_PASSWORD" "$KIRIN_KEYSTORE_PASSWORD" \
-            > "$GITHUB_WORKSPACE/keystore.properties"
+          printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n'             "$KIRIN_KEY_ALIAS" "$KIRIN_KEY_PASSWORD" "$KIRIN_KEYSTORE_PASSWORD"             > "$GITHUB_WORKSPACE/keystore.properties"
 
-          keytool -list \
-            -keystore "$GITHUB_WORKSPACE/kirin-release.jks" \
-            -storepass "$KIRIN_KEYSTORE_PASSWORD" \
-            -alias "$KIRIN_KEY_ALIAS" >/dev/null
+          keytool -list             -keystore "$GITHUB_WORKSPACE/kirin-release.jks"             -storepass "$KIRIN_KEYSTORE_PASSWORD"             -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
       - name: Build signed Universal Release
         run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
@@ -113,8 +146,7 @@ jobs:
         run: |
           set -euo pipefail
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
-          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose --print-certs \
-            artifacts/release/KirinDL-Universal-Release.apk
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose --print-certs             artifacts/release/KirinDL-Universal-Release.apk
 
       - name: Generate SHA-256 checksum
         shell: bash
@@ -140,7 +172,7 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: KirinDL v${{ steps.version.outputs.version }}
-          body_path: RELEASE-NOTES.md
+          body_path: ${{ steps.version.outputs.release_notes_path }}
           make_latest: true
           fail_on_unmatched_files: true
           files: |
@@ -149,6 +181,7 @@ jobs:
 
       - name: Remove signing material
         if: always()
+        shell: bash
         run: |
           rm -f "$GITHUB_WORKSPACE/kirin-release.jks"
           rm -f "$GITHUB_WORKSPACE/keystore.properties"
