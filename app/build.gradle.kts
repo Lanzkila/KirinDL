@@ -114,7 +114,7 @@ android {
                 }
 
                 output.outputFileName.set(
-                    "KirinDownloader-${baseVersionName}-${name ?: "universal"}.apk"
+                    "KirinDL-${baseVersionName}-${name ?: "universal"}.apk"
                 )
             }
         }

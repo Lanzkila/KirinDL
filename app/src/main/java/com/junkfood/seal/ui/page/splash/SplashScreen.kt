@@ -47,7 +47,7 @@ import com.junkfood.seal.ui.theme.SealTheme
 import kotlinx.coroutines.delay
 
 /**
- * KirinDownloader splash screen.
+ * KirinDL splash screen.
  *
  * Visual identity:
  * - Kirin emblem supplied by the launcher/splash resource pack
@@ -175,7 +175,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
 
                 Image(
                     painter = painterResource(R.drawable.splash_logo),
-                    contentDescription = "KirinDownloader",
+                    contentDescription = "KirinDL",
                     modifier =
                         Modifier.size(158.dp)
                             .scale(logoScale)
@@ -230,7 +230,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
         }
 
         Text(
-            text = "KirinDownloader • 2026",
+            text = "KirinDL • 2026",
             style = MaterialTheme.typography.labelSmall,
             color =
                 if (isGradientDark) {
