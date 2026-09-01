@@ -116,11 +116,21 @@ jobs:
           "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose --print-certs \
             artifacts/release/KirinDL-Universal-Release.apk
 
+      - name: Generate SHA-256 checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd artifacts/release
+          sha256sum KirinDL-Universal-Release.apk > KirinDL-Universal-Release.apk.sha256
+          cat KirinDL-Universal-Release.apk.sha256
+
       - name: Upload signed Universal Release artifact
         uses: actions/upload-artifact@v4
         with:
           name: KirinDL-Universal-Release-${{ steps.version.outputs.version }}-${{ github.run_number }}
-          path: artifacts/release/KirinDL-Universal-Release.apk
+          path: |
+            artifacts/release/KirinDL-Universal-Release.apk
+            artifacts/release/KirinDL-Universal-Release.apk.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -130,25 +140,12 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: KirinDL v${{ steps.version.outputs.version }}
-          body: |
-            ## KirinDL v${{ steps.version.outputs.version }}
-
-            Signed Universal Android release.
-
-            **Package:** `com.kirin.downloader`
-
-            ### Engines
-            - yt-dlp with Stable / Nightly update support
-            - gallery-dl with Codeberg master update support
-
-            ### APK
-            - `KirinDL-Universal-Release.apk`
-
-            See the repository README and CHANGELOG for project details.
-          generate_release_notes: true
+          body_path: RELEASE-NOTES.md
           make_latest: true
           fail_on_unmatched_files: true
-          files: artifacts/release/KirinDL-Universal-Release.apk
+          files: |
+            artifacts/release/KirinDL-Universal-Release.apk
+            artifacts/release/KirinDL-Universal-Release.apk.sha256
 
       - name: Remove signing material
         if: always()
