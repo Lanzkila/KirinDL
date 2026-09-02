@@ -427,14 +427,18 @@ fun ListItemStateText(
                 }
                 ReadyWithInfo -> stringResource(R.string.status_enqueued)
                 is Running -> {
-                    val progressText = downloadState.progressText
                     val progress = downloadState.progress
-                    when {
-                        progressText.contains("[Merger]", ignoreCase = true) ||
-                        progressText.contains("Merging formats", ignoreCase = true) ->
-                            stringResource(R.string.status_merging)
-                        progress >= 0 -> "%.1f %%".format(progress * 100)
-                        else -> stringResource(R.string.status_downloading)
+                    val pct = if (progress >= 0) " %.1f %%".format(progress * 100) else ""
+                    when (downloadState.phase) {
+                        Task.TransferPhase.Preparing -> "Preparing download..."
+                        Task.TransferPhase.Video -> "Downloading video...$pct"
+                        Task.TransferPhase.Audio -> "Downloading audio...$pct"
+                        Task.TransferPhase.Fragments -> "Downloading fragments...$pct"
+                        Task.TransferPhase.Merging -> stringResource(R.string.status_merging)
+                        Task.TransferPhase.RetryingNative -> "Retrying with native yt-dlp..."
+                        Task.TransferPhase.Downloading ->
+                            if (progress >= 0) "%.1f %%".format(progress * 100)
+                            else stringResource(R.string.status_downloading)
                     }
                 }
             }
@@ -527,8 +531,7 @@ private fun CardItemStateText(modifier: Modifier = Modifier, downloadState: Task
             is Paused -> R.string.status_paused
             ReadyWithInfo -> R.string.status_enqueued
             is Running ->
-                if (downloadState.progressText.contains("[Merger]", ignoreCase = true) ||
-                    downloadState.progressText.contains("Merging formats", ignoreCase = true))
+                if (downloadState.phase == Task.TransferPhase.Merging)
                     R.string.status_merging
                 else R.string.status_downloading
         }

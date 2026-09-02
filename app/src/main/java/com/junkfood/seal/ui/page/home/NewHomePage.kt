@@ -1422,105 +1422,41 @@ fun ActiveDownloadCard(
         else -> 0f
     }
     
-    // Parse progress text to determine download phase
-    val progressText = if (downloadState is Task.DownloadState.Running) downloadState.progressText else ""
-    val context = androidx.compose.ui.platform.LocalContext.current
-    
-    // Track download state: format info -> video download -> audio download -> merging
-    var hasSeenFormatInfo by remember { mutableStateOf(false) }
-    var hasSeenVideoComplete by remember { mutableStateOf(false) }
-    var currentPhase by remember { mutableStateOf("downloading") }
-    
-    // Determine phase based on progressText patterns
-    // NOTE: DownloaderV2 strips the "[download] " prefix before storing progressText,
-    // so download progress lines look like "45.3% of 10.00MiB at 2.50MiB/s ETA 00:03"
-    // or "100% of 10.00MiB in 00:04". We detect them by looking for the % sign with digits.
-    val downloadPhase = when {
-        // Merging phase — [Merger] prefix is NOT stripped
-        progressText.contains("[Merger]", ignoreCase = true) ||
-        progressText.contains("Merging formats", ignoreCase = true) -> {
-            currentPhase = "merging"
-            hasSeenVideoComplete = false
-            hasSeenFormatInfo = false
-            "merging"
-        }
-        // Format info line — [info] prefix is NOT stripped
-        progressText.contains("[info]", ignoreCase = true) && progressText.contains("format", ignoreCase = true) -> {
-            hasSeenFormatInfo = true
-            hasSeenVideoComplete = false
-            currentPhase = "downloading"
-            "downloading"
-        }
-        // Download progress lines — "[download]" prefix stripped; match % pattern instead
-        progressText.matches(Regex("""^\d+(\.\d+)?%.*""")) || progressText.contains("% of ") -> {
-            when {
-                // 100% completion — video stream done, audio stream is next
-                (progressText.startsWith("100%") || progressText.contains("100% of ")) && !hasSeenVideoComplete -> {
-                    hasSeenVideoComplete = true
-                    currentPhase = "video"
-                    "video"
-                }
-                // After video complete, any download progress is the audio stream
-                hasSeenVideoComplete -> {
-                    currentPhase = "audio"
-                    "audio"
-                }
-                // Before any 100% seen, first stream is always video
-                hasSeenFormatInfo -> {
-                    currentPhase = "video"
-                    "video"
-                }
-                else -> {
-                    currentPhase = "downloading"
-                    "downloading"
-                }
-            }
-        }
-        // Post-download file operations — maintain current phase
-        progressText.contains("Deleting original file", ignoreCase = true) ||
-        progressText.contains("[Metadata]", ignoreCase = true) ||
-        progressText.contains("[MoveFiles]", ignoreCase = true) -> {
-            currentPhase
-        }
-        // yt-dlp re-outputs [youtube] / "Downloading webpage" lines between streams.
-        // In Running state we are always downloading (FetchingInfo state handles the fetch phase).
-        progressText.contains("[youtube]", ignoreCase = true) ||
-        progressText.contains("Downloading webpage", ignoreCase = true) ||
-        progressText.contains("Downloading player", ignoreCase = true) -> {
-            if (hasSeenVideoComplete) {
-                // yt-dlp is initializing the second (audio) stream
-                currentPhase = "audio"
-                "audio"
-            } else {
-                currentPhase  // Maintain current phase — never show "fetching" while running
-            }
-        }
-        else -> currentPhase
-    }
-    
+    // DownloaderV2 now exposes a stable phase while keeping raw yt-dlp output in
+    // progressText for speed/ETA parsing below. This avoids each UI surface guessing
+    // video/audio/fragment/merge state independently.
+    val progressText =
+        if (downloadState is Task.DownloadState.Running) downloadState.progressText else ""
+
     val statusText = when (downloadState) {
         is Task.DownloadState.Running -> {
             val pct = if (progress >= 0) " ${(progress * 100).toInt()}%" else ""
-            when (downloadPhase) {
-                "merging" -> stringResource(R.string.status_merging)
-                "video"   -> "Downloading video...$pct"
-                "audio"   -> "Downloading audio...$pct"
-                "fetching" -> stringResource(R.string.fetching_info)
-                else -> if (progress >= 0) "Downloading... ${(progress * 100).toInt()}%"
-                        else stringResource(R.string.status_downloading)
+            when (downloadState.phase) {
+                Task.TransferPhase.Preparing -> "Preparing download..."
+                Task.TransferPhase.Video -> "Downloading video...$pct"
+                Task.TransferPhase.Audio -> "Downloading audio...$pct"
+                Task.TransferPhase.Fragments -> "Downloading fragments...$pct"
+                Task.TransferPhase.Merging -> stringResource(R.string.status_merging)
+                Task.TransferPhase.RetryingNative -> "Retrying with native yt-dlp..."
+                Task.TransferPhase.Downloading ->
+                    if (progress >= 0) "Downloading... ${(progress * 100).toInt()}%"
+                    else stringResource(R.string.status_downloading)
             }
         }
-        is Task.DownloadState.Paused -> if (progress >= 0) stringResource(R.string.status_paused) + " ${(progress * 100).toInt()}%" else stringResource(R.string.status_paused)
+        is Task.DownloadState.Paused ->
+            if (progress >= 0)
+                stringResource(R.string.status_paused) + " ${(progress * 100).toInt()}%"
+            else stringResource(R.string.status_paused)
         is Task.DownloadState.Canceled -> stringResource(R.string.status_canceled)
         is Task.DownloadState.Error -> stringResource(R.string.download_error)
         is Task.DownloadState.Completed -> stringResource(R.string.completed) + " 100%"
         is Task.DownloadState.FetchingInfo -> stringResource(R.string.fetching_info)
-        // Idle = waiting for a download slot to open; ReadyWithInfo = info fetched, waiting to start
+        // Idle = waiting for a download slot; ReadyWithInfo = metadata ready, waiting to start.
         Task.DownloadState.Idle,
         Task.DownloadState.ReadyWithInfo -> stringResource(R.string.queue_status)
         else -> ""
     }
-    
+
     val statusColor = when (downloadState) {
         is Task.DownloadState.Running -> if (isGradientDark && isDarkTheme) {
             GradientDarkColors.GradientPrimaryStart

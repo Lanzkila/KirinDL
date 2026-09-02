@@ -43,6 +43,24 @@ data class Task(
         Network,
     }
 
+    /**
+     * High-level transfer phase reported by DownloaderV2.
+     *
+     * [progressText] intentionally keeps yt-dlp's raw progress line so speed/ETA parsing
+     * continues to work, while this enum gives every UI surface a stable phase label.
+     * The default on [Running] keeps older serialized queue state compatible.
+     */
+    @Serializable
+    enum class TransferPhase {
+        Preparing,
+        Downloading,
+        Video,
+        Audio,
+        Fragments,
+        Merging,
+        RetryingNative,
+    }
+
     @Serializable
     sealed interface TypeInfo {
 
@@ -91,6 +109,7 @@ data class Task(
             override val taskId: String,
             val progress: Float = PROGRESS_INDETERMINATE,
             val progressText: String = "",
+            val phase: TransferPhase = TransferPhase.Downloading,
         ) : DownloadState, Cancelable {
             override val action: RestartableAction = RestartableAction.Download
         }

@@ -288,7 +288,7 @@ object DownloadUtil {
         }
     }
 
-    private fun isBilibiliUrl(url: String): Boolean {
+    internal fun isBilibiliUrl(url: String): Boolean {
         val host =
             runCatching { Uri.parse(url).host.orEmpty().lowercase(Locale.US) }
                 .getOrDefault("")

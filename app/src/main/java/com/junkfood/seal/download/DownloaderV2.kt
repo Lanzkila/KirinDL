@@ -128,6 +128,10 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
     // Tracks how many auto-retries have been attempted for each task (keyed by task ID).
     // Cleared on success or after MAX_AUTO_RETRIES exhausted.
     private val retryCountMap = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    // Once an Aria2-specific Bilibili failure is detected, keep subsequent automatic retries
+    // for that task on yt-dlp's native downloader. This avoids bouncing back to the failing
+    // external downloader on every retry while still resetting for a fresh/manual restart.
+    private val nativeFallbackTasks = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private val waitingForNetwork = java.util.concurrent.ConcurrentHashMap<String, Task.RestartableAction>()
     private var networkPauseJob: Job? = null
     @Volatile private var networkDegradedAtMs: Long = 0L
@@ -328,6 +332,8 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
      */
     override fun remove(task: Task): Boolean {
         if (taskStateMap.contains(task)) {
+            nativeFallbackTasks.remove(task.id)
+            retryCountMap.remove(task.id)
             taskStateMap.remove(task)
             return true
         }
@@ -557,6 +563,21 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
             .also { job -> downloadState = FetchingInfo(job = job, taskId = id) }
     }
 
+    private fun Throwable.isAria2Failure(): Boolean {
+        val combinedMessage = buildString {
+            var current: Throwable? = this@isAria2Failure
+            while (current != null) {
+                append(' ')
+                append(current.message.orEmpty())
+                current = current.cause
+            }
+        }.lowercase()
+
+        return combinedMessage.contains("aria2c") ||
+            combinedMessage.contains("external downloader") ||
+            combinedMessage.contains("external-downloader")
+    }
+
     private fun Task.download() {
         check(downloadState == ReadyWithInfo && info != null)
         if (type is TypeInfo.CustomCommand) {
@@ -571,58 +592,148 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                 var lastUiUpdateAtMs = 0L
                 var lastNotifiedAtMs = 0L
                 var lastNotifiedProgress = -1
-                DownloadUtil.downloadVideo(
+
+                // Keep yt-dlp's raw line for speed/ETA display, but also track a stable
+                // high-level phase so Home and the download card don't have to guess from
+                // volatile output text independently.
+                var destinationCount = 0
+                var transferPhase = Task.TransferPhase.Preparing
+                val separateVideoAndAudio =
+                    (info?.requestedFormats?.size ?: 0) > 1 ||
+                        (info?.requestedDownloads?.size ?: 0) > 1 ||
+                        preferences.formatIdString.contains('+')
+
+                val progressHandler: (Float, Long, String) -> Unit = { progressPercentage, _, text ->
+                    val progress = progressPercentage / 100f
+                    val progressInt = progressPercentage.toInt()
+                    val cleanText =
+                        text.removePrefix("[download] ").removePrefix("[download]").trim()
+                    val lowerText = text.lowercase()
+
+                    transferPhase =
+                        when {
+                            text.contains("[Merger]", ignoreCase = true) ||
+                                text.contains("Merging formats", ignoreCase = true) ->
+                                Task.TransferPhase.Merging
+
+                            text.contains("[download] Destination:", ignoreCase = true) -> {
+                                destinationCount += 1
+                                when {
+                                    preferences.extractAudio || info?.vcodec == "none" ->
+                                        Task.TransferPhase.Audio
+                                    separateVideoAndAudio && destinationCount >= 2 ->
+                                        Task.TransferPhase.Audio
+                                    else -> Task.TransferPhase.Video
+                                }
+                            }
+
+                            lowerText.contains("fragment") &&
+                                (lowerText.contains("download") || progressPercentage >= 0f) ->
+                                Task.TransferPhase.Fragments
+
+                            progressPercentage >= 0f && transferPhase == Task.TransferPhase.Preparing ->
+                                when {
+                                    preferences.extractAudio || info?.vcodec == "none" ->
+                                        Task.TransferPhase.Audio
+                                    separateVideoAndAudio -> Task.TransferPhase.Video
+                                    else -> Task.TransferPhase.Downloading
+                                }
+
+                            else -> transferPhase
+                        }
+
+                    val now = System.currentTimeMillis()
+                    when (val preState = downloadState) {
+                        is Running -> {
+                            // Throttle Compose state writes so the Home screen's active-download
+                            // list doesn't recompose on every yt-dlp output flush.
+                            if (now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS) {
+                                lastUiUpdateAtMs = now
+                                downloadState =
+                                    preState.copy(
+                                        progress = progress,
+                                        progressText = cleanText,
+                                        phase = transferPhase,
+                                    )
+                            }
+                            // Notification updates are throttled independently because each is a
+                            // Binder IPC into system_server.
+                            if (progressInt != lastNotifiedProgress &&
+                                now - lastNotifiedAtMs >= PROGRESS_NOTIFICATION_THROTTLE_MS
+                            ) {
+                                lastNotifiedAtMs = now
+                                lastNotifiedProgress = progressInt
+                                NotificationUtil.notifyProgress(
+                                    notificationId = notificationId,
+                                    progress = progressInt,
+                                    text = cleanText,
+                                    title = viewState.title,
+                                    taskId = id,
+                                )
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+
+                val targetUrl = info?.originalUrl ?: info?.webpageUrl ?: url
+                val alreadyUsingNativeFallback = nativeFallbackTasks.contains(id)
+                val initialPreferences =
+                    if (alreadyUsingNativeFallback) preferences.copy(aria2c = false) else preferences
+
+                var downloadResult =
+                    DownloadUtil.downloadVideo(
                         videoInfo = info,
                         taskId = id,
-                        downloadPreferences = preferences,
-                        progressCallback = { progressPercentage, _, text ->
-                            val progress = progressPercentage / 100f
-                            val progressInt = progressPercentage.toInt()
-                            // Strip yt-dlp's "[download] " prefix so progressText stored
-                            // in the Running state is clean for any UI that displays it.
-                            val cleanText = text
-                                .removePrefix("[download] ")
-                                .removePrefix("[download]")
-                                .trim()
-                            val now = System.currentTimeMillis()
-                            when (val preState = downloadState) {
-                                is Running -> {
-                                    // Throttle Compose state writes so the Home screen's
-                                    // active-download list (which lives behind the nav
-                                    // drawer) doesn't recompose/re-layout on every single
-                                    // yt-dlp progress line — see PROGRESS_UI_UPDATE_THROTTLE_MS
-                                    // comment above for why this matters. The final jump to
-                                    // 100%/Completed is handled separately in onSuccess below,
-                                    // so a throttled last tick here is harmless.
-                                    if (now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS) {
-                                        lastUiUpdateAtMs = now
-                                        downloadState =
-                                            preState.copy(progress = progress, progressText = cleanText)
-                                    }
-                                    // Throttle notification updates independently (and more
-                                    // conservatively, since each is a Binder IPC into
-                                    // system_server) and skip redundant calls when the
-                                    // integer percentage hasn't actually changed.
-                                    if (progressInt != lastNotifiedProgress &&
-                                        now - lastNotifiedAtMs >= PROGRESS_NOTIFICATION_THROTTLE_MS
-                                    ) {
-                                        lastNotifiedAtMs = now
-                                        lastNotifiedProgress = progressInt
-                                        NotificationUtil.notifyProgress(
-                                            notificationId = notificationId,
-                                            progress = progressInt,
-                                            text = cleanText,
-                                            title = viewState.title,
-                                            taskId = id,
-                                        )
-                                    }
-                                }
-                                else -> {}
-                            }
-                        },
+                        downloadPreferences = initialPreferences,
+                        progressCallback = progressHandler,
                     )
+
+                // Bilibili-specific safe fallback: only retry when the failure explicitly points
+                // at Aria2/external-downloader. The first process is already finished before this
+                // second call starts, and --continue resumes any partial file, so no duplicate job
+                // is created. Other sites and non-Aria2 failures keep the existing retry path.
+                val firstFailure = downloadResult.exceptionOrNull()
+                if (
+                    firstFailure != null &&
+                        !alreadyUsingNativeFallback &&
+                        initialPreferences.aria2c &&
+                        DownloadUtil.isBilibiliUrl(targetUrl) &&
+                        firstFailure.isAria2Failure()
+                ) {
+                    nativeFallbackTasks.add(id)
+                    transferPhase = Task.TransferPhase.RetryingNative
+                    when (val preState = downloadState) {
+                        is Running ->
+                            downloadState =
+                                preState.copy(
+                                    progressText = "Aria2 failed — retrying with native yt-dlp...",
+                                    phase = Task.TransferPhase.RetryingNative,
+                                )
+                        else -> {}
+                    }
+                    NotificationUtil.updateNotification(
+                        notificationId = notificationId,
+                        title = viewState.title,
+                        text = "Retrying with native yt-dlp...",
+                    )
+                    delay(500L)
+                    if (downloadState !is Running) return@launch
+
+                    destinationCount = 0
+                    downloadResult =
+                        DownloadUtil.downloadVideo(
+                            videoInfo = info,
+                            taskId = id,
+                            downloadPreferences = preferences.copy(aria2c = false),
+                            progressCallback = progressHandler,
+                        )
+                }
+
+                downloadResult
                     .onSuccess { pathList ->
-                        retryCountMap.remove(id)  // clear retry counter on success
+                        retryCountMap.remove(id)
+                        nativeFallbackTasks.remove(id)
                         downloadState = Completed(pathList.firstOrNull())
 
                         val text =
@@ -698,10 +809,12 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                             Log.d(TAG, "Network error — retrying ($attempt/$MAX_AUTO_RETRIES) in ${RETRY_DELAY_MS}ms: ${throwable.message}")
                             // Show retrying status in the running card
                             when (val preState = downloadState) {
-                                is Running -> downloadState = preState.copy(
-                                    progress = preState.progress,
-                                    progressText = "Retrying ($attempt/$MAX_AUTO_RETRIES)..."
-                                )
+                                is Running ->
+                                    downloadState =
+                                        preState.copy(
+                                            progress = preState.progress,
+                                            progressText = "Retrying ($attempt/$MAX_AUTO_RETRIES)...",
+                                        )
                                 else -> {}
                             }
                             delay(RETRY_DELAY_MS)
@@ -711,6 +824,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                             }
                         } else {
                             retryCountMap.remove(id)
+                            nativeFallbackTasks.remove(id)
                             downloadState = Error(throwable = throwable, action = Download)
                             NotificationUtil.notifyError(
                                 title = viewState.title,
@@ -721,10 +835,16 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         }
                     }
             }
-            .also { job -> 
+            .also { job ->
                 // Restore progress if this download was resumed from a paused state
                 val initialProgress = resumedProgressMap.remove(id) ?: -1f
-                downloadState = Running(job = job, taskId = id, progress = initialProgress)
+                downloadState =
+                    Running(
+                        job = job,
+                        taskId = id,
+                        progress = initialProgress,
+                        phase = Task.TransferPhase.Preparing,
+                    )
             }
     }
 
@@ -777,6 +897,8 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
     }
 
     private fun Task.cancelImpl(): Boolean {
+        nativeFallbackTasks.remove(id)
+        retryCountMap.remove(id)
         when (val preState = downloadState) {
             is DownloadState.Cancelable -> {
                 val res = YoutubeDL.destroyProcessById(preState.taskId)
