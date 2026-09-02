@@ -238,6 +238,27 @@ object DownloadUtil {
 
     private const val TAG = "DownloadUtil"
 
+    // KirinDL Bilibili download profile.
+    //
+    // Bilibili commonly exposes DASH streams. When the global concurrent-fragment
+    // setting is still at its conservative value, use a faster native fragmented
+    // download profile only for Bilibili. Other extractors keep their existing
+    // settings and explicit user values are always respected.
+    private const val BILIBILI_AUTO_CONCURRENT_FRAGMENTS = 8
+    private const val BILIBILI_ARIA2_CONNECTION_CAP = 8
+
+    private fun isBilibiliUrl(url: String): Boolean {
+        val host =
+            runCatching { Uri.parse(url).host.orEmpty().lowercase(Locale.US) }
+                .getOrDefault("")
+        return host == "b23.tv" ||
+            host.endsWith(".b23.tv") ||
+            host == "bilibili.com" ||
+            host.endsWith(".bilibili.com") ||
+            host == "bilibili.tv" ||
+            host.endsWith(".bilibili.tv")
+    }
+
     const val BASENAME = "%(title).200B"
 
     const val EXTENSION = ".%(ext)s"
@@ -777,7 +798,7 @@ object DownloadUtil {
     fun getCookiesContentFromDatabase(): Result<String> =
         getCookieListFromDatabase().mapCatching { it.toCookiesFileContent() }
 
-    private fun YoutubeDLRequest.enableAria2c(): YoutubeDLRequest {
+    private fun YoutubeDLRequest.enableAria2c(connectionCap: Int? = null): YoutubeDLRequest {
         // FIX: addOption() builds a raw argv array — no shell quoting involved.
         // The old value  aria2c:"-x 8 ..."  passes literal " characters to yt-dlp.
         // Python's shlex.split() inside yt-dlp treats the whole quoted block as ONE
@@ -798,7 +819,10 @@ object DownloadUtil {
         // --file-allocation=none   = no preallocation (faster on Android / SAF temp dirs)
         // --max-tries / --retry-wait = resilience against transient network errors
         // --console-log-level=warn = keep logs clean without breaking progress parsing
-        val connections = ARIA2C_CONNECTIONS.getInt()
+        val configuredConnections = ARIA2C_CONNECTIONS.getInt()
+        val connections =
+            connectionCap?.let { configuredConnections.coerceAtMost(it) }
+                ?: configuredConnections
         return this.addOption("--downloader", "http,https,ftp,ftps:libaria2c.so")
             .addOption(
                 "--external-downloader-args",
@@ -1186,6 +1210,7 @@ object DownloadUtil {
                             Throwable(context.getString(R.string.fetch_info_error_msg))
                         )
                 }
+            val isBilibili = isBilibiliUrl(url)
             val request = YoutubeDLRequest(url)
             val pathBuilder = StringBuilder()
             val outputBuilder = StringBuilder()
@@ -1248,13 +1273,33 @@ object DownloadUtil {
 
                     // aria2c is scoped to contiguous protocols (see enableAria2c), so
                     // concurrent fragments can run alongside it for DASH/HLS streams.
-                    if (aria2c) {
-                        enableAria2c()
-                        if (concurrentFragments > 1) {
-                            addOption("--concurrent-fragments", concurrentFragments)
+                    //
+                    // Bilibili profile:
+                    // - Auto boost to 8 fragments when the existing value is 0/1.
+                    // - Respect any explicit user value above 1.
+                    // - Cap direct aria2 connections at 8 for Bilibili CDN endpoints.
+                    val effectiveConcurrentFragments =
+                        if (isBilibili && concurrentFragments <= 1) {
+                            BILIBILI_AUTO_CONCURRENT_FRAGMENTS
+                        } else {
+                            concurrentFragments
                         }
-                    } else if (concurrentFragments > 1) {
-                        addOption("--concurrent-fragments", concurrentFragments)
+
+                    if (aria2c) {
+                        enableAria2c(
+                            connectionCap =
+                                if (isBilibili) BILIBILI_ARIA2_CONNECTION_CAP else null
+                        )
+                    }
+
+                    if (effectiveConcurrentFragments > 1) {
+                        addOption("--concurrent-fragments", effectiveConcurrentFragments)
+                    }
+
+                    // Bilibili/CDN routes can occasionally be slow to establish.
+                    // Keep this timeout scoped to Bilibili rather than changing all sites.
+                    if (isBilibili) {
+                        addOption("--socket-timeout", "20")
                     }
 
                     if (extractAudio || (videoInfo.vcodec == "none")) {

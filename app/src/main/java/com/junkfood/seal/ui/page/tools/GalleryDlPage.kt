@@ -1,5 +1,6 @@
 package com.junkfood.seal.ui.page.tools
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +80,11 @@ private data class KirinGalleryColors(
     val error: Color,
 )
 
+private enum class GalleryConfirmAction {
+    DOWNLOAD,
+    QUEUE,
+}
+
 @Composable
 private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
     val scheme = MaterialTheme.colorScheme
@@ -133,6 +139,8 @@ fun GalleryDlPage(
     val clipboard = LocalClipboardManager.current
     var tab by remember { mutableIntStateOf(0) }
     var showBatch by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<GalleryConfirmAction?>(null) }
+    var pendingBatchText by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { viewModel.refreshFromDisk() }
 
@@ -196,8 +204,14 @@ fun GalleryDlPage(
                         clipboardText = { clipboard.getText()?.text.orEmpty() },
                         onUrlChanged = viewModel::updateUrl,
                         onCheck = viewModel::checkExtractor,
-                        onDownload = viewModel::download,
-                        onQueue = viewModel::addCurrentToQueue,
+                        onDownload = {
+                            pendingAction = GalleryConfirmAction.DOWNLOAD
+                            viewModel.checkExtractor()
+                        },
+                        onQueue = {
+                            pendingAction = GalleryConfirmAction.QUEUE
+                            viewModel.checkExtractor()
+                        },
                         onBatch = { showBatch = true },
                     )
                 1 ->
@@ -231,8 +245,39 @@ fun GalleryDlPage(
             colors = colors,
             onDismiss = { showBatch = false },
             onAdd = {
-                viewModel.addBatch(it)
                 showBatch = false
+                pendingBatchText = it
+            },
+        )
+    }
+
+    pendingAction?.let { action ->
+        GalleryDownloadConfirmDialog(
+            state = state,
+            colors = colors,
+            action = action,
+            onDismiss = { pendingAction = null },
+            onConfirm = {
+                when (action) {
+                    GalleryConfirmAction.DOWNLOAD -> viewModel.download()
+                    GalleryConfirmAction.QUEUE -> {
+                        viewModel.addCurrentToQueue()
+                        tab = 1
+                    }
+                }
+                pendingAction = null
+            },
+        )
+    }
+
+    pendingBatchText?.let { batchText ->
+        GalleryBatchConfirmDialog(
+            text = batchText,
+            colors = colors,
+            onDismiss = { pendingBatchText = null },
+            onConfirm = {
+                viewModel.addBatch(batchText)
+                pendingBatchText = null
                 tab = 1
             },
         )
@@ -427,7 +472,8 @@ private fun DownloadTab(
             OutlinedButton(
                 onClick = onQueue,
                 enabled =
-                    !state.isBusy &&
+                    state.isInstalled &&
+                        !state.isBusy &&
                         com.junkfood.seal.util.GalleryDlRunner.isCandidateUrl(state.url),
                 modifier = Modifier.weight(1f),
             ) {
@@ -768,6 +814,165 @@ private fun EmptyState(
         Spacer(Modifier.height(5.dp))
         Text(description, color = colors.muted, fontSize = 11.sp)
     }
+}
+
+@Composable
+private fun GalleryDownloadConfirmDialog(
+    state: GalleryDlViewModel.ViewState,
+    colors: KirinGalleryColors,
+    action: GalleryConfirmAction,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val host =
+        remember(state.url) {
+            runCatching {
+                Uri.parse(state.url).host.orEmpty().removePrefix("www.")
+            }.getOrDefault("")
+        }
+
+    val preflightReady =
+        !state.isCheckingExtractor && state.extractorSupported == true
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                if (action == GalleryConfirmAction.DOWNLOAD) {
+                    "Confirm Gallery Download"
+                } else {
+                    "Confirm Queue Item"
+                },
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Text(
+                    state.url,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                FlatInfoRow("Site", host.ifBlank { "Unknown" }, colors.text, colors)
+
+                when {
+                    state.isCheckingExtractor ->
+                        FlatInfoRow("Extractor", "Analyzing…", colors.accent, colors)
+                    state.extractorSupported == true ->
+                        FlatInfoRow(
+                            "Extractor",
+                            state.extractorLabel ?: "Supported",
+                            colors.success,
+                            colors,
+                        )
+                    state.extractorSupported == false ->
+                        FlatInfoRow("Extractor", "Unsupported", colors.error, colors)
+                    else ->
+                        FlatInfoRow("Extractor", "Waiting for preflight", colors.muted, colors)
+                }
+
+                FlatInfoRow(
+                    "Cookies",
+                    if (state.cookiesImported) "Available" else "Not imported",
+                    if (state.cookiesImported) colors.success else colors.muted,
+                    colors,
+                )
+                FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
+
+                Text(
+                    if (preflightReady) {
+                        "Preflight passed. Nothing has been downloaded yet."
+                    } else {
+                        "Continue is enabled only after the gallery-dl extractor preflight succeeds."
+                    },
+                    color = colors.muted,
+                    fontSize = 11.sp,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = preflightReady) {
+                Text(
+                    if (action == GalleryConfirmAction.DOWNLOAD) {
+                        "Download Now"
+                    } else {
+                        "Add to Queue"
+                    }
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun GalleryBatchConfirmDialog(
+    text: String,
+    colors: KirinGalleryColors,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val urls =
+        remember(text) {
+            text.lines()
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
+                .filter(com.junkfood.seal.util.GalleryDlRunner::isCandidateUrl)
+        }
+
+    val siteSummary =
+        remember(urls) {
+            urls.mapNotNull { url ->
+                runCatching {
+                    Uri.parse(url).host?.removePrefix("www.")
+                }.getOrNull()
+            }
+                .groupingBy { it }
+                .eachCount()
+                .entries
+                .sortedByDescending { it.value }
+                .joinToString(" • ") { (site, count) -> "$site $count" }
+        }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Confirm Gallery Batch",
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                FlatInfoRow("URLs", urls.size.toString(), colors.text, colors)
+                FlatInfoRow(
+                    "Sites",
+                    siteSummary.ifBlank { "Unknown" },
+                    colors.text,
+                    colors,
+                )
+                FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
+                Text(
+                    "The confirmed URLs will be added to the Gallery DL queue as separate jobs, so one failed site will not discard the rest.",
+                    color = colors.muted,
+                    fontSize = 11.sp,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = urls.isNotEmpty()) {
+                Text("Add ${urls.size} to Queue")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Review") }
+        },
+    )
 }
 
 @Composable
