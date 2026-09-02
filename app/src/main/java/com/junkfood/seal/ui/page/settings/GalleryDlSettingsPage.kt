@@ -50,8 +50,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.junkfood.seal.ui.component.BackButton
+import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.page.settings.general.YtdlpUpdateChannelDialog
 import com.junkfood.seal.ui.page.tools.GalleryDlViewModel
+import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
 import org.koin.androidx.compose.koinViewModel
@@ -64,6 +66,8 @@ fun GalleryDlSettingsPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val selectedTheme by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
+    val confirmBeforeDownload by
+        GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showYtdlpSettings by remember { mutableStateOf(false) }
 
@@ -123,6 +127,23 @@ fun GalleryDlSettingsPage(
                     )
                     Spacer(Modifier.height(8.dp))
                 }
+            }
+
+            SettingsSection(
+                icon = Icons.Outlined.Check,
+                title = "Download confirmation",
+                description =
+                    "Seal-style Gallery DL preflight before a download or queue action starts.",
+            ) {
+                PreferenceSwitch(
+                    title = "Confirm before downloading",
+                    description =
+                        "Default ON. Analyze extractor and available metadata first, then show a review sheet. Turn this off to start Gallery DL actions immediately.",
+                    isChecked = confirmBeforeDownload,
+                    onClick = {
+                        GalleryDlBehaviorPreference.setConfirmBeforeDownload(!confirmBeforeDownload)
+                    },
+                )
             }
 
             SettingsSection(

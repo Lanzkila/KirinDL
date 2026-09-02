@@ -27,6 +27,17 @@ object GalleryDlRunner {
         val category: String,
         val subcategory: String,
         val className: String,
+        val title: String = "",
+        val author: String = "",
+        val thumbnailUrl: String = "",
+        val mediaType: String = "",
+        val estimatedItemCount: Int? = null,
+        val itemCountExact: Boolean = false,
+        val scannedItemCount: Int = 0,
+        val largeGallery: Boolean = false,
+        val cookiesLoaded: Boolean = false,
+        val preflightStatus: String = "ready",
+        val preflightError: String = "",
     ) {
         val label: String
             get() =
@@ -108,6 +119,22 @@ object GalleryDlRunner {
                         category = result.optString("category"),
                         subcategory = result.optString("subcategory"),
                         className = result.optString("class_name"),
+                        title = result.optString("title"),
+                        author = result.optString("author"),
+                        thumbnailUrl = result.optString("thumbnail"),
+                        mediaType = result.optString("media_type"),
+                        estimatedItemCount =
+                            if (result.has("estimated_count") && !result.isNull("estimated_count")) {
+                                result.optInt("estimated_count")
+                            } else {
+                                null
+                            },
+                        itemCountExact = result.optBoolean("count_exact", false),
+                        scannedItemCount = result.optInt("scanned_count", 0),
+                        largeGallery = result.optBoolean("large_gallery", false),
+                        cookiesLoaded = result.optBoolean("cookies_loaded", false),
+                        preflightStatus = result.optString("preflight_status").ifBlank { "ready" },
+                        preflightError = result.optString("preflight_error"),
                     )
                 }
             }

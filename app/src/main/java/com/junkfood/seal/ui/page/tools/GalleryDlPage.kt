@@ -3,6 +3,7 @@ package com.junkfood.seal.ui.page.tools
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,14 +56,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.SealModalBottomSheet
+import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import com.junkfood.seal.util.GalleryDlStore
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
@@ -138,6 +142,8 @@ fun GalleryDlPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val themeStyle by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
+    val confirmBeforeDownload by
+        GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
     val colors = kirinGalleryColors(themeStyle)
     val clipboard = LocalClipboardManager.current
     var tab by remember { mutableIntStateOf(0) }
@@ -208,12 +214,21 @@ fun GalleryDlPage(
                         onUrlChanged = viewModel::updateUrl,
                         onCheck = viewModel::checkExtractor,
                         onDownload = {
-                            pendingAction = GalleryConfirmAction.DOWNLOAD
-                            viewModel.checkExtractor()
+                            if (confirmBeforeDownload) {
+                                pendingAction = GalleryConfirmAction.DOWNLOAD
+                                viewModel.checkExtractor()
+                            } else {
+                                viewModel.download()
+                            }
                         },
                         onQueue = {
-                            pendingAction = GalleryConfirmAction.QUEUE
-                            viewModel.checkExtractor()
+                            if (confirmBeforeDownload) {
+                                pendingAction = GalleryConfirmAction.QUEUE
+                                viewModel.checkExtractor()
+                            } else {
+                                viewModel.addCurrentToQueue()
+                                tab = 1
+                            }
                         },
                         onBatch = { showBatch = true },
                     )
@@ -249,7 +264,12 @@ fun GalleryDlPage(
             onDismiss = { showBatch = false },
             onAdd = {
                 showBatch = false
-                pendingBatchText = it
+                if (confirmBeforeDownload) {
+                    pendingBatchText = it
+                } else {
+                    viewModel.addBatch(it)
+                    tab = 1
+                }
             },
         )
     }
@@ -836,7 +856,35 @@ private fun GalleryDownloadConfirmDialog(
                 Uri.parse(state.url).host.orEmpty().removePrefix("www.")
             }.getOrDefault("")
         }
+    val info = state.preflightInfo
     val preflightReady = !state.isCheckingExtractor && state.extractorSupported == true
+    val itemCountLabel =
+        info?.estimatedItemCount?.let { count ->
+            when {
+                info?.itemCountExact == true -> count.toString()
+                count > 0 -> "$count+ / estimated"
+                else -> "Unknown"
+            }
+        } ?: "Unknown"
+    val statusLabel =
+        when {
+            state.isCheckingExtractor -> "Analyzing metadata…"
+            state.extractorSupported == false -> "Unsupported URL"
+            info?.preflightStatus == "login_required" -> "Login / cookies may be required"
+            info?.preflightStatus == "rate_limited" -> "Site rate limited preflight"
+            info?.preflightStatus == "extractor_error" -> "Metadata partially unavailable"
+            preflightReady -> "Ready"
+            else -> "Waiting for preflight"
+        }
+    val statusColor =
+        when {
+            state.extractorSupported == false -> colors.error
+            info?.preflightStatus == "login_required" -> colors.error
+            info?.preflightStatus == "rate_limited" -> colors.error
+            info?.preflightStatus == "extractor_error" -> colors.accent
+            preflightReady -> colors.success
+            else -> colors.accent
+        }
 
     SealModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -863,19 +911,62 @@ private fun GalleryDownloadConfirmDialog(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         if (action == GalleryConfirmAction.DOWNLOAD) {
-                            "Ready to download?"
+                            "Review Gallery Download"
                         } else {
-                            "Add gallery to queue?"
+                            "Review Queue Item"
                         },
                         color = colors.text,
                         fontSize = 21.sp,
                         fontWeight = FontWeight.Black,
                     )
                     Text(
-                        "Review the gallery-dl preflight before continuing.",
+                        "Seal-style preflight: inspect first, then choose whether to continue.",
                         color = colors.muted,
                         fontSize = 12.sp,
                     )
+                }
+            }
+
+            if (!info?.thumbnailUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = info?.thumbnailUrl,
+                    contentDescription = "Gallery preview",
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(colors.panelAlt),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+
+            if (!info?.title.isNullOrBlank() || !info?.author.isNullOrBlank()) {
+                Column(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .background(colors.panelAlt, RoundedCornerShape(14.dp))
+                            .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (!info?.title.isNullOrBlank()) {
+                        Text(
+                            info?.title.orEmpty(),
+                            color = colors.text,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (!info?.author.isNullOrBlank()) {
+                        Text(
+                            info?.author.orEmpty(),
+                            color = colors.muted,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
 
@@ -895,12 +986,13 @@ private fun GalleryDownloadConfirmDialog(
             }
 
             Text(
-                "DOWNLOAD DETAILS",
+                "PREFLIGHT DETAILS",
                 color = colors.accent,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
             )
 
+            FlatInfoRow("Status", statusLabel, statusColor, colors)
             FlatInfoRow("Site", host.ifBlank { "Unknown" }, colors.text, colors)
             when {
                 state.isCheckingExtractor ->
@@ -917,10 +1009,22 @@ private fun GalleryDownloadConfirmDialog(
                 else ->
                     FlatInfoRow("Extractor", "Waiting for preflight", colors.muted, colors)
             }
+            if (!info?.mediaType.isNullOrBlank()) {
+                FlatInfoRow("Media", info?.mediaType.orEmpty(), colors.text, colors)
+            }
+            FlatInfoRow("Estimated items", itemCountLabel, colors.text, colors)
             FlatInfoRow(
-                "Cookies",
-                if (state.cookiesImported) "Available" else "Not imported",
-                if (state.cookiesImported) colors.success else colors.muted,
+                "Authentication",
+                when {
+                    info?.preflightStatus == "login_required" -> "Login / cookies required"
+                    state.cookiesImported -> "Cookies available"
+                    else -> "No cookies imported"
+                },
+                when {
+                    info?.preflightStatus == "login_required" -> colors.error
+                    state.cookiesImported -> colors.success
+                    else -> colors.muted
+                },
                 colors,
             )
             FlatInfoRow(
@@ -931,13 +1035,32 @@ private fun GalleryDownloadConfirmDialog(
             )
             FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
 
+            if (info?.largeGallery == true) {
+                Notice(
+                    "Large gallery detected. Metadata preview is intentionally capped; the actual download can contain more items than the preflight scan.",
+                    colors.accent,
+                    colors,
+                )
+            }
+
+            info?.preflightError?.takeIf(String::isNotBlank)?.let { warning ->
+                Notice(
+                    "Preflight note: $warning",
+                    if (info?.preflightStatus == "extractor_error") colors.accent else colors.error,
+                    colors,
+                )
+            }
+
             Notice(
-                if (preflightReady) {
-                    "Preflight passed. No media has been downloaded yet."
-                } else if (state.extractorSupported == false) {
-                    "This URL is not currently matched by the installed gallery-dl engine."
-                } else {
-                    "KirinDL is checking the extractor before enabling Continue."
+                when {
+                    preflightReady && info?.preflightStatus == "ready" ->
+                        "Preflight passed. Only metadata was inspected; the media download has not started."
+                    preflightReady ->
+                        "The extractor matched this URL, but some metadata could not be verified. You can still continue or cancel."
+                    state.extractorSupported == false ->
+                        "This URL is not currently matched by the installed gallery-dl engine."
+                    else ->
+                        "KirinDL is checking the extractor before enabling Continue."
                 },
                 if (preflightReady) colors.success else colors.accent,
                 colors,
@@ -973,7 +1096,7 @@ private fun GalleryDownloadConfirmDialog(
                     Spacer(Modifier.width(7.dp))
                     Text(
                         if (action == GalleryConfirmAction.DOWNLOAD) {
-                            "Download"
+                            "Download Now"
                         } else {
                             "Add to Queue"
                         },
@@ -993,20 +1116,19 @@ private fun GalleryBatchConfirmDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    val urls =
+    val allEntries =
         remember(text) {
-            text.lines()
-                .map(String::trim)
-                .filter(String::isNotBlank)
-                .distinct()
-                .filter(com.junkfood.seal.util.GalleryDlRunner::isCandidateUrl)
+            text.lines().map(String::trim).filter(String::isNotBlank).distinct()
         }
+    val urls = remember(allEntries) { allEntries.filter(com.junkfood.seal.util.GalleryDlRunner::isCandidateUrl) }
+    val invalidCount = allEntries.size - urls.size
     val siteCounts =
         remember(urls) {
             urls.mapNotNull { url ->
                 runCatching { Uri.parse(url).host?.removePrefix("www.") }.getOrNull()
             }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }
         }
+    val largeBatch = urls.size >= 20
 
     SealModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1028,13 +1150,13 @@ private fun GalleryBatchConfirmDialog(
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(
-                        "Confirm gallery batch",
+                        "Review Gallery Batch",
                         color = colors.text,
                         fontSize = 21.sp,
                         fontWeight = FontWeight.Black,
                     )
                     Text(
-                        "Review the batch once instead of confirming every URL.",
+                        "One confirmation for the whole batch — no popup spam per URL.",
                         color = colors.muted,
                         fontSize = 12.sp,
                     )
@@ -1045,28 +1167,50 @@ private fun GalleryBatchConfirmDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                GalleryStatCard("URLs", urls.size.toString(), colors, Modifier.weight(1f))
+                GalleryStatCard("Valid URLs", urls.size.toString(), colors, Modifier.weight(1f))
                 GalleryStatCard("Sites", siteCounts.size.toString(), colors, Modifier.weight(1f))
+            }
+            if (invalidCount > 0) {
+                GalleryStatCard("Skipped invalid", invalidCount.toString(), colors, Modifier.fillMaxWidth())
             }
 
             if (siteCounts.isNotEmpty()) {
                 Text(
-                    "SITES",
+                    "SITE SUMMARY",
                     color = colors.accent,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                 )
-                siteCounts.take(6).forEach { (site, count) ->
+                siteCounts.take(8).forEach { (site, count) ->
                     FlatInfoRow(site, "$count URL(s)", colors.text, colors)
+                }
+                if (siteCounts.size > 8) {
+                    FlatInfoRow(
+                        "Other sites",
+                        "+${siteCounts.size - 8}",
+                        colors.muted,
+                        colors,
+                    )
                 }
             }
 
+            FlatInfoRow("Queue mode", "Separate jobs", colors.text, colors)
+            FlatInfoRow("Failure handling", "Continue remaining URLs", colors.text, colors)
             FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
-            Notice(
-                "The confirmed URLs enter the Gallery DL queue as separate jobs. One failed site will not cancel the rest.",
-                colors.accent,
-                colors,
-            )
+
+            if (largeBatch) {
+                Notice(
+                    "Large batch detected (${urls.size} URLs). KirinDL will queue them as separate jobs so one failed extractor does not cancel the rest.",
+                    colors.accent,
+                    colors,
+                )
+            } else {
+                Notice(
+                    "The confirmed URLs enter the Gallery DL queue as separate jobs. One failed site will not cancel the rest.",
+                    colors.accent,
+                    colors,
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

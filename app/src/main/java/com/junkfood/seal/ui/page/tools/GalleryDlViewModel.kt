@@ -26,6 +26,7 @@ class GalleryDlViewModel : ViewModel() {
         val cacheSize: Long = 0L,
         val extractorSupported: Boolean? = null,
         val extractorLabel: String? = null,
+        val preflightInfo: GalleryDlRunner.ExtractorInfo? = null,
         val runtimeVersion: String? = null,
         val runtimeReadyModules: List<String> = emptyList(),
         val runtimeMissingOptionalModules: List<String> = emptyList(),
@@ -103,6 +104,7 @@ class GalleryDlViewModel : ViewModel() {
                 url = value,
                 extractorSupported = null,
                 extractorLabel = null,
+                preflightInfo = null,
                 errorMessage = null,
                 statusMessage = null,
                 savedFiles = emptyList(),
@@ -291,6 +293,7 @@ class GalleryDlViewModel : ViewModel() {
                 configValid = GalleryDlConfig.validateConfig(value).isSuccess,
                 extractorSupported = null,
                 extractorLabel = null,
+                preflightInfo = null,
                 errorMessage = null,
                 statusMessage = null,
             )
@@ -348,6 +351,7 @@ class GalleryDlViewModel : ViewModel() {
                             cacheSize = snapshot.cacheSize,
                             extractorSupported = null,
                             extractorLabel = null,
+                            preflightInfo = null,
                             statusMessage = "gallery-dl configuration imported",
                             errorMessage = null,
                         )
@@ -400,6 +404,7 @@ class GalleryDlViewModel : ViewModel() {
                             cacheSize = snapshot.cacheSize,
                             extractorSupported = null,
                             extractorLabel = null,
+                            preflightInfo = null,
                             statusMessage = "cookies.txt imported",
                             errorMessage = null,
                         )
@@ -428,6 +433,7 @@ class GalleryDlViewModel : ViewModel() {
                             cacheSize = snapshot.cacheSize,
                             extractorSupported = null,
                             extractorLabel = null,
+                            preflightInfo = null,
                             statusMessage = "Gallery DL cookies cleared",
                             errorMessage = null,
                         )
@@ -454,6 +460,7 @@ class GalleryDlViewModel : ViewModel() {
                             cacheSize = snapshot.cacheSize,
                             extractorSupported = null,
                             extractorLabel = null,
+                            preflightInfo = null,
                             statusMessage = "gallery-dl cache cleared",
                             errorMessage = null,
                         )
@@ -476,6 +483,7 @@ class GalleryDlViewModel : ViewModel() {
                 isCheckingExtractor = true,
                 extractorSupported = null,
                 extractorLabel = null,
+                preflightInfo = null,
                 errorMessage = null,
                 statusMessage = null,
             )
@@ -489,14 +497,32 @@ class GalleryDlViewModel : ViewModel() {
                             isCheckingExtractor = false,
                             extractorSupported = info.supported,
                             extractorLabel = info.label.takeIf(String::isNotBlank),
-                            statusMessage = if (info.supported) "Extractor ready: ${info.label}" else null,
-                            errorMessage = if (info.supported) null else "No gallery-dl extractor matched this URL",
+                            preflightInfo = info,
+                            statusMessage =
+                                if (info.supported && info.preflightStatus == "ready") {
+                                    "Preflight ready: ${info.label}"
+                                } else if (info.supported) {
+                                    "Extractor matched: ${info.label}"
+                                } else {
+                                    null
+                                },
+                            errorMessage =
+                                when {
+                                    !info.supported -> "No gallery-dl extractor matched this URL"
+                                    info.preflightError.isNotBlank() -> info.preflightError
+                                    else -> null
+                                },
                         )
                     }
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(isCheckingExtractor = false, extractorSupported = false, errorMessage = error.message ?: "Could not check this URL")
+                        it.copy(
+                            isCheckingExtractor = false,
+                            extractorSupported = false,
+                            preflightInfo = null,
+                            errorMessage = error.message ?: "Could not check this URL",
+                        )
                     }
                 }
         }
@@ -548,6 +574,7 @@ class GalleryDlViewModel : ViewModel() {
                             runtimeMissingOptionalModules = emptyList(),
                             extractorSupported = null,
                             extractorLabel = null,
+                            preflightInfo = null,
                             statusMessage = "gallery-dl ${info.version} is ready",
                             errorMessage = null,
                         )
@@ -621,6 +648,7 @@ class GalleryDlViewModel : ViewModel() {
                 cacheSize = snapshot.cacheSize,
                 extractorSupported = null,
                 extractorLabel = null,
+                preflightInfo = null,
                 statusMessage = statusMessage,
                 errorMessage = null,
             )
