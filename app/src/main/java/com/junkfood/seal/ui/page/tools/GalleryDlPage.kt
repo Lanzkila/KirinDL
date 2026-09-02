@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Delete
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.outlined.Queue
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.junkfood.seal.ui.component.BackButton
+import com.junkfood.seal.ui.component.SealModalBottomSheet
 import com.junkfood.seal.util.GalleryDlStore
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
@@ -359,6 +362,8 @@ private fun DownloadTab(
             color = colors.muted,
             fontSize = 13.sp,
         )
+
+        GalleryDashboard(state = state, colors = colors)
 
         Box(
             modifier =
@@ -816,6 +821,7 @@ private fun EmptyState(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GalleryDownloadConfirmDialog(
     state: GalleryDlViewModel.ViewState,
@@ -830,85 +836,156 @@ private fun GalleryDownloadConfirmDialog(
                 Uri.parse(state.url).host.orEmpty().removePrefix("www.")
             }.getOrDefault("")
         }
+    val preflightReady = !state.isCheckingExtractor && state.extractorSupported == true
 
-    val preflightReady =
-        !state.isCheckingExtractor && state.extractorSupported == true
-
-    AlertDialog(
+    SealModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                if (action == GalleryConfirmAction.DOWNLOAD) {
-                    "Confirm Gallery Download"
-                } else {
-                    "Confirm Queue Item"
-                },
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier =
+                        Modifier.size(48.dp)
+                            .background(colors.accentSoft, RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        tint = colors.accent,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (action == GalleryConfirmAction.DOWNLOAD) {
+                            "Ready to download?"
+                        } else {
+                            "Add gallery to queue?"
+                        },
+                        color = colors.text,
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        "Review the gallery-dl preflight before continuing.",
+                        color = colors.muted,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+
+            Box(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .background(colors.panelAlt, RoundedCornerShape(14.dp))
+                        .padding(13.dp),
+            ) {
                 Text(
                     state.url,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = colors.text,
                     fontSize = 12.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                FlatInfoRow("Site", host.ifBlank { "Unknown" }, colors.text, colors)
+            }
 
-                when {
-                    state.isCheckingExtractor ->
-                        FlatInfoRow("Extractor", "Analyzing…", colors.accent, colors)
-                    state.extractorSupported == true ->
-                        FlatInfoRow(
-                            "Extractor",
-                            state.extractorLabel ?: "Supported",
-                            colors.success,
-                            colors,
-                        )
-                    state.extractorSupported == false ->
-                        FlatInfoRow("Extractor", "Unsupported", colors.error, colors)
-                    else ->
-                        FlatInfoRow("Extractor", "Waiting for preflight", colors.muted, colors)
+            Text(
+                "DOWNLOAD DETAILS",
+                color = colors.accent,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+            )
+
+            FlatInfoRow("Site", host.ifBlank { "Unknown" }, colors.text, colors)
+            when {
+                state.isCheckingExtractor ->
+                    FlatInfoRow("Extractor", "Analyzing…", colors.accent, colors)
+                state.extractorSupported == true ->
+                    FlatInfoRow(
+                        "Extractor",
+                        state.extractorLabel ?: "Supported",
+                        colors.success,
+                        colors,
+                    )
+                state.extractorSupported == false ->
+                    FlatInfoRow("Extractor", "Unsupported", colors.error, colors)
+                else ->
+                    FlatInfoRow("Extractor", "Waiting for preflight", colors.muted, colors)
+            }
+            FlatInfoRow(
+                "Cookies",
+                if (state.cookiesImported) "Available" else "Not imported",
+                if (state.cookiesImported) colors.success else colors.muted,
+                colors,
+            )
+            FlatInfoRow(
+                "Engine",
+                state.installedVersion?.let { "gallery-dl $it" } ?: "Not installed",
+                if (state.isInstalled) colors.success else colors.error,
+                colors,
+            )
+            FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
+
+            Notice(
+                if (preflightReady) {
+                    "Preflight passed. No media has been downloaded yet."
+                } else if (state.extractorSupported == false) {
+                    "This URL is not currently matched by the installed gallery-dl engine."
+                } else {
+                    "KirinDL is checking the extractor before enabling Continue."
+                },
+                if (preflightReady) colors.success else colors.accent,
+                colors,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f).height(50.dp),
+                ) {
+                    Text("Cancel")
                 }
-
-                FlatInfoRow(
-                    "Cookies",
-                    if (state.cookiesImported) "Available" else "Not imported",
-                    if (state.cookiesImported) colors.success else colors.muted,
-                    colors,
-                )
-                FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
-
-                Text(
-                    if (preflightReady) {
-                        "Preflight passed. Nothing has been downloaded yet."
-                    } else {
-                        "Continue is enabled only after the gallery-dl extractor preflight succeeds."
-                    },
-                    color = colors.muted,
-                    fontSize = 11.sp,
-                )
+                Button(
+                    onClick = onConfirm,
+                    enabled = preflightReady,
+                    modifier = Modifier.weight(1.35f).height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent,
+                    ),
+                ) {
+                    Icon(
+                        if (action == GalleryConfirmAction.DOWNLOAD) {
+                            Icons.Outlined.Download
+                        } else {
+                            Icons.Outlined.Add
+                        },
+                        contentDescription = null,
+                    )
+                    Spacer(Modifier.width(7.dp))
+                    Text(
+                        if (action == GalleryConfirmAction.DOWNLOAD) {
+                            "Download"
+                        } else {
+                            "Add to Queue"
+                        },
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm, enabled = preflightReady) {
-                Text(
-                    if (action == GalleryConfirmAction.DOWNLOAD) {
-                        "Download Now"
-                    } else {
-                        "Add to Queue"
-                    }
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
+        }
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GalleryBatchConfirmDialog(
     text: String,
@@ -924,55 +1001,159 @@ private fun GalleryBatchConfirmDialog(
                 .distinct()
                 .filter(com.junkfood.seal.util.GalleryDlRunner::isCandidateUrl)
         }
-
-    val siteSummary =
+    val siteCounts =
         remember(urls) {
             urls.mapNotNull { url ->
-                runCatching {
-                    Uri.parse(url).host?.removePrefix("www.")
-                }.getOrNull()
-            }
-                .groupingBy { it }
-                .eachCount()
-                .entries
-                .sortedByDescending { it.value }
-                .joinToString(" • ") { (site, count) -> "$site $count" }
+                runCatching { Uri.parse(url).host?.removePrefix("www.") }.getOrNull()
+            }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }
         }
 
-    AlertDialog(
+    SealModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "Confirm Gallery Batch",
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                FlatInfoRow("URLs", urls.size.toString(), colors.text, colors)
-                FlatInfoRow(
-                    "Sites",
-                    siteSummary.ifBlank { "Unknown" },
-                    colors.text,
-                    colors,
-                )
-                FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier =
+                        Modifier.size(48.dp)
+                            .background(colors.accentSoft, RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.Queue, contentDescription = null, tint = colors.accent)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "Confirm gallery batch",
+                        color = colors.text,
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        "Review the batch once instead of confirming every URL.",
+                        color = colors.muted,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                GalleryStatCard("URLs", urls.size.toString(), colors, Modifier.weight(1f))
+                GalleryStatCard("Sites", siteCounts.size.toString(), colors, Modifier.weight(1f))
+            }
+
+            if (siteCounts.isNotEmpty()) {
                 Text(
-                    "The confirmed URLs will be added to the Gallery DL queue as separate jobs, so one failed site will not discard the rest.",
-                    color = colors.muted,
+                    "SITES",
+                    color = colors.accent,
                     fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
                 )
+                siteCounts.take(6).forEach { (site, count) ->
+                    FlatInfoRow(site, "$count URL(s)", colors.text, colors)
+                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm, enabled = urls.isNotEmpty()) {
-                Text("Add ${urls.size} to Queue")
+
+            FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
+            Notice(
+                "The confirmed URLs enter the Gallery DL queue as separate jobs. One failed site will not cancel the rest.",
+                colors.accent,
+                colors,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f).height(50.dp),
+                ) {
+                    Text("Review")
+                }
+                Button(
+                    onClick = onConfirm,
+                    enabled = urls.isNotEmpty(),
+                    modifier = Modifier.weight(1.35f).height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent,
+                    ),
+                ) {
+                    Icon(Icons.Outlined.Queue, contentDescription = null)
+                    Spacer(Modifier.width(7.dp))
+                    Text("Queue ${urls.size}", fontWeight = FontWeight.Bold)
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Review") }
-        },
-    )
+        }
+    }
+}
+
+@Composable
+private fun GalleryDashboard(
+    state: GalleryDlViewModel.ViewState,
+    colors: KirinGalleryColors,
+) {
+    val pending = state.queue.count { it.state == "pending" || it.state == "failed" }
+    val completed = state.history.count { it.success }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            GalleryStatCard(
+                "Engine",
+                state.installedVersion?.let { "v$it" } ?: "Setup",
+                colors,
+                Modifier.weight(1f),
+            )
+            GalleryStatCard("Queue", pending.toString(), colors, Modifier.weight(1f))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            GalleryStatCard("History", completed.toString(), colors, Modifier.weight(1f))
+            GalleryStatCard(
+                "Cookies",
+                if (state.cookiesImported) "Ready" else "Off",
+                colors,
+                Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun GalleryStatCard(
+    label: String,
+    value: String,
+    colors: KirinGalleryColors,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier =
+            modifier.background(colors.panel, RoundedCornerShape(12.dp)).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(label, color = colors.muted, fontSize = 10.sp)
+        Text(
+            value,
+            color = colors.text,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @Composable

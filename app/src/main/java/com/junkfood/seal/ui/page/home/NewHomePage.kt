@@ -38,6 +38,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.Cancel
@@ -147,6 +148,8 @@ import com.junkfood.seal.ui.theme.GradientDarkColors
 import com.junkfood.seal.util.DatabaseUtil
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
+import com.junkfood.seal.util.GalleryDlEngine
+import com.junkfood.seal.util.GalleryDlStore
 import java.io.File
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
@@ -200,6 +203,7 @@ fun NewHomePage(
     onNavigateToVideoInfoDownload: () -> Unit = {},
     onNavigateToThumbnailDownload: () -> Unit = {},
     onNavigateToCommentDownload: () -> Unit = {},
+    onNavigateToGalleryDl: () -> Unit = {},
     dialogViewModel: DownloadDialogViewModel,
     downloader: DownloaderV2 = koinInject(),
 ) {
@@ -765,7 +769,7 @@ fun NewHomePage(
                 }
             }
 
-            // Quick-access row for the 4 More Tools — icon-only, no labels/section header per
+            // Quick-access row for the 5 More Tools — icon-only, no labels/section header per
             // design intent, so it reads as a native strip of shortcuts rather than a separate
             // "section" bolted onto the home screen.
             item {
@@ -774,6 +778,14 @@ fun NewHomePage(
                     onVideoInfoDownload = onNavigateToVideoInfoDownload,
                     onCommentDownload = onNavigateToCommentDownload,
                     onBatchUrlImport = onNavigateToBatchUrlImport,
+                    onGalleryDl = onNavigateToGalleryDl,
+                )
+            }
+
+            item {
+                GalleryDlHomeCard(
+                    refreshKey = lifecycleRefreshTrigger,
+                    onClick = onNavigateToGalleryDl,
                 )
             }
             
@@ -2668,9 +2680,118 @@ fun AnimatedGlowingPlus() {
     )
 }
 
+@Composable
+private fun GalleryDlHomeCard(
+    refreshKey: Int,
+    onClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    val engineVersion = remember(refreshKey) { GalleryDlEngine.installedVersion(context) }
+    val queue = remember(refreshKey) { GalleryDlStore.loadQueue(context) }
+    val history = remember(refreshKey) { GalleryDlStore.loadHistory(context) }
+    val pending = queue.count { it.state == "pending" || it.state == "failed" }
+    val completed = history.count { it.success }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier =
+                        Modifier.size(46.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(23.dp),
+                    )
+                }
+                Spacer(Modifier.size(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Gallery DL",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text =
+                            engineVersion?.let { "gallery-dl $it • Engine ready" }
+                                ?: "Gallery downloader • Engine setup required",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Icon(
+                    Icons.Outlined.FileDownload,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                GalleryHomeMetric(
+                    label = "Pending",
+                    value = pending.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                GalleryHomeMetric(
+                    label = "Completed",
+                    value = completed.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                GalleryHomeMetric(
+                    label = "Engine",
+                    value = if (engineVersion != null) "Ready" else "Setup",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GalleryHomeMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier =
+            modifier.clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+                .padding(horizontal = 10.dp, vertical = 9.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 /**
- * Quick-access row for the 4 More Tools (Batch URL Import, Thumbnail Download, Video Info
- * Download, Comment Download), placed between the KirinDownloader branding and the URL input field.
+ * Quick-access row for the 5 More Tools (Batch URL Import, Thumbnail Download, Video Info
+ * Download, Comment Download, Gallery DL), placed between the KirinDownloader branding and the URL input field.
  *
  * Icon-only by design — no labels/section header — so it reads as a native strip of shortcuts
  * baked into the home screen rather than a bolted-on section. Colors reuse the same
@@ -2691,6 +2812,7 @@ private fun QuickToolsRow(
     onVideoInfoDownload: () -> Unit,
     onCommentDownload: () -> Unit,
     onBatchUrlImport: () -> Unit,
+    onGalleryDl: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tools = remember(
@@ -2698,6 +2820,7 @@ private fun QuickToolsRow(
         onThumbnailDownload,
         onVideoInfoDownload,
         onCommentDownload,
+        onGalleryDl,
     ) {
         listOf(
             QuickTool(
@@ -2723,6 +2846,12 @@ private fun QuickToolsRow(
                 labelRes = R.string.comment_download,
                 tint = { ThemedIconColors.primary },
                 onClick = onCommentDownload,
+            ),
+            QuickTool(
+                icon = Icons.Outlined.AutoAwesome,
+                labelRes = R.string.gallery_dl,
+                tint = { ThemedIconColors.secondary },
+                onClick = onGalleryDl,
             ),
         )
     }

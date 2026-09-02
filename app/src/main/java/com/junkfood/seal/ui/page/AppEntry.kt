@@ -186,6 +186,11 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                                 launchSingleTop = true
                             }
                         },
+                        onNavigateToGalleryDl = {
+                            navController.navigate(Route.GALLERY_DL) {
+                                launchSingleTop = true
+                            }
+                        },
                     )
                 }
                 animatedComposable(Route.DOWNLOADS) { VideoListPage { onNavigateBack() } }
