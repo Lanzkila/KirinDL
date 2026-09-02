@@ -240,12 +240,53 @@ object DownloadUtil {
 
     // KirinDL Bilibili download profile.
     //
-    // Bilibili commonly exposes DASH streams. When the global concurrent-fragment
-    // setting is still at its conservative value, use a faster native fragmented
-    // download profile only for Bilibili. Other extractors keep their existing
-    // settings and explicit user values are always respected.
+    // Bilibili commonly exposes DASH streams, so KirinDL keeps a dedicated transfer
+    // profile for Bilibili/b23.tv. Other extractors continue using the normal global
+    // concurrent-fragment and Aria2 preferences without any profile override.
     private const val BILIBILI_AUTO_CONCURRENT_FRAGMENTS = 8
-    private const val BILIBILI_ARIA2_CONNECTION_CAP = 8
+    private const val BILIBILI_BALANCED_CONCURRENT_FRAGMENTS = 4
+    private const val BILIBILI_FAST_CONCURRENT_FRAGMENTS = 12
+
+    private data class BilibiliSpeedProfile(
+        val concurrentFragments: Int,
+        val aria2ConnectionCap: Int,
+        val socketTimeoutSeconds: Int,
+    )
+
+    private fun getBilibiliSpeedProfile(
+        mode: Int,
+        customFragments: Int,
+    ): BilibiliSpeedProfile {
+        val safeCustomFragments =
+            customFragments.takeIf { it == 1 || it == 4 || it == 8 || it == 12 || it == 16 } ?: 8
+
+        return when (mode) {
+            BILIBILI_SPEED_BALANCED ->
+                BilibiliSpeedProfile(
+                    concurrentFragments = BILIBILI_BALANCED_CONCURRENT_FRAGMENTS,
+                    aria2ConnectionCap = BILIBILI_BALANCED_CONCURRENT_FRAGMENTS,
+                    socketTimeoutSeconds = 25,
+                )
+            BILIBILI_SPEED_FAST ->
+                BilibiliSpeedProfile(
+                    concurrentFragments = BILIBILI_FAST_CONCURRENT_FRAGMENTS,
+                    aria2ConnectionCap = BILIBILI_FAST_CONCURRENT_FRAGMENTS,
+                    socketTimeoutSeconds = 20,
+                )
+            BILIBILI_SPEED_CUSTOM ->
+                BilibiliSpeedProfile(
+                    concurrentFragments = safeCustomFragments,
+                    aria2ConnectionCap = safeCustomFragments,
+                    socketTimeoutSeconds = 20,
+                )
+            else ->
+                BilibiliSpeedProfile(
+                    concurrentFragments = BILIBILI_AUTO_CONCURRENT_FRAGMENTS,
+                    aria2ConnectionCap = BILIBILI_AUTO_CONCURRENT_FRAGMENTS,
+                    socketTimeoutSeconds = 20,
+                )
+        }
+    }
 
     private fun isBilibiliUrl(url: String): Boolean {
         val host =
@@ -487,6 +528,9 @@ object DownloadUtil {
         val mergeAudioStream: Boolean,
         val mergeToMkv: Boolean,
         val downloadDocs: Boolean = false,
+        // Defaults keep older serialized/queued tasks compatible after this update.
+        val bilibiliSpeedMode: Int = BILIBILI_SPEED_AUTO,
+        val bilibiliCustomFragments: Int = 8,
     ) {
         companion object {
             val EMPTY =
@@ -600,6 +644,8 @@ object DownloadUtil {
                     mergeAudioStream = false,
                     mergeToMkv =
                         (downloadSubtitle && embedSubtitle) || MERGE_OUTPUT_MKV.getBoolean(),
+                    bilibiliSpeedMode = BILIBILI_SPEED_MODE.getInt(),
+                    bilibiliCustomFragments = BILIBILI_CUSTOM_FRAGMENTS.getInt(),
                 )
             }
         }
@@ -1273,33 +1319,31 @@ object DownloadUtil {
 
                     // aria2c is scoped to contiguous protocols (see enableAria2c), so
                     // concurrent fragments can run alongside it for DASH/HLS streams.
-                    //
-                    // Bilibili profile:
-                    // - Auto boost to 8 fragments when the existing value is 0/1.
-                    // - Respect any explicit user value above 1.
-                    // - Cap direct aria2 connections at 8 for Bilibili CDN endpoints.
-                    val effectiveConcurrentFragments =
-                        if (isBilibili && concurrentFragments <= 1) {
-                            BILIBILI_AUTO_CONCURRENT_FRAGMENTS
+                    // Bilibili gets its own profile; all other sites keep the global values.
+                    val bilibiliProfile =
+                        if (isBilibili) {
+                            getBilibiliSpeedProfile(
+                                mode = bilibiliSpeedMode,
+                                customFragments = bilibiliCustomFragments,
+                            )
                         } else {
-                            concurrentFragments
+                            null
                         }
+                    val effectiveConcurrentFragments =
+                        bilibiliProfile?.concurrentFragments ?: concurrentFragments
 
                     if (aria2c) {
-                        enableAria2c(
-                            connectionCap =
-                                if (isBilibili) BILIBILI_ARIA2_CONNECTION_CAP else null
-                        )
+                        enableAria2c(connectionCap = bilibiliProfile?.aria2ConnectionCap)
                     }
 
                     if (effectiveConcurrentFragments > 1) {
                         addOption("--concurrent-fragments", effectiveConcurrentFragments)
                     }
 
-                    // Bilibili/CDN routes can occasionally be slow to establish.
-                    // Keep this timeout scoped to Bilibili rather than changing all sites.
-                    if (isBilibili) {
-                        addOption("--socket-timeout", "20")
+                    // Keep timeout tuning site-scoped. Balanced gets extra patience on
+                    // slower Bilibili routes while Auto/Fast/Custom use the normal 20s.
+                    bilibiliProfile?.let { profile ->
+                        addOption("--socket-timeout", profile.socketTimeoutSeconds)
                     }
 
                     if (extractAudio || (videoInfo.vcodec == "none")) {

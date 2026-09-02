@@ -45,6 +45,12 @@ import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.page.security.LockScreen
 import com.junkfood.seal.util.AuthenticationManager
 import com.junkfood.seal.util.ARIA2C_CONNECTIONS
+import com.junkfood.seal.util.BILIBILI_CUSTOM_FRAGMENTS
+import com.junkfood.seal.util.BILIBILI_SPEED_AUTO
+import com.junkfood.seal.util.BILIBILI_SPEED_BALANCED
+import com.junkfood.seal.util.BILIBILI_SPEED_CUSTOM
+import com.junkfood.seal.util.BILIBILI_SPEED_FAST
+import com.junkfood.seal.util.BILIBILI_SPEED_MODE
 import com.junkfood.seal.util.FORMAT_LIST_VIEW
 import com.junkfood.seal.util.MAX_CONCURRENT_DOWNLOADS
 import com.junkfood.seal.util.NETWORK_ANY
@@ -91,6 +97,20 @@ fun SealPlusExtrasPage(
     var showSponsorFrequencyDialog by remember { mutableStateOf(false) }
     var notificationErrorSound by remember { mutableStateOf(NOTIFICATION_ERROR_SOUND.getBoolean()) }
     var formatListView by remember { mutableStateOf(FORMAT_LIST_VIEW.getBoolean()) }
+
+    val bilibiliFragmentOptions = remember { listOf(1, 4, 8, 12, 16) }
+    var bilibiliSpeedMode by remember {
+        mutableStateOf(BILIBILI_SPEED_MODE.getInt().coerceIn(BILIBILI_SPEED_AUTO, BILIBILI_SPEED_CUSTOM))
+    }
+    var bilibiliCustomFragments by remember {
+        mutableStateOf(
+            BILIBILI_CUSTOM_FRAGMENTS.getInt().let { saved ->
+                if (saved in bilibiliFragmentOptions) saved else 8
+            }
+        )
+    }
+    var showBilibiliSpeedDialog by remember { mutableStateOf(false) }
+    var showBilibiliFragmentsDialog by remember { mutableStateOf(false) }
     
     // Authentication state for AppLock settings
     var showAuthScreen by remember { mutableStateOf(false) }
@@ -285,6 +305,42 @@ fun SealPlusExtrasPage(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+
+            item {
+                PreferenceSubtitle(text = "Bilibili")
+            }
+
+            item {
+                PreferenceItem(
+                    title = "Bilibili Speed Mode",
+                    description =
+                        when (bilibiliSpeedMode) {
+                            BILIBILI_SPEED_BALANCED ->
+                                "Balanced • 4 fragments • steadier on weaker routes"
+                            BILIBILI_SPEED_FAST ->
+                                "Fast • 12 fragments • higher parallelism"
+                            BILIBILI_SPEED_CUSTOM ->
+                                "Custom • $bilibiliCustomFragments fragments"
+                            else ->
+                                "Auto • 8 fragments • recommended"
+                        } + " • Bilibili only",
+                    icon = Icons.Rounded.NetworkCheck,
+                    onClick = { showBilibiliSpeedDialog = true },
+                )
+            }
+
+            if (bilibiliSpeedMode == BILIBILI_SPEED_CUSTOM) {
+                item {
+                    PreferenceItem(
+                        title = "Bilibili concurrent fragments",
+                        description =
+                            "$bilibiliCustomFragments fragment${if (bilibiliCustomFragments == 1) "" else "s"} • " +
+                                "Aria2 profile cap follows this value; the global Aria2 limit still applies",
+                        icon = Icons.Outlined.SignalCellular4Bar,
+                        onClick = { showBilibiliFragmentsDialog = true },
+                    )
                 }
             }
 
@@ -520,6 +576,31 @@ fun SealPlusExtrasPage(
             }
         }
 
+        if (showBilibiliSpeedDialog) {
+            BilibiliSpeedModeDialog(
+                currentSelection = bilibiliSpeedMode,
+                onDismissRequest = { showBilibiliSpeedDialog = false },
+                onConfirm = { selected ->
+                    BILIBILI_SPEED_MODE.updateInt(selected)
+                    bilibiliSpeedMode = selected
+                    showBilibiliSpeedDialog = false
+                },
+            )
+        }
+
+        if (showBilibiliFragmentsDialog) {
+            BilibiliFragmentsDialog(
+                currentSelection = bilibiliCustomFragments,
+                options = bilibiliFragmentOptions,
+                onDismissRequest = { showBilibiliFragmentsDialog = false },
+                onConfirm = { selected ->
+                    BILIBILI_CUSTOM_FRAGMENTS.updateInt(selected)
+                    bilibiliCustomFragments = selected
+                    showBilibiliFragmentsDialog = false
+                },
+            )
+        }
+
         if (showSponsorFrequencyDialog) {
             SponsorFrequencyDialog(
                 currentSelection = sponsorDialogFrequency,
@@ -544,6 +625,111 @@ fun SealPlusExtrasPage(
             )
         }
     }
+}
+
+@Composable
+private fun BilibiliSpeedModeDialog(
+    currentSelection: Int,
+    onDismissRequest: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    var selected by remember { mutableStateOf(currentSelection) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismissRequest,
+        icon = {
+            Icon(
+                Icons.Rounded.NetworkCheck,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        title = { Text("Bilibili Speed Mode") },
+        text = {
+            Column {
+                Text(
+                    text =
+                        "This profile only changes Bilibili/b23.tv downloads. " +
+                            "Other sites keep your normal fragment and Aria2 settings.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                PreferenceSingleChoiceItem(
+                    text = "Auto — 8 fragments (recommended)",
+                    selected = selected == BILIBILI_SPEED_AUTO,
+                    onClick = { selected = BILIBILI_SPEED_AUTO },
+                )
+                PreferenceSingleChoiceItem(
+                    text = "Balanced — 4 fragments",
+                    selected = selected == BILIBILI_SPEED_BALANCED,
+                    onClick = { selected = BILIBILI_SPEED_BALANCED },
+                )
+                PreferenceSingleChoiceItem(
+                    text = "Fast — 12 fragments",
+                    selected = selected == BILIBILI_SPEED_FAST,
+                    onClick = { selected = BILIBILI_SPEED_FAST },
+                )
+                PreferenceSingleChoiceItem(
+                    text = "Custom — choose 1 / 4 / 8 / 12 / 16",
+                    selected = selected == BILIBILI_SPEED_CUSTOM,
+                    onClick = { selected = BILIBILI_SPEED_CUSTOM },
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onConfirm(selected) }) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun BilibiliFragmentsDialog(
+    currentSelection: Int,
+    options: List<Int>,
+    onDismissRequest: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    var selected by remember { mutableStateOf(currentSelection) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Bilibili concurrent fragments") },
+        text = {
+            Column {
+                Text(
+                    text =
+                        "Higher values request more fragments in parallel. " +
+                            "This does not change the global setting for other sites.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                options.forEach { value ->
+                    PreferenceSingleChoiceItem(
+                        text = "$value fragment${if (value == 1) "" else "s"}",
+                        selected = selected == value,
+                        onClick = { selected = value },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onConfirm(selected) }) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismissRequest) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable
