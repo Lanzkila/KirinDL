@@ -78,6 +78,8 @@ import com.junkfood.seal.util.AUDIO_CONVERSION_FORMAT
 import com.junkfood.seal.util.AUDIO_CONVERT
 import com.junkfood.seal.util.AUDIO_FORMAT
 import com.junkfood.seal.util.AUDIO_QUALITY
+import com.junkfood.seal.util.AudioQualityOptions
+import com.junkfood.seal.util.AudioConversionOptions
 import com.junkfood.seal.util.CONVERT_M4A
 import com.junkfood.seal.util.CONVERT_MP3
 import com.junkfood.seal.util.CONVERT_SUBTITLE
@@ -127,13 +129,16 @@ fun VideoResolutionSelectField(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            for (i in RES_HIGHEST..RES_LOWEST) DropdownMenuItem(
-                text = { Text(PreferenceStrings.getVideoResolutionDesc(i)) },
-                onClick = {
-                    onSelect(i)
-                    expanded = false
-                },
-            )
+            val resolutionOptions = listOf(RES_HIGHEST, 8, 9, 1, 2, 3, 4, 5, 6, 10, 11, RES_LOWEST)
+            resolutionOptions.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(PreferenceStrings.getVideoResolutionDesc(option)) },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }
@@ -310,7 +315,7 @@ private fun AudioFormatSelectField(
                     },
                 )
             }
-            for (i in CONVERT_MP3..CONVERT_M4A) {
+            for (i in AudioConversionOptions) {
                 DropdownMenuItem(
                     text = { Text(PreferenceStrings.getAudioConvertDesc(i)) },
                     onClick = {
@@ -356,7 +361,7 @@ private fun AudioQualitySelectField(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            for (i in NOT_SPECIFIED..ULTRA_LOW) {
+            for (i in AudioQualityOptions) {
                 DropdownMenuItem(
                     text = { Text(PreferenceStrings.getAudioQualityDesc(i)) },
                     onClick = {
@@ -506,7 +511,7 @@ fun AudioConversionDialog(
                     text = stringResource(R.string.convert_audio_format_desc),
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                for (i in CONVERT_MP3..CONVERT_M4A) DialogSingleChoiceItem(
+                for (i in AudioConversionOptions) DialogSingleChoiceItem(
                     modifier = Modifier,
                     text = PreferenceStrings.getAudioConvertDesc(i),
                     selected = audioFormat == i,
@@ -549,7 +554,7 @@ fun AudioConversionQuickSettingsDialog(onDismissRequest: () -> Unit, onConfirm: 
                 ) {
                     convertAudio = false
                 }
-                for (i in CONVERT_MP3..CONVERT_M4A) DialogSingleChoiceItem(
+                for (i in AudioConversionOptions) DialogSingleChoiceItem(
                     modifier = Modifier,
                     text = PreferenceStrings.getAudioConvertDesc(i),
                     selected = audioFormat == i && convertAudio,
@@ -666,7 +671,7 @@ fun AudioQualityDialog(onDismissRequest: () -> Unit) {
                     text = stringResource(R.string.audio_quality_desc),
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                for (i in NOT_SPECIFIED..ULTRA_LOW) DialogSingleChoiceItem(
+                for (i in AudioQualityOptions) DialogSingleChoiceItem(
                     modifier = Modifier,
                     text = PreferenceStrings.getAudioQualityDesc(i),
                     selected = audioQuality == i,

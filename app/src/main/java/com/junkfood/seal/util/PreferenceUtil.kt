@@ -45,6 +45,11 @@ const val AUDIO_FORMAT = "audio_format_preferred"
 const val AUDIO_QUALITY = "audio_quality"
 const val VIDEO_FORMAT = "video_format"
 const val VIDEO_QUALITY = "quality"
+const val AUDIO_CODEC = "audio_codec_preferred"
+const val AUDIO_COVER_MODE = "audio_cover_mode"
+const val AUDIO_COVER_FORMAT = "audio_cover_format"
+const val VIDEO_CODEC = "video_codec_preferred"
+const val VIDEO_CONTAINER = "video_container_preferred"
 
 const val FORMAT_SORTING = "format_sorting"
 const val SORTING_FIELDS = "sorting_fields"
@@ -101,6 +106,8 @@ const val RATE_LIMIT = "rate_limit"
 const val MAX_RATE = "max_rate"
 private const val HIGH_CONTRAST = "high_contrast"
 private const val GRADIENT_DARK_MODE = "gradient_dark_mode"
+private const val KIRIN_BODY_COLOR_PRESET = "kirin_body_color_preset"
+private const val KIRIN_BUTTON_COLOR_PRESET = "kirin_button_color_preset"
 const val DISABLE_PREVIEW = "disable_preview"
 const val PRIVATE_DIRECTORY = "private_directory"
 const val CROP_ARTWORK = "crop_artwork"
@@ -133,6 +140,10 @@ const val MAX_CONCURRENT_DOWNLOADS = "max_concurrent_downloads"
 
 // Format Selection Layout
 const val FORMAT_LIST_VIEW = "format_list_view"
+const val HOME_RECENT_LIMIT = "home_recent_limit"
+const val HOME_TRANSFER_DETAILS = "home_transfer_details"
+const val HOME_INPUT_ANIMATION = "home_input_animation"
+const val HOME_QUICK_TOOLS = "home_quick_tools"
 
 // When true, the format-selection screen only lists MP4-family formats
 // (mp4 video / m4a audio). Falls back to showing all formats if a site has none.
@@ -168,6 +179,9 @@ const val SPONSOR_FREQ_MONTHLY = 2
 const val YT_DLP_UPDATE_CHANNEL = "yt-dlp_update_channel"
 const val YT_DLP_UPDATE_TIME = "yt-dlp_last_update"
 const val YT_DLP_UPDATE_INTERVAL = "yt-dlp_update_interval"
+const val GALLERY_DL_AUTO_UPDATE = "gallery_dl_auto_update"
+const val GALLERY_DL_UPDATE_TIME = "gallery_dl_last_update"
+const val GALLERY_DL_UPDATE_INTERVAL = "gallery_dl_update_interval"
 
 private const val INTERVAL_DAY = 86_400_000L
 private const val INTERVAL_WEEK = 86_400_000L * 7
@@ -216,11 +230,58 @@ const val FORMAT_QUALITY = 2
 
 const val CONVERT_MP3 = 0
 const val CONVERT_M4A = 1
+const val CONVERT_OPUS = 2
+const val CONVERT_FLAC = 3
+const val CONVERT_WAV = 4
+const val CONVERT_VORBIS = 5
+const val CONVERT_AAC = 6
+const val CONVERT_ALAC = 7
 
-const val HIGH = 1
-const val MEDIUM = 2
-const val LOW = 3
-const val ULTRA_LOW = 4
+// Keep the original 1..4 values stable for old queued tasks, then extend around them.
+const val HIGH = 1          // 192 kbps
+const val MEDIUM = 2        // 128 kbps
+const val LOW = 3           // 64 kbps
+const val ULTRA_LOW = 4     // 32 kbps
+const val AUDIO_320 = 5
+const val AUDIO_256 = 6
+const val AUDIO_160 = 7
+const val AUDIO_96 = 8
+const val AUDIO_LOWEST = 9
+
+val AudioQualityOptions =
+    listOf(NOT_SPECIFIED, AUDIO_320, AUDIO_256, HIGH, AUDIO_160, MEDIUM, AUDIO_96, LOW, ULTRA_LOW, AUDIO_LOWEST)
+val AudioConversionOptions =
+    listOf(CONVERT_MP3, CONVERT_M4A, CONVERT_OPUS, CONVERT_FLAC, CONVERT_WAV, CONVERT_VORBIS, CONVERT_AAC, CONVERT_ALAC)
+
+const val AUDIO_CODEC_AUTO = 0
+const val AUDIO_CODEC_AAC = 1
+const val AUDIO_CODEC_OPUS = 2
+const val AUDIO_CODEC_VORBIS = 3
+const val AUDIO_CODEC_MP3 = 4
+const val AUDIO_CODEC_FLAC = 5
+const val AUDIO_CODEC_ALAC = 6
+
+const val AUDIO_COVER_LEGACY = 0
+const val AUDIO_COVER_NONE = 1
+const val AUDIO_COVER_EMBED = 2
+const val AUDIO_COVER_SAVE = 3
+const val AUDIO_COVER_BOTH = 4
+
+const val AUDIO_COVER_FORMAT_AUTO = 0
+const val AUDIO_COVER_FORMAT_JPG = 1
+const val AUDIO_COVER_FORMAT_PNG = 2
+const val AUDIO_COVER_FORMAT_WEBP = 3
+
+const val VIDEO_CODEC_AUTO = 0
+const val VIDEO_CODEC_H264 = 1
+const val VIDEO_CODEC_VP9 = 2
+const val VIDEO_CODEC_AV1 = 3
+const val VIDEO_CODEC_HEVC = 4
+
+const val VIDEO_CONTAINER_AUTO = 0
+const val VIDEO_CONTAINER_MP4 = 1
+const val VIDEO_CONTAINER_WEBM = 2
+const val VIDEO_CONTAINER_MKV = 3
 
 const val RES_HIGHEST = 0
 const val RES_2160P = 1
@@ -273,6 +334,7 @@ private val BooleanPreferenceDefaults =
         CONFIGURE to true,
         CELLULAR_DOWNLOAD to false,
         YT_DLP_AUTO_UPDATE to true,
+        GALLERY_DL_AUTO_UPDATE to true,
         NOTIFICATION to true,
         EMBED_METADATA to true,
         USE_CUSTOM_AUDIO_PRESET to false,
@@ -284,6 +346,9 @@ private val BooleanPreferenceDefaults =
         NOTIFICATION_ERROR_SOUND to true,
         ONBOARDING_COMPLETED to false,
         FORMAT_LIST_VIEW to false,
+        HOME_TRANSFER_DETAILS to true,
+        HOME_INPUT_ANIMATION to true,
+        HOME_QUICK_TOOLS to true,
         FORMAT_MP4_ONLY to true,
         DOWNLOAD_DOCS to false,
         USER_AGENT to true,
@@ -300,6 +365,14 @@ private val IntPreferenceDefaults =
         AUDIO_CONVERSION_FORMAT to NOT_SPECIFIED,
         VIDEO_QUALITY to NOT_SPECIFIED,
         VIDEO_FORMAT to FORMAT_QUALITY,
+        AUDIO_CODEC to AUDIO_CODEC_AUTO,
+        AUDIO_COVER_MODE to AUDIO_COVER_LEGACY,
+        AUDIO_COVER_FORMAT to AUDIO_COVER_FORMAT_AUTO,
+        VIDEO_CODEC to VIDEO_CODEC_AUTO,
+        VIDEO_CONTAINER to VIDEO_CONTAINER_AUTO,
+        KIRIN_BODY_COLOR_PRESET to 0,
+        KIRIN_BUTTON_COLOR_PRESET to 0,
+        HOME_RECENT_LIMIT to 5,
         UPDATE_CHANNEL to STABLE,
         SHOW_SPONSOR_MSG to 0,
         CONVERT_SUBTITLE to NOT_SPECIFIED,
@@ -317,6 +390,8 @@ private val IntPreferenceDefaults =
 
 private val LongPreferenceDefaults = mapOf(
     YT_DLP_UPDATE_INTERVAL to DEFAULT_INTERVAL,
+    GALLERY_DL_UPDATE_INTERVAL to DEFAULT_INTERVAL,
+    GALLERY_DL_UPDATE_TIME to 0L,
     SPONSOR_DIALOG_LAST_SHOWN to 0L,
 )
 
@@ -499,6 +574,8 @@ object PreferenceUtil {
         val seedColor: Int = DEFAULT_SEED_COLOR,
         val paletteStyleIndex: Int = 0,
         val isGradientDarkModeEnabled: Boolean = false,
+        val bodyColorPreset: Int = 0,
+        val buttonColorPreset: Int = 0,
     )
 
     fun getMaxDownloadRate(): String = MAX_RATE.getString()
@@ -516,6 +593,8 @@ object PreferenceUtil {
                 seedColor = kv.decodeInt(THEME_COLOR, DEFAULT_SEED_COLOR),
                 paletteStyleIndex = kv.decodeInt(PALETTE_STYLE, 0),
                 isGradientDarkModeEnabled = kv.decodeBool(GRADIENT_DARK_MODE, true),
+                bodyColorPreset = kv.decodeInt(KIRIN_BODY_COLOR_PRESET, 0),
+                buttonColorPreset = kv.decodeInt(KIRIN_BUTTON_COLOR_PRESET, 0),
             )
         )
     val AppSettingsStateFlow = mutableAppSettingsStateFlow.asStateFlow()
@@ -547,6 +626,20 @@ object PreferenceUtil {
             }
             kv.encode(THEME_COLOR, colorArgb)
             kv.encode(PALETTE_STYLE, paletteStyleIndex)
+        }
+    }
+
+    fun modifyBodyColorPreset(index: Int) {
+        applicationScope.launch(Dispatchers.IO) {
+            mutableAppSettingsStateFlow.update { it.copy(bodyColorPreset = index) }
+            kv.encode(KIRIN_BODY_COLOR_PRESET, index)
+        }
+    }
+
+    fun modifyButtonColorPreset(index: Int) {
+        applicationScope.launch(Dispatchers.IO) {
+            mutableAppSettingsStateFlow.update { it.copy(buttonColorPreset = index) }
+            kv.encode(KIRIN_BUTTON_COLOR_PRESET, index)
         }
     }
 
@@ -634,20 +727,78 @@ object PreferenceStrings {
     fun getAudioQualityDesc(audioQualityCode: Int = PreferenceUtil.getAudioQuality()): String =
         when (audioQualityCode) {
             NOT_SPECIFIED -> stringResource(R.string.best_quality)
+            AUDIO_320 -> "320 Kbps"
+            AUDIO_256 -> "256 Kbps"
             HIGH -> "192 Kbps"
+            AUDIO_160 -> "160 Kbps"
             MEDIUM -> "128 Kbps"
+            AUDIO_96 -> "96 Kbps"
             LOW -> "64 Kbps"
             ULTRA_LOW -> "32 Kbps"
-            else -> stringResource(R.string.lowest_bitrate)
+            AUDIO_LOWEST -> stringResource(R.string.lowest_bitrate)
+            else -> stringResource(R.string.best_quality)
         }
 
     @Composable
     fun getAudioConvertDesc(audioFormatCode: Int = PreferenceUtil.getAudioConvertFormat()): String {
-        return when (audioFormatCode) {
-            0 -> stringResource(R.string.convert_to).format("mp3")
-            else -> stringResource(R.string.convert_to).format("m4a")
-        }
+        val format =
+            when (audioFormatCode) {
+                CONVERT_M4A -> "M4A"
+                CONVERT_OPUS -> "OPUS"
+                CONVERT_FLAC -> "FLAC"
+                CONVERT_WAV -> "WAV"
+                CONVERT_VORBIS -> "VORBIS"
+                CONVERT_AAC -> "AAC"
+                CONVERT_ALAC -> "ALAC"
+                else -> "MP3"
+            }
+        return stringResource(R.string.convert_to).format(format)
     }
+
+    fun getAudioCodecDesc(code: Int): String =
+        when (code) {
+            AUDIO_CODEC_AAC -> "AAC"
+            AUDIO_CODEC_OPUS -> "Opus"
+            AUDIO_CODEC_VORBIS -> "Vorbis"
+            AUDIO_CODEC_MP3 -> "MP3"
+            AUDIO_CODEC_FLAC -> "FLAC"
+            AUDIO_CODEC_ALAC -> "ALAC"
+            else -> "Auto / source best"
+        }
+
+    fun getAudioCoverModeDesc(code: Int): String =
+        when (code) {
+            AUDIO_COVER_NONE -> "No cover"
+            AUDIO_COVER_EMBED -> "Embed cover"
+            AUDIO_COVER_SAVE -> "Save cover file"
+            AUDIO_COVER_BOTH -> "Embed + save cover"
+            else -> "Automatic (current behavior)"
+        }
+
+    fun getAudioCoverFormatDesc(code: Int): String =
+        when (code) {
+            AUDIO_COVER_FORMAT_JPG -> "JPG"
+            AUDIO_COVER_FORMAT_PNG -> "PNG"
+            AUDIO_COVER_FORMAT_WEBP -> "WebP"
+            else -> "Auto / source format"
+        }
+
+    fun getVideoCodecDesc(code: Int): String =
+        when (code) {
+            VIDEO_CODEC_H264 -> "H.264 / AVC"
+            VIDEO_CODEC_VP9 -> "VP9"
+            VIDEO_CODEC_AV1 -> "AV1"
+            VIDEO_CODEC_HEVC -> "H.265 / HEVC"
+            else -> "Auto / profile default"
+        }
+
+    fun getVideoContainerDesc(code: Int): String =
+        when (code) {
+            VIDEO_CONTAINER_MP4 -> "MP4"
+            VIDEO_CONTAINER_WEBM -> "WebM"
+            VIDEO_CONTAINER_MKV -> "MKV"
+            else -> "Auto / source best"
+        }
 
     @Composable
     fun getVideoFormatDescComp(videoFormatCode: Int = PreferenceUtil.getVideoFormat()): String {
@@ -712,10 +863,18 @@ object PreferenceStrings {
                 }
 
                 convertAudio -> {
-                    when (audioConvertFormat) {
-                        CONVERT_MP3 -> stringResource(R.string.convert_to, "MP3")
-                        else -> stringResource(R.string.convert_to, "M4A")
-                    }
+                    val name =
+                        when (audioConvertFormat) {
+                            CONVERT_M4A -> "M4A"
+                            CONVERT_OPUS -> "OPUS"
+                            CONVERT_FLAC -> "FLAC"
+                            CONVERT_WAV -> "WAV"
+                            CONVERT_VORBIS -> "VORBIS"
+                            CONVERT_AAC -> "AAC"
+                            CONVERT_ALAC -> "ALAC"
+                            else -> "MP3"
+                        }
+                    stringResource(R.string.convert_to, name)
                 }
 
                 else -> {
@@ -728,13 +887,21 @@ object PreferenceStrings {
                     val preferredQuality =
                         when (audioQuality) {
                             NOT_SPECIFIED -> stringResource(R.string.best_quality)
+                            AUDIO_320 -> "320 Kbps"
+                            AUDIO_256 -> "256 Kbps"
                             HIGH -> "192 Kbps"
+                            AUDIO_160 -> "160 Kbps"
                             MEDIUM -> "128 Kbps"
+                            AUDIO_96 -> "96 Kbps"
                             LOW -> "64 Kbps"
                             ULTRA_LOW -> "32 Kbps"
-                            else -> stringResource(R.string.lowest_bitrate)
+                            AUDIO_LOWEST -> stringResource(R.string.lowest_bitrate)
+                            else -> stringResource(R.string.best_quality)
                         }
-                    listOfNotNull(preferredFormat, preferredQuality).joinToString(separator = ", ")
+                    val preferredCodec =
+                        audioCodec.takeIf { it != AUDIO_CODEC_AUTO }?.let(::getAudioCodecDesc)
+                    listOfNotNull(preferredFormat, preferredCodec, preferredQuality)
+                        .joinToString(separator = ", ")
                 }
             }
         }
@@ -759,7 +926,12 @@ object PreferenceStrings {
                             ),
                         )
                     val preferredResolution = getVideoResolutionDesc(videoResolution)
-                    listOf(preferredFormat, preferredResolution).joinToString(separator = ", ")
+                    val preferredCodec =
+                        videoCodec.takeIf { it != VIDEO_CODEC_AUTO }?.let(::getVideoCodecDesc)
+                    val preferredContainer =
+                        videoContainer.takeIf { it != VIDEO_CONTAINER_AUTO }?.let(::getVideoContainerDesc)
+                    listOfNotNull(preferredFormat, preferredResolution, preferredCodec, preferredContainer)
+                        .joinToString(separator = ", ")
                 }
             }
         }

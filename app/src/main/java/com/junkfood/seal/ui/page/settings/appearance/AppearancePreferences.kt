@@ -28,7 +28,9 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +45,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +69,7 @@ import com.junkfood.seal.ui.component.PreferenceItem
 import com.junkfood.seal.ui.component.PreferenceSubtitle
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.component.PreferenceSwitchWithDivider
+import com.junkfood.seal.ui.component.PreferenceSingleChoiceItem
 import com.junkfood.seal.ui.page.downloadv2.ActionButton
 import com.junkfood.seal.ui.page.downloadv2.CardStateIndicator
 import com.junkfood.seal.ui.page.downloadv2.VideoCardV2
@@ -78,6 +82,7 @@ import com.junkfood.seal.util.STYLE_MONOCHROME
 import com.junkfood.seal.util.STYLE_TONAL_SPOT
 import com.junkfood.seal.util.paletteStyles
 import com.junkfood.seal.util.toDisplayName
+import com.junkfood.seal.ui.theme.KirinColorPresets
 import com.kyant.monet.LocalTonalPalettes
 import com.kyant.monet.PaletteStyle
 import com.kyant.monet.TonalPalettes
@@ -90,7 +95,7 @@ import java.util.Locale
 import kotlinx.coroutines.Job
 
 private val ColorList =
-    ((4..10) + (1..3)).map { it * 35.0 }.map { Color(Hct.from(it, 40.0, 40.0).toInt()) }
+    (0 until 12).map { it * 30.0 }.map { Color(Hct.from(it, 48.0, 42.0).toInt()) }
 
 private val DrawableList =
     listOf(R.drawable.sample, R.drawable.sample1, R.drawable.sample2, R.drawable.sample3)
@@ -109,6 +114,9 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     val image by remember(index) { mutableIntStateOf(DrawableList[index]) }
 
     val galleryTheme by GalleryDlThemePreference.style.collectAsState()
+    val appSettings by PreferenceUtil.AppSettingsStateFlow.collectAsState()
+    var showBodyColorDialog by remember { mutableStateOf(false) }
+    var showButtonColorDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -141,7 +149,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                 val pagerState =
                     rememberPagerState(
                         initialPage =
-                            if (LocalPaletteStyleIndex.current == STYLE_MONOCHROME) pageCount
+                            if (LocalPaletteStyleIndex.current == STYLE_MONOCHROME) pageCount - 1
                             else
                                 ColorList.indexOf(Color(LocalSeedColor.current)).run {
                                     if (this == -1) 0 else this
@@ -209,6 +217,24 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                         )
                     }
                 }
+                PreferenceSubtitle(text = "KirinDL Colors")
+                PreferenceItem(
+                    title = "App body color",
+                    description =
+                        KirinColorPresets.getOrNull(appSettings.bodyColorPreset)?.title
+                            ?: KirinColorPresets.first().title,
+                    icon = Icons.Outlined.Palette,
+                    onClick = { showBodyColorDialog = true },
+                )
+                PreferenceItem(
+                    title = "Buttons & accent color",
+                    description =
+                        KirinColorPresets.getOrNull(appSettings.buttonColorPreset)?.title
+                            ?: KirinColorPresets.first().title,
+                    icon = Icons.Outlined.Colorize,
+                    onClick = { showButtonColorDialog = true },
+                )
+
                 if (DynamicColors.isDynamicColorAvailable()) {
                     PreferenceSwitch(
                         title = stringResource(id = R.string.dynamic_color),
@@ -256,6 +282,55 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                 }
             }
         },
+    )
+
+    if (showBodyColorDialog) {
+        KirinColorPresetDialog(
+            title = "App body color",
+            selected = appSettings.bodyColorPreset,
+            onDismiss = { showBodyColorDialog = false },
+            onSelect = {
+                PreferenceUtil.modifyBodyColorPreset(it)
+                showBodyColorDialog = false
+            },
+        )
+    }
+    if (showButtonColorDialog) {
+        KirinColorPresetDialog(
+            title = "Buttons & accent color",
+            selected = appSettings.buttonColorPreset,
+            onDismiss = { showButtonColorDialog = false },
+            onSelect = {
+                PreferenceUtil.modifyButtonColorPreset(it)
+                showButtonColorDialog = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun KirinColorPresetDialog(
+    title: String,
+    selected: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                KirinColorPresets.forEachIndexed { index, preset ->
+                    PreferenceSingleChoiceItem(
+                        text = preset.title,
+                        selected = selected == index,
+                        onClick = { onSelect(index) },
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
 }
 

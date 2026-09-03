@@ -10,6 +10,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.LineBreak
@@ -17,6 +18,8 @@ import androidx.compose.ui.text.style.TextDirection
 import com.google.android.material.color.MaterialColors
 import com.junkfood.seal.ui.common.LocalFixedColorRoles
 import com.junkfood.seal.ui.common.LocalGradientDarkMode
+import com.junkfood.seal.ui.common.LocalBodyColorPreset
+import com.junkfood.seal.ui.common.LocalButtonColorPreset
 import com.kyant.monet.LocalTonalPalettes
 import com.kyant.monet.dynamicColorScheme
 
@@ -59,7 +62,7 @@ fun SealTheme(
         }
     }
 
-    val colorScheme =
+    val baseColorScheme =
         dynamicColorScheme(!darkTheme).run {
             when {
                 // Gradient Dark mode overrides all other themes
@@ -101,6 +104,48 @@ fun SealTheme(
                 )
                 else -> this
             }
+        }
+
+    val customBody = kirinBodyColor(LocalBodyColorPreset.current, darkTheme)
+    val customButton = kirinButtonColor(LocalButtonColorPreset.current, darkTheme)
+    val colorScheme =
+        baseColorScheme.run {
+            var result = this
+            customBody?.let { body ->
+                val onBody = readableOnColor(body)
+                val subtle = lerp(body, if (darkTheme) Color.White else Color.Black, 0.06f)
+                val elevated = lerp(body, if (darkTheme) Color.White else Color.Black, 0.11f)
+                result =
+                    result.copy(
+                        background = body,
+                        onBackground = onBody,
+                        surface = body,
+                        onSurface = onBody,
+                        surfaceVariant = subtle,
+                        onSurfaceVariant = onBody.copy(alpha = 0.78f),
+                        surfaceContainerLowest = body,
+                        surfaceContainerLow = subtle,
+                        surfaceContainer = subtle,
+                        surfaceContainerHigh = elevated,
+                        surfaceContainerHighest = elevated,
+                    )
+            }
+            customButton?.let { button ->
+                val onButton = readableOnColor(button)
+                val container = lerp(button, if (darkTheme) Color.Black else Color.White, 0.28f)
+                result =
+                    result.copy(
+                        primary = button,
+                        onPrimary = onButton,
+                        primaryContainer = container,
+                        onPrimaryContainer = readableOnColor(container),
+                        secondary = button,
+                        onSecondary = onButton,
+                        tertiary = button,
+                        onTertiary = onButton,
+                    )
+            }
+            result
         }
 
     val textStyle =

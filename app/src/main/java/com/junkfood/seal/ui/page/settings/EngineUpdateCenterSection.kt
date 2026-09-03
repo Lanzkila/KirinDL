@@ -34,11 +34,20 @@ import androidx.compose.ui.unit.dp
 import com.junkfood.seal.Downloader
 import com.junkfood.seal.util.GalleryDlEngine
 import com.junkfood.seal.util.PreferenceUtil.getInt
+import com.junkfood.seal.util.PreferenceUtil.getBoolean
+import com.junkfood.seal.util.PreferenceUtil.getLong
+import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.YT_DLP_NIGHTLY
 import com.junkfood.seal.util.YT_DLP_UPDATE_CHANNEL
 import com.junkfood.seal.util.YT_DLP_VERSION
+import com.junkfood.seal.util.YT_DLP_AUTO_UPDATE
+import com.junkfood.seal.util.YT_DLP_UPDATE_INTERVAL
+import com.junkfood.seal.util.GALLERY_DL_AUTO_UPDATE
+import com.junkfood.seal.util.GALLERY_DL_UPDATE_INTERVAL
+import com.junkfood.seal.util.PreferenceStrings.getUpdateIntervalText
+import com.junkfood.seal.ui.component.PreferenceSwitch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -62,6 +71,8 @@ internal fun EngineUpdateCenterSection(
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var lastChecked by remember { mutableStateOf<String?>(null) }
+    var ytdlpAutoUpdate by remember { mutableStateOf(YT_DLP_AUTO_UPDATE.getBoolean()) }
+    var galleryAutoUpdate by remember { mutableStateOf(GALLERY_DL_AUTO_UPDATE.getBoolean()) }
 
     val channelLabel =
         if (YT_DLP_UPDATE_CHANNEL.getInt() == YT_DLP_NIGHTLY) "Nightly" else "Stable"
@@ -95,10 +106,69 @@ internal fun EngineUpdateCenterSection(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Check and update yt-dlp + gallery-dl from one place.",
+                    "Automatic updates first, with manual controls kept for on-demand checks.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
+        ) {
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    "Automatic updates",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    "Recommended. Manual Check / Update buttons remain available below.",
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                )
+                PreferenceSwitch(
+                    title = "yt-dlp auto update",
+                    description =
+                        if (ytdlpAutoUpdate) {
+                            "$channelLabel • ${getUpdateIntervalText(YT_DLP_UPDATE_INTERVAL.getLong())}"
+                        } else "Disabled",
+                    icon = Icons.Outlined.CloudDownload,
+                    isChecked = ytdlpAutoUpdate,
+                    onClick = {
+                        ytdlpAutoUpdate = !ytdlpAutoUpdate
+                        YT_DLP_AUTO_UPDATE.updateBoolean(ytdlpAutoUpdate)
+                    },
+                )
+                PreferenceSwitch(
+                    title = "gallery-dl auto update",
+                    description =
+                        if (galleryAutoUpdate) {
+                            "${getUpdateIntervalText(GALLERY_DL_UPDATE_INTERVAL.getLong())} • installed engine only"
+                        } else "Disabled",
+                    icon = Icons.Outlined.CloudDownload,
+                    isChecked = galleryAutoUpdate,
+                    onClick = {
+                        galleryAutoUpdate = !galleryAutoUpdate
+                        GALLERY_DL_AUTO_UPDATE.updateBoolean(galleryAutoUpdate)
+                    },
+                )
+                OutlinedButton(
+                    onClick = onOpenYtdlpSettings,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                ) {
+                    Icon(Icons.Outlined.Settings, contentDescription = null)
+                    Spacer(Modifier.size(6.dp))
+                    Text("yt-dlp channel & cadence")
+                }
             }
         }
 

@@ -81,6 +81,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -150,6 +151,11 @@ import com.junkfood.seal.util.DatabaseUtil
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.GalleryDlBehaviorPreference
+import com.junkfood.seal.util.GalleryDlStore
+import com.junkfood.seal.util.HOME_RECENT_LIMIT
+import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
+import com.junkfood.seal.util.HOME_INPUT_ANIMATION
+import com.junkfood.seal.util.HOME_QUICK_TOOLS
 import java.io.File
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
@@ -161,6 +167,7 @@ import com.junkfood.seal.util.SPONSOR_FREQ_OFF
 import com.junkfood.seal.util.SPONSOR_FREQ_WEEKLY
 import com.junkfood.seal.util.BatteryUtil
 import com.junkfood.seal.util.PreferenceUtil.getInt
+import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.updateLong
 import androidx.compose.animation.core.LinearEasing
@@ -391,11 +398,15 @@ fun NewHomePage(
         localHiddenIds = localHiddenIds.intersect(currentIds)
     }
     
-    // Get recent 5 downloads (remove duplicates by video URL and path to prevent duplicate cards)
-    val recentFiveDownloads = remember(recentDownloads) {
+    // KirinDL Extras controls how many completed items Home keeps visible.
+    val homeRecentLimit = HOME_RECENT_LIMIT.getInt().coerceIn(3, 10)
+    val showTransferDetails = HOME_TRANSFER_DETAILS.getBoolean()
+    val animateUrlHints = HOME_INPUT_ANIMATION.getBoolean()
+    val showQuickTools = HOME_QUICK_TOOLS.getBoolean()
+    val recentFiveDownloads = remember(recentDownloads, homeRecentLimit) {
         recentDownloads
-            .distinctBy { it.videoUrl + it.videoPath } // Use both URL and path to ensure uniqueness
-            .takeLast(5)
+            .distinctBy { it.videoUrl + it.videoPath }
+            .takeLast(homeRecentLimit)
             .reversed()
     }
     
@@ -505,6 +516,15 @@ fun NewHomePage(
                     state.downloadState == Task.DownloadState.ReadyWithInfo
             }
             .map { (task, _) -> task.id }
+
+    // Gallery DL uses its own persistent queue/history. Refresh these light-weight counters when
+    // Home resumes so the Gallery input gets the same compact dashboard treatment as yt-dlp.
+    val galleryQueue = remember(lifecycleRefreshTrigger) { GalleryDlStore.loadQueue(context) }
+    val galleryHistory = remember(lifecycleRefreshTrigger) { GalleryDlStore.loadHistory(context) }
+    val galleryPendingCount = galleryQueue.count { it.state == "pending" }
+    val galleryFailedCount = galleryQueue.count { it.state == "failed" }
+    val galleryDoneCount = galleryHistory.count { it.success }
+    val galleryFileCount = galleryHistory.filter { it.success }.sumOf { it.fileCount }
 
     // Prune Completed tasks from the in-memory taskStateMap as soon as their DB row is confirmed
     // present. taskStateMap lives inside the process-scoped DownloaderV2 singleton, so a
@@ -804,17 +824,22 @@ fun NewHomePage(
             // Quick-access row for the 5 More Tools — icon-only, no labels/section header per
             // design intent, so it reads as a native strip of shortcuts rather than a separate
             // "section" bolted onto the home screen.
-            item {
-                QuickToolsRow(
-                    onThumbnailDownload = onNavigateToThumbnailDownload,
-                    onVideoInfoDownload = onNavigateToVideoInfoDownload,
-                    onCommentDownload = onNavigateToCommentDownload,
-                    onBatchUrlImport = onNavigateToBatchUrlImport,
-                    onGalleryDl = onNavigateToGalleryDl,
-                )
+            if (showQuickTools) {
+                item {
+                    QuickToolsRow(
+                        onThumbnailDownload = onNavigateToThumbnailDownload,
+                        onVideoInfoDownload = onNavigateToVideoInfoDownload,
+                        onCommentDownload = onNavigateToCommentDownload,
+                        onBatchUrlImport = onNavigateToBatchUrlImport,
+                        onGalleryDl = onNavigateToGalleryDl,
+                    )
+                }
             }
 
-            // Main yt-dlp URL input.
+            // Main yt-dlp URL input + its own live dashboard.
+            item {
+                HomeInputLabel("Media / yt-dlp")
+            }
             item {
                 URLInputField(
                     value = urlText,
@@ -839,10 +864,23 @@ fun NewHomePage(
                         }
                     },
                     onClearClick = { urlText = "" },
+                    animatePlaceholder = animateUrlHints,
+                )
+            }
+            item {
+                DownloadActivityStrip(
+                    activeCount = runningDownloadCount,
+                    queuedCount = queuedDownloadCount,
+                    pausedCount = pausedDownloadCount,
+                    completedCount = recentDownloads.size,
+                    onClick = onNavigateToDownloads,
                 )
             }
 
-            // Compact Gallery DL URL input. Keep Home clean: no engine/status dashboard here.
+            item {
+                HomeInputDivider("Gallery DL")
+            }
+
             item {
                 URLInputField(
                     value = galleryUrlText,
@@ -869,17 +907,16 @@ fun NewHomePage(
                         }
                     },
                     onClearClick = { galleryUrlText = "" },
+                    animatePlaceholder = animateUrlHints,
                 )
             }
-
-            // Phase 8: one compact status surface instead of another large dashboard card.
             item {
-                DownloadActivityStrip(
-                    activeCount = runningDownloadCount,
-                    queuedCount = queuedDownloadCount,
-                    pausedCount = pausedDownloadCount,
-                    completedCount = recentDownloads.size,
-                    onClick = onNavigateToDownloads,
+                GalleryActivityStrip(
+                    pendingCount = galleryPendingCount,
+                    failedCount = galleryFailedCount,
+                    completedCount = galleryDoneCount,
+                    fileCount = galleryFileCount,
+                    onClick = onNavigateToGalleryDl,
                 )
             }
             
@@ -919,6 +956,7 @@ fun NewHomePage(
                     ActiveDownloadCard(
                         task = task,
                         state = state,
+                        showTransferDetails = showTransferDetails,
                         queuePosition =
                             queuedTaskIds.indexOf(task.id).takeIf { it >= 0 }?.plus(1),
                         onAction = { action ->
@@ -1174,6 +1212,61 @@ fun NewHomePage(
 }
 
 @Composable
+private fun HomeInputLabel(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+@Composable
+private fun HomeInputDivider(title: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f))
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun GalleryActivityStrip(
+    pendingCount: Int,
+    failedCount: Int,
+    completedCount: Int,
+    fileCount: Int,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ActivityMetric("Pending", pendingCount, Modifier.weight(1f))
+            ActivityMetric("Failed", failedCount, Modifier.weight(1f))
+            ActivityMetric("Done", completedCount, Modifier.weight(1f))
+            ActivityMetric("Files", fileCount, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
 private fun DownloadActivityStrip(
     activeCount: Int,
     queuedCount: Int,
@@ -1227,16 +1320,23 @@ fun URLInputField(
     modifier: Modifier = Modifier,
     placeholderText: String? = null,
     onClearClick: (() -> Unit)? = null,
+    animatePlaceholder: Boolean = true,
 ) {
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
     val isGradientDark = LocalGradientDarkMode.current
     val defaultPlaceholder = stringResource(R.string.enter_url_to_download)
     val fullPlaceholder = placeholderText ?: defaultPlaceholder
 
-    // Typewriter animation: reveal characters one by one
-    var displayedLength by remember { mutableStateOf(0) }
-    
-    LaunchedEffect(fullPlaceholder) {
+    // Optional typewriter + gradient hint. KirinDL Extras can disable it for a quieter Home.
+    var displayedLength by remember(fullPlaceholder, animatePlaceholder) {
+        mutableStateOf(if (animatePlaceholder) 0 else fullPlaceholder.length)
+    }
+
+    LaunchedEffect(fullPlaceholder, animatePlaceholder) {
+        if (!animatePlaceholder) {
+            displayedLength = fullPlaceholder.length
+            return@LaunchedEffect
+        }
         displayedLength = 0
         for (i in 1..fullPlaceholder.length) {
             delay(50L)
@@ -1244,17 +1344,22 @@ fun URLInputField(
         }
     }
 
-    // Gradient animation for the placeholder text
-    val infiniteTransition = rememberInfiniteTransition(label = "placeholderGradient")
-    val gradientShift by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "placeholderShift"
-    )
+    val gradientShift =
+        if (animatePlaceholder) {
+            val infiniteTransition = rememberInfiniteTransition(label = "placeholderGradient")
+            val shift by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1000f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 3000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "placeholderShift"
+            )
+            shift
+        } else {
+            0f
+        }
 
     val gradientColors = listOf(
         MaterialTheme.colorScheme.primary,
@@ -1278,12 +1383,18 @@ fun URLInputField(
             .fillMaxWidth()
             .height(64.dp),
         placeholder = {
-            Text(
-                text = fullPlaceholder.take(displayedLength),
-                style = MaterialTheme.typography.bodyLarge.merge(
-                    TextStyle(brush = gradientBrush)
+            if (animatePlaceholder) {
+                Text(
+                    text = fullPlaceholder.take(displayedLength),
+                    style = MaterialTheme.typography.bodyLarge.merge(TextStyle(brush = gradientBrush)),
                 )
-            )
+            } else {
+                Text(
+                    text = fullPlaceholder,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
         singleLine = true,
         shape = RoundedCornerShape(32.dp),
@@ -1541,6 +1652,7 @@ fun RecentDownloadCard(
 fun ActiveDownloadCard(
     task: Task,
     state: Task.State,
+    showTransferDetails: Boolean = true,
     onAction: (UiAction) -> Unit,
     modifier: Modifier = Modifier,
     queuePosition: Int? = null,
@@ -1717,7 +1829,7 @@ fun ActiveDownloadCard(
                     }
 
                     // Speed + ETA line — only shown during active download
-                    if (speedEtaText != null) {
+                    if (showTransferDetails && speedEtaText != null) {
                         Text(
                             text = speedEtaText,
                             style = MaterialTheme.typography.labelSmall,

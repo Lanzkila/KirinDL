@@ -531,6 +531,11 @@ object DownloadUtil {
         // Defaults keep older serialized/queued tasks compatible after this update.
         val bilibiliSpeedMode: Int = BILIBILI_SPEED_AUTO,
         val bilibiliCustomFragments: Int = 8,
+        val audioCodec: Int = AUDIO_CODEC_AUTO,
+        val audioCoverMode: Int = AUDIO_COVER_LEGACY,
+        val audioCoverFormat: Int = AUDIO_COVER_FORMAT_AUTO,
+        val videoCodec: Int = VIDEO_CODEC_AUTO,
+        val videoContainer: Int = VIDEO_CONTAINER_AUTO,
     ) {
         companion object {
             val EMPTY =
@@ -646,6 +651,11 @@ object DownloadUtil {
                         (downloadSubtitle && embedSubtitle) || MERGE_OUTPUT_MKV.getBoolean(),
                     bilibiliSpeedMode = BILIBILI_SPEED_MODE.getInt(),
                     bilibiliCustomFragments = BILIBILI_CUSTOM_FRAGMENTS.getInt(),
+                    audioCodec = AUDIO_CODEC.getInt(),
+                    audioCoverMode = AUDIO_COVER_MODE.getInt(),
+                    audioCoverFormat = AUDIO_COVER_FORMAT.getInt(),
+                    videoCodec = VIDEO_CODEC.getInt(),
+                    videoContainer = VIDEO_CONTAINER.getInt(),
                 )
             }
         }
@@ -959,9 +969,17 @@ object DownloadUtil {
                         else -> {}
                     }
                 }
-                if (mergeToMkv) {
-                    addOption("--remux-video", "mkv")
-                    addOption("--merge-output-format", "mkv")
+                when (videoContainer) {
+                    VIDEO_CONTAINER_MP4 -> addOption("--merge-output-format", "mp4")
+                    VIDEO_CONTAINER_WEBM -> addOption("--merge-output-format", "webm")
+                    VIDEO_CONTAINER_MKV -> {
+                        addOption("--remux-video", "mkv")
+                        addOption("--merge-output-format", "mkv")
+                    }
+                    else -> if (mergeToMkv) {
+                        addOption("--remux-video", "mkv")
+                        addOption("--merge-output-format", "mkv")
+                    }
                 }
                 if (embedThumbnail) {
                     addOption("--embed-thumbnail")
@@ -976,18 +994,34 @@ object DownloadUtil {
             if (!useCustomAudioPreset) return@run ""
             val format =
                 when (audioFormat) {
-                    M4A -> "acodec:aac"
+                    M4A -> "ext:m4a"
                     OPUS -> "acodec:opus"
+                    else -> ""
+                }
+            val codec =
+                when (audioCodec) {
+                    AUDIO_CODEC_AAC -> "acodec:aac"
+                    AUDIO_CODEC_OPUS -> "acodec:opus"
+                    AUDIO_CODEC_VORBIS -> "acodec:vorbis"
+                    AUDIO_CODEC_MP3 -> "acodec:mp3"
+                    AUDIO_CODEC_FLAC -> "acodec:flac"
+                    AUDIO_CODEC_ALAC -> "acodec:alac"
                     else -> ""
                 }
             val quality =
                 when (audioQuality) {
+                    AUDIO_320 -> "abr~320"
+                    AUDIO_256 -> "abr~256"
                     HIGH -> "abr~192"
+                    AUDIO_160 -> "abr~160"
                     MEDIUM -> "abr~128"
+                    AUDIO_96 -> "abr~96"
                     LOW -> "abr~64"
+                    ULTRA_LOW -> "abr~32"
+                    AUDIO_LOWEST -> "+abr"
                     else -> ""
                 }
-            return@run connectWithDelimiter(format, quality, delimiter = ",")
+            return@run connectWithDelimiter(format, codec, quality, delimiter = ",")
         }
 
     @CheckResult
@@ -995,14 +1029,30 @@ object DownloadUtil {
         this.run {
             val format =
                 when (videoFormat) {
-                    FORMAT_COMPATIBILITY -> "proto,vcodec:h264,ext"
+                    FORMAT_COMPATIBILITY ->
+                        if (videoCodec == VIDEO_CODEC_AUTO) "proto,vcodec:h264" else "proto"
                     FORMAT_QUALITY ->
-                        if (supportAv1HardwareDecoding) {
+                        if (videoCodec != VIDEO_CODEC_AUTO) {
+                            ""
+                        } else if (supportAv1HardwareDecoding) {
                             "vcodec:av01"
                         } else {
                             "vcodec:vp9.2"
                         }
-
+                    else -> ""
+                }
+            val codec =
+                when (videoCodec) {
+                    VIDEO_CODEC_H264 -> "vcodec:h264"
+                    VIDEO_CODEC_VP9 -> "vcodec:vp9.2"
+                    VIDEO_CODEC_AV1 -> "vcodec:av01"
+                    VIDEO_CODEC_HEVC -> "vcodec:h265"
+                    else -> ""
+                }
+            val container =
+                when (videoContainer) {
+                    VIDEO_CONTAINER_MP4 -> "ext:mp4"
+                    VIDEO_CONTAINER_WEBM -> "ext:webm"
                     else -> ""
                 }
             val res =
@@ -1021,9 +1071,9 @@ object DownloadUtil {
                     else -> ""
                 }
             val sorter = if (videoFormat == FORMAT_COMPATIBILITY) {
-                connectWithDelimiter(format, res, delimiter = ",")
+                connectWithDelimiter(container, codec, format, res, delimiter = ",")
             } else {
-                connectWithDelimiter(res, format, delimiter = ",")
+                connectWithDelimiter(res, codec, format, container, delimiter = ",")
             }
             return@run sorter
         }
@@ -1084,14 +1134,32 @@ object DownloadUtil {
                 } else {
                     addOption("-f", "ba/b")
                     if (convertAudio) {
-                        when (audioConvertFormat) {
-                            CONVERT_MP3 -> {
-                                addOption("--audio-format", "mp3")
+                        val targetAudioFormat =
+                            when (audioConvertFormat) {
+                                CONVERT_M4A -> "m4a"
+                                CONVERT_OPUS -> "opus"
+                                CONVERT_FLAC -> "flac"
+                                CONVERT_WAV -> "wav"
+                                CONVERT_VORBIS -> "vorbis"
+                                CONVERT_AAC -> "aac"
+                                CONVERT_ALAC -> "alac"
+                                else -> "mp3"
                             }
-
-                            CONVERT_M4A -> {
-                                addOption("--audio-format", "m4a")
+                        addOption("--audio-format", targetAudioFormat)
+                        val targetAudioBitrate =
+                            when (audioQuality) {
+                                AUDIO_320 -> "320K"
+                                AUDIO_256 -> "256K"
+                                HIGH -> "192K"
+                                AUDIO_160 -> "160K"
+                                MEDIUM -> "128K"
+                                AUDIO_96 -> "96K"
+                                LOW -> "64K"
+                                ULTRA_LOW -> "32K"
+                                else -> ""
                             }
+                        if (targetAudioBitrate.isNotEmpty() && targetAudioFormat !in listOf("flac", "wav", "alac")) {
+                            addOption("--audio-quality", targetAudioBitrate)
                         }
                     }
                     applyFormatSorter(preferences, toAudioFormatSorter())
@@ -1099,10 +1167,26 @@ object DownloadUtil {
 
                 if (embedMetadata) {
                     addOption("--embed-metadata")
-                    addOption("--embed-thumbnail")
-                    addOption("--convert-thumbnails", "jpg")
+                }
 
-                    if (cropArtwork) {
+                val shouldEmbedCover =
+                    audioCoverMode == AUDIO_COVER_EMBED ||
+                        audioCoverMode == AUDIO_COVER_BOTH ||
+                        (audioCoverMode == AUDIO_COVER_LEGACY && embedMetadata)
+                val shouldSaveCover =
+                    audioCoverMode == AUDIO_COVER_SAVE || audioCoverMode == AUDIO_COVER_BOTH
+                if (shouldEmbedCover || shouldSaveCover) {
+                    if (shouldEmbedCover) addOption("--embed-thumbnail")
+                    if (shouldSaveCover) addOption("--write-thumbnail")
+                    when (audioCoverFormat) {
+                        AUDIO_COVER_FORMAT_JPG -> addOption("--convert-thumbnails", "jpg")
+                        AUDIO_COVER_FORMAT_PNG -> addOption("--convert-thumbnails", "png")
+                        AUDIO_COVER_FORMAT_WEBP -> addOption("--convert-thumbnails", "webp")
+                    }
+                }
+
+                if (embedMetadata) {
+                    if (cropArtwork && shouldEmbedCover) {
                         val configFile = context.getConfigFile(id)
                         FileUtil.writeContentToFile(CROP_ARTWORK_COMMAND, configFile)
                         addOption("--config", configFile.absolutePath)

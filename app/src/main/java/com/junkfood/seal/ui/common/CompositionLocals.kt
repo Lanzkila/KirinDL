@@ -27,6 +27,8 @@ val LocalWindowWidthState = staticCompositionLocalOf { WindowWidthSizeClass.Comp
 val LocalDynamicColorSwitch = compositionLocalOf { false }
 val LocalPaletteStyleIndex = compositionLocalOf { 0 }
 val LocalGradientDarkMode = compositionLocalOf { false }
+val LocalBodyColorPreset = compositionLocalOf { 0 }
+val LocalButtonColorPreset = compositionLocalOf { 0 }
 val LocalFixedColorRoles = staticCompositionLocalOf {
     FixedColorRoles.fromColorSchemes(
         lightColors = lightColorScheme(),
@@ -54,6 +56,8 @@ fun SettingsProvider(windowWidthSizeClass: WindowWidthSizeClass, content: @Compo
             LocalWindowWidthState provides windowWidthSizeClass,
             LocalDynamicColorSwitch provides isDynamicColorEnabled,
             LocalGradientDarkMode provides isGradientDarkModeEnabled,
+            LocalBodyColorPreset provides bodyColorPreset,
+            LocalButtonColorPreset provides buttonColorPreset,
             content = content,
         )
     }

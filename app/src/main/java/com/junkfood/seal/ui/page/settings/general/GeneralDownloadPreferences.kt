@@ -95,12 +95,19 @@ import com.junkfood.seal.util.PRIVATE_MODE
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getString
+import com.junkfood.seal.util.PreferenceUtil.getInt
+import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.SPONSORBLOCK
 import com.junkfood.seal.util.SUBTITLE
 import com.junkfood.seal.util.THUMBNAIL
 import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.YT_DLP_VERSION
+import com.junkfood.seal.util.YT_DLP_AUTO_UPDATE
+import com.junkfood.seal.util.YT_DLP_UPDATE_INTERVAL
+import com.junkfood.seal.util.YT_DLP_UPDATE_CHANNEL
+import com.junkfood.seal.util.YT_DLP_NIGHTLY
+import com.junkfood.seal.util.PreferenceStrings.getUpdateIntervalText
 import com.junkfood.seal.util.makeToast
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.Dispatchers
@@ -117,6 +124,9 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
     var showSponsorBlockDialog by remember { mutableStateOf(false) }
     var showYtdlpDialog by remember { mutableStateOf(false) }
     var isUpdating by remember { mutableStateOf(false) }
+    var ytdlpAutoUpdate by remember { mutableStateOf(YT_DLP_AUTO_UPDATE.getBoolean()) }
+    var ytdlpUpdateInterval by remember { mutableStateOf(YT_DLP_UPDATE_INTERVAL.getLong()) }
+    var ytdlpUpdateChannel by remember { mutableStateOf(YT_DLP_UPDATE_CHANNEL.getInt()) }
 
     val downloadSubtitle by SUBTITLE.booleanState
 
@@ -186,6 +196,25 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
                         )
                     }
                 item {
+                    PreferenceSwitchWithDivider(
+                        title = "Automatic yt-dlp updates",
+                        description =
+                            if (ytdlpAutoUpdate) {
+                                val channel = if (ytdlpUpdateChannel == YT_DLP_NIGHTLY) "Nightly" else "Stable"
+                                "$channel • ${getUpdateIntervalText(ytdlpUpdateInterval)} • recommended"
+                            } else {
+                                "Disabled • manual updates remain available below"
+                            },
+                        icon = Icons.Outlined.Update,
+                        isChecked = ytdlpAutoUpdate,
+                        onChecked = {
+                            ytdlpAutoUpdate = !ytdlpAutoUpdate
+                            YT_DLP_AUTO_UPDATE.updateBoolean(ytdlpAutoUpdate)
+                        },
+                        onClick = { showYtdlpDialog = true },
+                    )
+                }
+                item {
                     var ytdlpVersion by remember {
                         mutableStateOf(
                             YoutubeDL.getInstance().version(context.applicationContext)
@@ -193,7 +222,7 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
                         )
                     }
                     PreferenceItem(
-                        title = stringResource(id = R.string.ytdlp_update_action),
+                        title = "Manual yt-dlp update",
                         description = ytdlpVersion,
                         leadingIcon = {
                             if (isUpdating) UpdateProgressIndicator()
@@ -410,7 +439,14 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
         SponsorBlockDialog { showSponsorBlockDialog = false }
     }
     if (showYtdlpDialog) {
-        YtdlpUpdateChannelDialog(onDismissRequest = { showYtdlpDialog = false })
+        YtdlpUpdateChannelDialog(
+            onDismissRequest = {
+                ytdlpAutoUpdate = YT_DLP_AUTO_UPDATE.getBoolean()
+                ytdlpUpdateInterval = YT_DLP_UPDATE_INTERVAL.getLong()
+                ytdlpUpdateChannel = YT_DLP_UPDATE_CHANNEL.getInt()
+                showYtdlpDialog = false
+            }
+        )
     }
     if (showClearArchiveDialog) {
         DownloadArchiveDialog(

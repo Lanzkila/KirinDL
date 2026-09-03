@@ -307,6 +307,7 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
 
             AppUpdater()
             YtdlpUpdater()
+            GalleryDlUpdater()
         }
     }
 }

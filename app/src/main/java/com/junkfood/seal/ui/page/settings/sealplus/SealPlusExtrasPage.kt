@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -52,6 +54,10 @@ import com.junkfood.seal.util.BILIBILI_SPEED_CUSTOM
 import com.junkfood.seal.util.BILIBILI_SPEED_FAST
 import com.junkfood.seal.util.BILIBILI_SPEED_MODE
 import com.junkfood.seal.util.FORMAT_LIST_VIEW
+import com.junkfood.seal.util.HOME_RECENT_LIMIT
+import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
+import com.junkfood.seal.util.HOME_INPUT_ANIMATION
+import com.junkfood.seal.util.HOME_QUICK_TOOLS
 import com.junkfood.seal.util.MAX_CONCURRENT_DOWNLOADS
 import com.junkfood.seal.util.NETWORK_ANY
 import com.junkfood.seal.util.NETWORK_MOBILE_ONLY
@@ -98,6 +104,11 @@ fun SealPlusExtrasPage(
     var showSponsorFrequencyDialog by remember { mutableStateOf(false) }
     var notificationErrorSound by remember { mutableStateOf(NOTIFICATION_ERROR_SOUND.getBoolean()) }
     var formatListView by remember { mutableStateOf(FORMAT_LIST_VIEW.getBoolean()) }
+    var homeRecentLimit by remember { mutableStateOf(HOME_RECENT_LIMIT.getInt().coerceIn(3, 10)) }
+    var homeTransferDetails by remember { mutableStateOf(HOME_TRANSFER_DETAILS.getBoolean()) }
+    var homeInputAnimation by remember { mutableStateOf(HOME_INPUT_ANIMATION.getBoolean()) }
+    var homeQuickTools by remember { mutableStateOf(HOME_QUICK_TOOLS.getBoolean()) }
+    var showHomeRecentDialog by remember { mutableStateOf(false) }
 
     val galleryConfirmBeforeDownload by
         GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsState()
@@ -308,6 +319,54 @@ fun SealPlusExtrasPage(
                         FORMAT_LIST_VIEW.updateBoolean(!formatListView)
                         formatListView = !formatListView
                     }
+                )
+            }
+
+            item {
+                PreferenceSubtitle(text = "Home experience")
+            }
+            item {
+                PreferenceItem(
+                    title = "Recent downloads on Home",
+                    description = "Show the latest $homeRecentLimit completed items",
+                    icon = Icons.Outlined.ViewAgenda,
+                    onClick = { showHomeRecentDialog = true },
+                )
+            }
+            item {
+                PreferenceSwitch(
+                    title = "Detailed transfer line",
+                    description = "Show live speed and ETA under active Home download cards",
+                    icon = Icons.Rounded.NetworkCheck,
+                    isChecked = homeTransferDetails,
+                    onClick = {
+                        homeTransferDetails = !homeTransferDetails
+                        HOME_TRANSFER_DETAILS.updateBoolean(homeTransferDetails)
+                    },
+                )
+            }
+            item {
+                PreferenceSwitch(
+                    title = "Animated URL hints",
+                    description = "Typewriter + gradient hint inside Media and Gallery URL fields",
+                    icon = Icons.Outlined.ViewAgenda,
+                    isChecked = homeInputAnimation,
+                    onClick = {
+                        homeInputAnimation = !homeInputAnimation
+                        HOME_INPUT_ANIMATION.updateBoolean(homeInputAnimation)
+                    },
+                )
+            }
+            item {
+                PreferenceSwitch(
+                    title = "Home quick tools",
+                    description = "Show the icon shortcut row above the URL inputs",
+                    icon = Icons.Outlined.ViewAgenda,
+                    isChecked = homeQuickTools,
+                    onClick = {
+                        homeQuickTools = !homeQuickTools
+                        HOME_QUICK_TOOLS.updateBoolean(homeQuickTools)
+                    },
                 )
             }
 
@@ -551,6 +610,18 @@ fun SealPlusExtrasPage(
             )
         }
 
+        if (showHomeRecentDialog) {
+            HomeRecentLimitDialog(
+                currentSelection = homeRecentLimit,
+                onDismissRequest = { showHomeRecentDialog = false },
+                onConfirm = { selected ->
+                    homeRecentLimit = selected
+                    HOME_RECENT_LIMIT.updateInt(selected)
+                    showHomeRecentDialog = false
+                },
+            )
+        }
+
         if (showSponsorFrequencyDialog) {
             SponsorFrequencyDialog(
                 currentSelection = sponsorDialogFrequency,
@@ -584,51 +655,88 @@ private fun BilibiliSpeedModeDialog(
     onConfirm: (Int) -> Unit,
 ) {
     var selected by remember { mutableStateOf(currentSelection) }
+    val modes =
+        listOf(
+            Triple(BILIBILI_SPEED_AUTO, "Auto", "8 fragments • recommended • adaptive safe default"),
+            Triple(BILIBILI_SPEED_BALANCED, "Balanced", "4 fragments • steadier on weaker routes"),
+            Triple(BILIBILI_SPEED_FAST, "Fast", "12 fragments • higher parallelism"),
+            Triple(BILIBILI_SPEED_CUSTOM, "Custom", "Choose 1 / 4 / 8 / 12 / 16 fragments"),
+        )
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismissRequest,
         icon = {
-            Icon(
-                Icons.Rounded.NetworkCheck,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Icon(
+                    Icons.Rounded.NetworkCheck,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(12.dp).size(28.dp),
+                )
+            }
         },
-        title = { Text("Bilibili Speed Mode") },
+        title = { Text("Bilibili Speed Mode", fontWeight = FontWeight.Bold) },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text =
-                        "This profile only changes Bilibili/b23.tv downloads. " +
-                            "Other sites keep your normal fragment and Aria2 settings.",
+                        "Bilibili/b23.tv only. Other sites keep the normal Network settings. " +
+                            "Aria2 caps follow the selected profile without changing your global limit.",
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 12.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
                 )
-                PreferenceSingleChoiceItem(
-                    text = "Auto — 8 fragments (recommended)",
-                    selected = selected == BILIBILI_SPEED_AUTO,
-                    onClick = { selected = BILIBILI_SPEED_AUTO },
-                )
-                PreferenceSingleChoiceItem(
-                    text = "Balanced — 4 fragments",
-                    selected = selected == BILIBILI_SPEED_BALANCED,
-                    onClick = { selected = BILIBILI_SPEED_BALANCED },
-                )
-                PreferenceSingleChoiceItem(
-                    text = "Fast — 12 fragments",
-                    selected = selected == BILIBILI_SPEED_FAST,
-                    onClick = { selected = BILIBILI_SPEED_FAST },
-                )
-                PreferenceSingleChoiceItem(
-                    text = "Custom — choose 1 / 4 / 8 / 12 / 16",
-                    selected = selected == BILIBILI_SPEED_CUSTOM,
-                    onClick = { selected = BILIBILI_SPEED_CUSTOM },
-                )
+                modes.forEach { (value, title, description) ->
+                    val active = selected == value
+                    Surface(
+                        onClick = { selected = value },
+                        shape = RoundedCornerShape(14.dp),
+                        color =
+                            if (active) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                        tonalElevation = if (active) 2.dp else 0.dp,
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        title,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    if (value == BILIBILI_SPEED_AUTO) {
+                                        Text(
+                                            "  RECOMMENDED",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
+                                }
+                                Text(
+                                    description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            androidx.compose.material3.RadioButton(
+                                selected = active,
+                                onClick = { selected = value },
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = { onConfirm(selected) }) {
-                Text(stringResource(android.R.string.ok))
+                Text("Apply")
             }
         },
         dismissButton = {
@@ -678,6 +786,36 @@ private fun BilibiliFragmentsDialog(
             androidx.compose.material3.TextButton(onClick = onDismissRequest) {
                 Text(stringResource(android.R.string.cancel))
             }
+        },
+    )
+}
+
+@Composable
+private fun HomeRecentLimitDialog(
+    currentSelection: Int,
+    onDismissRequest: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    var selected by remember { mutableStateOf(currentSelection) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Recent downloads on Home") },
+        text = {
+            Column {
+                listOf(3, 5, 8, 10).forEach { value ->
+                    PreferenceSingleChoiceItem(
+                        text = "$value items",
+                        selected = selected == value,
+                        onClick = { selected = value },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onConfirm(selected) }) { Text("Apply") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismissRequest) { Text("Cancel") }
         },
     )
 }

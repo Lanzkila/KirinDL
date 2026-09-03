@@ -49,6 +49,27 @@ import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.component.PreferenceSwitchWithDivider
 import com.junkfood.seal.ui.component.DialogSingleChoiceItemVariant
 import com.junkfood.seal.util.AUDIO_CONVERSION_FORMAT
+import com.junkfood.seal.util.AUDIO_FORMAT
+import com.junkfood.seal.util.AUDIO_QUALITY
+import com.junkfood.seal.util.AUDIO_CODEC
+import com.junkfood.seal.util.AUDIO_COVER_MODE
+import com.junkfood.seal.util.AUDIO_COVER_FORMAT
+import com.junkfood.seal.util.AUDIO_CODEC_AUTO
+import com.junkfood.seal.util.AUDIO_CODEC_AAC
+import com.junkfood.seal.util.AUDIO_CODEC_OPUS
+import com.junkfood.seal.util.AUDIO_CODEC_VORBIS
+import com.junkfood.seal.util.AUDIO_CODEC_MP3
+import com.junkfood.seal.util.AUDIO_CODEC_FLAC
+import com.junkfood.seal.util.AUDIO_CODEC_ALAC
+import com.junkfood.seal.util.AUDIO_COVER_LEGACY
+import com.junkfood.seal.util.AUDIO_COVER_NONE
+import com.junkfood.seal.util.AUDIO_COVER_EMBED
+import com.junkfood.seal.util.AUDIO_COVER_SAVE
+import com.junkfood.seal.util.AUDIO_COVER_BOTH
+import com.junkfood.seal.util.AUDIO_COVER_FORMAT_AUTO
+import com.junkfood.seal.util.AUDIO_COVER_FORMAT_JPG
+import com.junkfood.seal.util.AUDIO_COVER_FORMAT_PNG
+import com.junkfood.seal.util.AUDIO_COVER_FORMAT_WEBP
 import com.junkfood.seal.util.AUDIO_CONVERT
 import com.junkfood.seal.util.CROP_ARTWORK
 import com.junkfood.seal.util.CUSTOM_COMMAND
@@ -64,6 +85,7 @@ import com.junkfood.seal.util.MERGE_OUTPUT_MKV
 import com.junkfood.seal.util.PreferenceStrings
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
+import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateInt
@@ -72,6 +94,17 @@ import com.junkfood.seal.util.SORTING_FIELDS
 import com.junkfood.seal.util.SUBTITLE
 import com.junkfood.seal.util.VIDEO_CLIP
 import com.junkfood.seal.util.VIDEO_FORMAT
+import com.junkfood.seal.util.VIDEO_CODEC
+import com.junkfood.seal.util.VIDEO_CONTAINER
+import com.junkfood.seal.util.VIDEO_CODEC_AUTO
+import com.junkfood.seal.util.VIDEO_CODEC_H264
+import com.junkfood.seal.util.VIDEO_CODEC_VP9
+import com.junkfood.seal.util.VIDEO_CODEC_AV1
+import com.junkfood.seal.util.VIDEO_CODEC_HEVC
+import com.junkfood.seal.util.VIDEO_CONTAINER_AUTO
+import com.junkfood.seal.util.VIDEO_CONTAINER_MP4
+import com.junkfood.seal.util.VIDEO_CONTAINER_WEBM
+import com.junkfood.seal.util.VIDEO_CONTAINER_MKV
 import com.junkfood.seal.util.VIDEO_QUALITY
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,18 +131,26 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
     var showFormatSorterDialog by remember { mutableStateOf(false) }
     var showYtdlpFormatProfileDialog by remember { mutableStateOf(false) }
     var showVideoClipDialog by remember { mutableStateOf(false) }
+    var showAudioCodecDialog by remember { mutableStateOf(false) }
+    var showAudioCoverDialog by remember { mutableStateOf(false) }
+    var showAudioCoverFormatDialog by remember { mutableStateOf(false) }
+    var showVideoCodecDialog by remember { mutableStateOf(false) }
+    var showVideoContainerDialog by remember { mutableStateOf(false) }
 
     var videoFormat by VIDEO_FORMAT.intState
     var videoQuality by VIDEO_QUALITY.intState
+    var audioFormat by AUDIO_FORMAT.intState
+    var audioQuality by AUDIO_QUALITY.intState
+    var audioCodec by AUDIO_CODEC.intState
+    var audioCoverMode by AUDIO_COVER_MODE.intState
+    var audioCoverFormat by AUDIO_COVER_FORMAT.intState
+    var videoCodec by VIDEO_CODEC.intState
+    var videoContainer by VIDEO_CONTAINER.intState
     var convertFormat by AUDIO_CONVERSION_FORMAT.intState
     var sortingFields by
         remember(showFormatSorterDialog) { mutableStateOf(SORTING_FIELDS.getString()) }
-    //    val audioFormat by remember(showAudioFormatDialog) {
-    // mutableStateOf(PreferenceStrings.getAudioFormatDesc()) }
     var convertAudio by AUDIO_CONVERT.booleanState
     var isFormatSortingEnabled by FORMAT_SORTING.booleanState
-    //    val audioQuality by remember(showAudioQualityDialog) {
-    // mutableStateOf(PreferenceStrings.getAudioQualityDesc()) }
     var isVideoClipEnabled by VIDEO_CLIP.booleanState
     var isFormatSelectionEnabled by FORMAT_SELECTION.booleanState
     var mergeAudioStream by MERGE_MULTI_AUDIO_STREAM.booleanState
@@ -147,25 +188,51 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         },
                     )
                 }
-                //                item {
-                //                    PreferenceItem(title = stringResource(id =
-                // R.string.audio_format_preference),
-                //                        description = audioFormat,
-                //                        icon = Icons.Outlined.AudioFile,
-                //                        enabled = !isCustomCommandEnabled &&
-                // !isFormatSortingEnabled,
-                //                        onClick = { showAudioFormatDialog = true })
-                //                }
-                //                item {
-                //                    PreferenceItem(
-                //                        title = stringResource(id = R.string.audio_quality),
-                //                        description = audioQuality,
-                //                        icon = Icons.Outlined.HighQuality,
-                //                        onClick = { showAudioQualityDialog = true },
-                //                        enabled = !isCustomCommandEnabled &&
-                // !isFormatSortingEnabled
-                //                    )
-                //                }
+                item {
+                    PreferenceItem(
+                        title = stringResource(id = R.string.audio_format_preference),
+                        description = PreferenceStrings.getAudioFormatDesc(audioFormat),
+                        icon = Icons.Outlined.MusicNote,
+                        enabled = audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
+                        onClick = { showAudioFormatDialog = true },
+                    )
+                }
+                item {
+                    PreferenceItem(
+                        title = "Audio bitrate",
+                        description = PreferenceStrings.getAudioQualityDesc(audioQuality),
+                        icon = Icons.Outlined.HighQuality,
+                        enabled = audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
+                        onClick = { showAudioQualityDialog = true },
+                    )
+                }
+                item {
+                    PreferenceItem(
+                        title = "Audio codec",
+                        description = PreferenceStrings.getAudioCodecDesc(audioCodec),
+                        icon = Icons.Outlined.Tune,
+                        enabled = audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
+                        onClick = { showAudioCodecDialog = true },
+                    )
+                }
+                item {
+                    PreferenceItem(
+                        title = "Thumbnail / cover artwork",
+                        description = PreferenceStrings.getAudioCoverModeDesc(audioCoverMode),
+                        icon = Icons.Outlined.ArtTrack,
+                        enabled = audioSwitch && !isCustomCommandEnabled,
+                        onClick = { showAudioCoverDialog = true },
+                    )
+                }
+                item {
+                    PreferenceItem(
+                        title = "Cover image format",
+                        description = PreferenceStrings.getAudioCoverFormatDesc(audioCoverFormat),
+                        icon = Icons.Outlined.ArtTrack,
+                        enabled = audioSwitch && !isCustomCommandEnabled && audioCoverMode != AUDIO_COVER_NONE,
+                        onClick = { showAudioCoverFormatDialog = true },
+                    )
+                }
                 item {
                     PreferenceSwitchWithDivider(
                         title = stringResource(R.string.convert_audio_format),
@@ -225,6 +292,24 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                     ) {
                         showVideoQualityDialog = true
                     }
+                }
+                item {
+                    PreferenceItem(
+                        title = "Video codec",
+                        description = PreferenceStrings.getVideoCodecDesc(videoCodec),
+                        icon = Icons.Outlined.VideoSettings,
+                        enabled = !audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
+                        onClick = { showVideoCodecDialog = true },
+                    )
+                }
+                item {
+                    PreferenceItem(
+                        title = "Video output format",
+                        description = PreferenceStrings.getVideoContainerDesc(videoContainer),
+                        icon = Icons.Outlined.Movie,
+                        enabled = !audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
+                        onClick = { showVideoContainerDialog = true },
+                    )
                 } /*                item {
                       var embedThumbnail by EMBED_THUMBNAIL.booleanState
 
@@ -249,7 +334,8 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         enabled =
                             !(downloadSubtitle && embedSubtitle) &&
                                 !isCustomCommandEnabled &&
-                                !audioSwitch,
+                                !audioSwitch &&
+                                videoContainer == VIDEO_CONTAINER_AUTO,
                         onClick = {
                             remuxToMkv = !remuxToMkv
                             MERGE_OUTPUT_MKV.updateBoolean(remuxToMkv)
@@ -344,10 +430,66 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
         },
     )
     if (showAudioFormatDialog) {
-        AudioFormatDialog { showAudioFormatDialog = false }
+        AudioFormatDialog {
+            audioFormat = AUDIO_FORMAT.getInt()
+            showAudioFormatDialog = false
+        }
     }
     if (showAudioQualityDialog) {
-        AudioQualityDialog { showAudioQualityDialog = false }
+        AudioQualityDialog {
+            audioQuality = AUDIO_QUALITY.getInt()
+            showAudioQualityDialog = false
+        }
+    }
+    if (showAudioCodecDialog) {
+        SimpleFormatChoiceDialog(
+            title = "Audio codec",
+            selected = audioCodec,
+            options = listOf(
+                AUDIO_CODEC_AUTO to "Auto / source best",
+                AUDIO_CODEC_AAC to "AAC",
+                AUDIO_CODEC_OPUS to "Opus",
+                AUDIO_CODEC_VORBIS to "Vorbis",
+                AUDIO_CODEC_MP3 to "MP3",
+                AUDIO_CODEC_FLAC to "FLAC",
+                AUDIO_CODEC_ALAC to "ALAC",
+            ),
+            onDismiss = { showAudioCodecDialog = false },
+            onSelect = { audioCodec = it; AUDIO_CODEC.updateInt(it); showAudioCodecDialog = false },
+        )
+    }
+    if (showAudioCoverDialog) {
+        SimpleFormatChoiceDialog(
+            title = "Thumbnail / cover artwork",
+            selected = audioCoverMode,
+            options = listOf(
+                AUDIO_COVER_LEGACY to "Automatic (current behavior)",
+                AUDIO_COVER_NONE to "No cover",
+                AUDIO_COVER_EMBED to "Embed cover",
+                AUDIO_COVER_SAVE to "Save cover file",
+                AUDIO_COVER_BOTH to "Embed + save cover",
+            ),
+            onDismiss = { showAudioCoverDialog = false },
+            onSelect = { audioCoverMode = it; AUDIO_COVER_MODE.updateInt(it); showAudioCoverDialog = false },
+        )
+    }
+    if (showAudioCoverFormatDialog) {
+        SimpleFormatChoiceDialog(
+            title = "Cover image format",
+            selected = audioCoverFormat,
+            options = listOf(
+                AUDIO_COVER_FORMAT_AUTO to "Auto / source format",
+                AUDIO_COVER_FORMAT_JPG to "JPG",
+                AUDIO_COVER_FORMAT_PNG to "PNG",
+                AUDIO_COVER_FORMAT_WEBP to "WebP",
+            ),
+            onDismiss = { showAudioCoverFormatDialog = false },
+            onSelect = {
+                audioCoverFormat = it
+                AUDIO_COVER_FORMAT.updateInt(it)
+                showAudioCoverFormatDialog = false
+            },
+        )
     }
     if (showAudioConvertDialog) {
         AudioConversionDialog(
@@ -377,6 +519,36 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
             videoFormat = it
         }
     }
+    if (showVideoCodecDialog) {
+        SimpleFormatChoiceDialog(
+            title = "Video codec",
+            selected = videoCodec,
+            options = listOf(
+                VIDEO_CODEC_AUTO to "Auto / profile default",
+                VIDEO_CODEC_H264 to "H.264 / AVC",
+                VIDEO_CODEC_VP9 to "VP9",
+                VIDEO_CODEC_AV1 to "AV1",
+                VIDEO_CODEC_HEVC to "H.265 / HEVC",
+            ),
+            onDismiss = { showVideoCodecDialog = false },
+            onSelect = { videoCodec = it; VIDEO_CODEC.updateInt(it); showVideoCodecDialog = false },
+        )
+    }
+    if (showVideoContainerDialog) {
+        SimpleFormatChoiceDialog(
+            title = "Video output format",
+            selected = videoContainer,
+            options = listOf(
+                VIDEO_CONTAINER_AUTO to "Auto / source best",
+                VIDEO_CONTAINER_MP4 to "MP4",
+                VIDEO_CONTAINER_WEBM to "WebM",
+                VIDEO_CONTAINER_MKV to "MKV",
+            ),
+            onDismiss = { showVideoContainerDialog = false },
+            onSelect = { videoContainer = it; VIDEO_CONTAINER.updateInt(it); showVideoContainerDialog = false },
+        )
+    }
+
     if (showFormatSorterDialog) {
         FormatSortingDialog(
             fields = sortingFields,
@@ -450,6 +622,35 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
     }
 }
 
+
+@Composable
+private fun SimpleFormatChoiceDialog(
+    title: String,
+    selected: Int,
+    options: List<Pair<Int, String>>,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                options.forEach { (value, label) ->
+                    DialogSingleChoiceItemVariant(
+                        title = label,
+                        selected = selected == value,
+                        onClick = { onSelect(value) },
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { DismissButton { onDismiss() } },
+    )
+}
 
 private data class YtdlpFormatProfile(
     val title: String,
