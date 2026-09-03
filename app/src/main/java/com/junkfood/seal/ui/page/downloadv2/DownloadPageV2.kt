@@ -35,11 +35,13 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
@@ -48,6 +50,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -137,8 +141,10 @@ private const val TAG = "DownloadPageV2"
 
 enum class Filter {
     All,
-    Downloading,
-    Canceled,
+    Active,
+    Queued,
+    PausedOnly,
+    Failed,
     Finished;
 
     @Composable
@@ -146,36 +152,28 @@ enum class Filter {
     fun label(): String =
         when (this) {
             All -> stringResource(R.string.all)
-            Downloading -> stringResource(R.string.status_downloading)
-            Canceled -> stringResource(R.string.status_canceled)
+            Active -> "Active"
+            Queued -> stringResource(R.string.queue_status)
+            PausedOnly -> stringResource(R.string.status_paused)
+            Failed -> stringResource(R.string.status_error)
             Finished -> stringResource(R.string.status_completed)
         }
 
     fun predict(entry: Pair<Task, Task.State>): Boolean {
         if (this == All) return true
-        val state = entry.second.downloadState
-        return when (this) {
-            Downloading -> {
-                when (state) {
-                    is FetchingInfo,
-                    Idle,
-                    ReadyWithInfo,
-                    is Running -> true
-                    else -> false
-                }
-            }
-            Canceled -> {
-                state is Error || state is Task.DownloadState.Canceled
-            }
-            Finished -> {
-                state is Completed
-            }
-            else -> {
-                true
-            }
+        return when (val state = entry.second.downloadState) {
+            is FetchingInfo,
+            is Running -> this == Active
+            Idle,
+            ReadyWithInfo -> this == Queued
+            is Task.DownloadState.Paused -> this == PausedOnly
+            is Error,
+            is Task.DownloadState.Canceled -> this == Failed
+            is Completed -> this == Finished
         }
     }
 }
+
 
 sealed interface UiAction {
     data class OpenFile(val filePath: String?) : UiAction
@@ -367,10 +365,50 @@ fun DownloadPageImplV2(
     onActionPost: (Task, UiAction) -> Unit,
 ) {
     var activeFilter by remember { mutableStateOf(Filter.All) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val filteredMap by
-        remember(activeFilter) {
-            derivedStateOf { taskDownloadStateMap.filter { activeFilter.predict(it.toPair()) } }
+        remember(activeFilter, searchQuery) {
+            derivedStateOf {
+                val query = searchQuery.trim()
+                taskDownloadStateMap.filter { (task, state) ->
+                    activeFilter.predict(task to state) &&
+                        (query.isBlank() ||
+                            task.url.contains(query, ignoreCase = true) ||
+                            state.viewState.title.contains(query, ignoreCase = true) ||
+                            state.viewState.uploader.contains(query, ignoreCase = true) ||
+                            state.viewState.extractorKey.contains(query, ignoreCase = true))
+                }
+            }
         }
+
+    // Phase 9: queue overview is derived from existing task states only.
+    val activeCount by remember {
+        derivedStateOf {
+            taskDownloadStateMap.count { (_, state) ->
+                state.downloadState is Running || state.downloadState is FetchingInfo
+            }
+        }
+    }
+    val queuedCount by remember {
+        derivedStateOf {
+            taskDownloadStateMap.count { (_, state) ->
+                state.downloadState == Idle || state.downloadState == ReadyWithInfo
+            }
+        }
+    }
+    val pausedCount by remember {
+        derivedStateOf {
+            taskDownloadStateMap.count { (_, state) -> state.downloadState is Task.DownloadState.Paused }
+        }
+    }
+    val failedCount by remember {
+        derivedStateOf {
+            taskDownloadStateMap.count { (_, state) ->
+                state.downloadState is Error || state.downloadState is Task.DownloadState.Canceled
+            }
+        }
+    }
+
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -428,6 +466,39 @@ fun DownloadPageImplV2(
             Column(modifier = Modifier.fillMaxWidth()) {
                     Spacer(Modifier.height(with(LocalDensity.current) { headerOffset.toDp() }))
                     Header(onMenuOpen = onMenuOpen, modifier = Modifier.padding(horizontal = 16.dp))
+                    DownloadQueueOverview(
+                        active = activeCount,
+                        queued = queuedCount,
+                        paused = pausedCount,
+                        failed = failedCount,
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Search, contentDescription = null)
+                        },
+                        trailingIcon =
+                            if (searchQuery.isNotEmpty()) {
+                                {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(
+                                            Icons.Outlined.Clear,
+                                            contentDescription = "Clear search",
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
+                        placeholder = { Text("Search title, creator, site or URL") },
+                        shape = MaterialTheme.shapes.large,
+                    )
                     SelectionGroupRow(
                         modifier =
                             Modifier.horizontalScroll(rememberScrollState())
@@ -498,7 +569,10 @@ fun DownloadPageImplV2(
                     if (isGridView) {
                         items(
                             items =
-                                filteredMap.toList().sortedBy { (_, state) -> state.downloadState },
+                                filteredMap.toList().sortedWith(
+                                    compareBy<Pair<Task, Task.State>> { (_, state) -> state.downloadState }
+                                        .thenByDescending { (task, _) -> task.timeCreated }
+                                ),
                             key = { (task, _) -> task.id },
                         ) { (task, state) ->
                             with(state.viewState) {
@@ -526,7 +600,10 @@ fun DownloadPageImplV2(
                     } else {
                         items(
                             items =
-                                filteredMap.toList().sortedBy { (_, state) -> state.downloadState },
+                                filteredMap.toList().sortedWith(
+                                    compareBy<Pair<Task, Task.State>> { (_, state) -> state.downloadState }
+                                        .thenByDescending { (task, _) -> task.timeCreated }
+                                ),
                             key = { (task, _) -> task.id },
                             span = { GridItemSpan(maxLineSpan) },
                         ) { (task, state) ->
@@ -547,10 +624,20 @@ fun DownloadPageImplV2(
         }
         if (filteredMap.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize()) {
-                DownloadQueuePlaceholder(
-                    modifier =
-                        Modifier.fillMaxHeight(0.4f).widthIn(max = 360.dp).align(Alignment.Center)
-                )
+                if (searchQuery.isNotBlank()) {
+                    SearchQueuePlaceholder(
+                        query = searchQuery,
+                        modifier = Modifier.align(Alignment.Center),
+                        onClear = { searchQuery = "" },
+                    )
+                } else {
+                    DownloadQueuePlaceholder(
+                        modifier =
+                            Modifier.fillMaxHeight(0.4f)
+                                .widthIn(max = 360.dp)
+                                .align(Alignment.Center)
+                    )
+                }
             }
         }
     }
@@ -574,6 +661,84 @@ fun DownloadPageImplV2(
                 onActionPost = onActionPost,
             )
         }
+    }
+}
+
+@Composable
+private fun DownloadQueueOverview(
+    active: Int,
+    queued: Int,
+    paused: Int,
+    failed: Int,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            QueueMetric("Active", active, Modifier.weight(1f))
+            QueueMetric("Queue", queued, Modifier.weight(1f))
+            QueueMetric("Paused", paused, Modifier.weight(1f))
+            QueueMetric("Failed", failed, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun QueueMetric(label: String, value: Int, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color =
+                if (value > 0) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun SearchQueuePlaceholder(
+    query: String,
+    modifier: Modifier = Modifier,
+    onClear: () -> Unit,
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            Icons.Outlined.Search,
+            contentDescription = null,
+            modifier = Modifier.size(40.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "No downloads match “$query”",
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            "Try another title, creator, site, or URL.",
+            modifier = Modifier.padding(top = 4.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        androidx.compose.material3.TextButton(onClick = onClear) { Text("Clear search") }
     }
 }
 

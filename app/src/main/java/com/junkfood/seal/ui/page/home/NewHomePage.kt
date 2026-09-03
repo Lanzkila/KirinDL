@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Delete
@@ -474,6 +475,37 @@ fun NewHomePage(
         recentFiveDownloads.filter { it.videoUrl !in activeTaskUrls && it.id !in localHiddenIds }
     }
 
+    // Phase 8: compact Home activity overview. These are UI-only counts derived from the
+    // existing DownloaderV2 state map; no queue/download behavior is changed here.
+    val runningDownloadCount by remember {
+        derivedStateOf {
+            activeDownloads.count { (_, state) ->
+                state.downloadState is Task.DownloadState.Running ||
+                    state.downloadState is Task.DownloadState.FetchingInfo
+            }
+        }
+    }
+    val queuedDownloadCount by remember {
+        derivedStateOf {
+            activeDownloads.count { (_, state) ->
+                state.downloadState == Task.DownloadState.Idle ||
+                    state.downloadState == Task.DownloadState.ReadyWithInfo
+            }
+        }
+    }
+    val pausedDownloadCount by remember {
+        derivedStateOf {
+            activeDownloads.count { (_, state) -> state.downloadState is Task.DownloadState.Paused }
+        }
+    }
+    val queuedTaskIds =
+        activeDownloads
+            .filter { (_, state) ->
+                state.downloadState == Task.DownloadState.Idle ||
+                    state.downloadState == Task.DownloadState.ReadyWithInfo
+            }
+            .map { (task, _) -> task.id }
+
     // Prune Completed tasks from the in-memory taskStateMap as soon as their DB row is confirmed
     // present. taskStateMap lives inside the process-scoped DownloaderV2 singleton, so a
     // Completed task otherwise lingers there FOREVER (it's only ever removed via the Active
@@ -805,7 +837,8 @@ fun NewHomePage(
                                 context.makeToast(R.string.paste_msg)
                             } ?: context.makeToast(R.string.paste_fail_msg)
                         }
-                    }
+                    },
+                    onClearClick = { urlText = "" },
                 )
             }
 
@@ -835,6 +868,18 @@ fun NewHomePage(
                             } ?: context.makeToast(R.string.paste_fail_msg)
                         }
                     },
+                    onClearClick = { galleryUrlText = "" },
+                )
+            }
+
+            // Phase 8: one compact status surface instead of another large dashboard card.
+            item {
+                DownloadActivityStrip(
+                    activeCount = runningDownloadCount,
+                    queuedCount = queuedDownloadCount,
+                    pausedCount = pausedDownloadCount,
+                    completedCount = recentDownloads.size,
+                    onClick = onNavigateToDownloads,
                 )
             }
             
@@ -843,11 +888,20 @@ fun NewHomePage(
             // tasks are Completed and already present in the DB-backed section.
             if (activeDownloads.isNotEmpty() || recentFiveDownloadsFiltered.isNotEmpty()) {
                 item {
-                    Text(
-                        text = stringResource(R.string.recent_downloads),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.recent_downloads),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = onNavigateToDownloads) {
+                            Text("View all")
+                        }
+                    }
                 }
             }
             
@@ -865,6 +919,8 @@ fun NewHomePage(
                     ActiveDownloadCard(
                         task = task,
                         state = state,
+                        queuePosition =
+                            queuedTaskIds.indexOf(task.id).takeIf { it >= 0 }?.plus(1),
                         onAction = { action ->
                             view.slightHapticFeedback()
                             when (action) {
@@ -1118,6 +1174,51 @@ fun NewHomePage(
 }
 
 @Composable
+private fun DownloadActivityStrip(
+    activeCount: Int,
+    queuedCount: Int,
+    pausedCount: Int,
+    completedCount: Int,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ActivityMetric("Active", activeCount, Modifier.weight(1f))
+            ActivityMetric("Queue", queuedCount, Modifier.weight(1f))
+            ActivityMetric("Paused", pausedCount, Modifier.weight(1f))
+            ActivityMetric("Done", completedCount, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun ActivityMetric(label: String, count: Int, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
 fun URLInputField(
     value: String,
     onValueChange: (String) -> Unit,
@@ -1125,6 +1226,7 @@ fun URLInputField(
     onPasteClick: () -> Unit,
     modifier: Modifier = Modifier,
     placeholderText: String? = null,
+    onClearClick: (() -> Unit)? = null,
 ) {
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
     val isGradientDark = LocalGradientDarkMode.current
@@ -1198,6 +1300,14 @@ fun URLInputField(
                             imageVector = Icons.Outlined.ContentPaste,
                             contentDescription = "Paste",
                             tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else if (onClearClick != null) {
+                    IconButton(onClick = onClearClick) {
+                        Icon(
+                            imageVector = Icons.Outlined.Clear,
+                            contentDescription = "Clear URL",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -1432,7 +1542,8 @@ fun ActiveDownloadCard(
     task: Task,
     state: Task.State,
     onAction: (UiAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    queuePosition: Int? = null,
 ) {
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
     val isGradientDark = LocalGradientDarkMode.current
@@ -1589,8 +1700,9 @@ fun ActiveDownloadCard(
                                     MaterialTheme.colorScheme.secondaryContainer
                                 }
                             ) {
+                                val queueLabel = stringResource(R.string.queue_status)
                                 Text(
-                                    text = stringResource(R.string.queue_status),
+                                    text = queuePosition?.let { "$queueLabel #$it" } ?: queueLabel,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (isGradientDark && isDarkTheme) {
                                         GradientDarkColors.GradientSecondaryEnd
@@ -1614,6 +1726,7 @@ fun ActiveDownloadCard(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+
                 }
                 
                 // Pause/Resume action button

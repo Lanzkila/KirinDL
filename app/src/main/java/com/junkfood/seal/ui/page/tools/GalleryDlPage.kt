@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Queue
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -51,6 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -214,6 +217,7 @@ fun GalleryDlPage(
             KirinTabs(
                 selected = tab,
                 queueCount = state.queue.count { it.state == "pending" || it.state == "running" },
+                historyCount = state.history.size,
                 colors = colors,
                 onSelected = { tab = it },
             )
@@ -326,6 +330,7 @@ fun GalleryDlPage(
 private fun KirinTabs(
     selected: Int,
     queueCount: Int,
+    historyCount: Int,
     colors: KirinGalleryColors,
     onSelected: (Int) -> Unit,
 ) {
@@ -337,7 +342,7 @@ private fun KirinTabs(
             listOf(
                 Triple("Download", Icons.Outlined.Download, ""),
                 Triple("Queue", Icons.Outlined.Queue, if (queueCount > 0) " $queueCount" else ""),
-                Triple("History", Icons.Outlined.History, ""),
+                Triple("History", Icons.Outlined.History, if (historyCount > 0) " $historyCount" else ""),
             )
         tabs.forEachIndexed { index, item ->
             val active = selected == index
@@ -430,6 +435,20 @@ private fun DownloadTab(
                             tint = colors.accent,
                         )
                     },
+                    trailingIcon =
+                        if (state.url.isNotBlank() && !state.isBusy) {
+                            {
+                                IconButton(onClick = { onUrlChanged("") }) {
+                                    Icon(
+                                        Icons.Outlined.Clear,
+                                        contentDescription = "Clear URL",
+                                        tint = colors.muted,
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        },
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -554,6 +573,24 @@ private fun QueueTab(
     onRemove: (String) -> Unit,
     onClearFinished: () -> Unit,
 ) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val visibleQueue =
+        remember(state.queue, searchQuery) {
+            val query = searchQuery.trim()
+            if (query.isBlank()) state.queue
+            else
+                state.queue.filter { item ->
+                    item.url.contains(query, ignoreCase = true) ||
+                        item.extractor.contains(query, ignoreCase = true) ||
+                        item.state.contains(query, ignoreCase = true) ||
+                        item.error.contains(query, ignoreCase = true)
+                }
+        }
+    val pendingCount = state.queue.count { it.state == "pending" }
+    val runningCount = state.queue.count { it.state == "running" }
+    val failedCount = state.queue.count { it.state == "failed" }
+    val completedCount = state.queue.count { it.state == "completed" }
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -579,6 +616,27 @@ private fun QueueTab(
                     tint = colors.muted,
                 )
             }
+        }
+
+        GalleryStatsStrip(
+            firstLabel = "Pending",
+            firstValue = pendingCount,
+            secondLabel = "Running",
+            secondValue = runningCount,
+            thirdLabel = "Failed",
+            thirdValue = failedCount,
+            fourthLabel = "Done",
+            fourthValue = completedCount,
+            colors = colors,
+        )
+
+        if (state.queue.isNotEmpty()) {
+            GallerySearchField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = "Search queue URL, extractor or status",
+                colors = colors,
+            )
         }
 
         if (state.queue.isEmpty()) {
@@ -614,13 +672,21 @@ private fun QueueTab(
                 Text(if (state.isQueueRunning) "Queue Running" else "Run Queue")
             }
 
-            state.queue.forEach { item ->
-                QueueRow(
-                    item = item,
-                    colors = colors,
-                    removeEnabled = !state.isQueueRunning && item.state != "running",
-                    onRemove = { onRemove(item.id) },
+            if (visibleQueue.isEmpty()) {
+                EmptyState(
+                    "No queue matches",
+                    "Try another URL, extractor, or status.",
+                    colors,
                 )
+            } else {
+                visibleQueue.forEach { item ->
+                    QueueRow(
+                        item = item,
+                        colors = colors,
+                        removeEnabled = !state.isQueueRunning && item.state != "running",
+                        onRemove = { onRemove(item.id) },
+                    )
+                }
             }
         }
     }
@@ -696,6 +762,23 @@ private fun HistoryTab(
     onReuse: (String) -> Unit,
     onClear: () -> Unit,
 ) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val visibleHistory =
+        remember(state.history, searchQuery) {
+            val query = searchQuery.trim()
+            if (query.isBlank()) state.history
+            else
+                state.history.filter { record ->
+                    record.url.contains(query, ignoreCase = true) ||
+                        record.extractor.contains(query, ignoreCase = true) ||
+                        record.error.contains(query, ignoreCase = true) ||
+                        (record.success && "completed".contains(query, ignoreCase = true)) ||
+                        (!record.success && "failed".contains(query, ignoreCase = true))
+                }
+        }
+    val successCount = state.history.count { it.success }
+    val failureCount = state.history.size - successCount
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -722,6 +805,27 @@ private fun HistoryTab(
             }
         }
 
+        GalleryStatsStrip(
+            firstLabel = "Total",
+            firstValue = state.history.size,
+            secondLabel = "Done",
+            secondValue = successCount,
+            thirdLabel = "Failed",
+            thirdValue = failureCount,
+            fourthLabel = "Files",
+            fourthValue = state.history.filter { it.success }.sumOf { it.fileCount },
+            colors = colors,
+        )
+
+        if (state.history.isNotEmpty()) {
+            GallerySearchField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = "Search history URL, extractor or status",
+                colors = colors,
+            )
+        }
+
         if (state.history.isEmpty()) {
             EmptyState(
                 "No history yet",
@@ -729,8 +833,16 @@ private fun HistoryTab(
                 colors,
             )
         } else {
-            state.history.forEach { record ->
-                HistoryRow(record, colors) { onReuse(record.url) }
+            if (visibleHistory.isEmpty()) {
+                EmptyState(
+                    "No history matches",
+                    "Try another URL, extractor, or status.",
+                    colors,
+                )
+            } else {
+                visibleHistory.forEach { record ->
+                    HistoryRow(record, colors) { onReuse(record.url) }
+                }
             }
         }
     }
@@ -793,6 +905,90 @@ private fun HistoryRow(
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+@Composable
+private fun GalleryStatsStrip(
+    firstLabel: String,
+    firstValue: Int,
+    secondLabel: String,
+    secondValue: Int,
+    thirdLabel: String,
+    thirdValue: Int,
+    fourthLabel: String,
+    fourthValue: Int,
+    colors: KirinGalleryColors,
+) {
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(colors.panelAlt, RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        GalleryMetric(firstLabel, firstValue, colors, Modifier.weight(1f))
+        GalleryMetric(secondLabel, secondValue, colors, Modifier.weight(1f))
+        GalleryMetric(thirdLabel, thirdValue, colors, Modifier.weight(1f))
+        GalleryMetric(fourthLabel, fourthValue, colors, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun GalleryMetric(
+    label: String,
+    value: Int,
+    colors: KirinGalleryColors,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value.toString(),
+            color = if (value > 0) colors.accent else colors.text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Black,
+        )
+        Text(
+            label,
+            color = colors.muted,
+            fontSize = 9.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun GallerySearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    colors: KirinGalleryColors,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        leadingIcon = {
+            Icon(Icons.Outlined.Search, contentDescription = null, tint = colors.accent)
+        },
+        trailingIcon =
+            if (value.isNotBlank()) {
+                {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(
+                            Icons.Outlined.Clear,
+                            contentDescription = "Clear search",
+                            tint = colors.muted,
+                        )
+                    }
+                }
+            } else {
+                null
+            },
+        placeholder = { Text(placeholder, color = colors.muted) },
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.text),
+    )
 }
 
 @Composable

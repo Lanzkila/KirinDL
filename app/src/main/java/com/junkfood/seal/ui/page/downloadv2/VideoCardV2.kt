@@ -429,17 +429,20 @@ fun ListItemStateText(
                 is Running -> {
                     val progress = downloadState.progress
                     val pct = if (progress >= 0) " %.1f %%".format(progress * 100) else ""
-                    when (downloadState.phase) {
-                        Task.TransferPhase.Preparing -> "Preparing download..."
-                        Task.TransferPhase.Video -> "Downloading video...$pct"
-                        Task.TransferPhase.Audio -> "Downloading audio...$pct"
-                        Task.TransferPhase.Fragments -> "Downloading fragments...$pct"
-                        Task.TransferPhase.Merging -> stringResource(R.string.status_merging)
-                        Task.TransferPhase.RetryingNative -> "Retrying with native yt-dlp..."
-                        Task.TransferPhase.Downloading ->
-                            if (progress >= 0) "%.1f %%".format(progress * 100)
-                            else stringResource(R.string.status_downloading)
-                    }
+                    val phaseText =
+                        when (downloadState.phase) {
+                            Task.TransferPhase.Preparing -> "Preparing download..."
+                            Task.TransferPhase.Video -> "Downloading video...$pct"
+                            Task.TransferPhase.Audio -> "Downloading audio...$pct"
+                            Task.TransferPhase.Fragments -> "Downloading fragments...$pct"
+                            Task.TransferPhase.Merging -> stringResource(R.string.status_merging)
+                            Task.TransferPhase.RetryingNative -> "Retrying with native yt-dlp..."
+                            Task.TransferPhase.Downloading ->
+                                if (progress >= 0) "Downloading...$pct"
+                                else stringResource(R.string.status_downloading)
+                        }
+                    parseTransferSpeedEta(downloadState.progressText)?.let { "$phaseText • $it" }
+                        ?: phaseText
                 }
             }
         Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
@@ -512,6 +515,18 @@ fun ListItemStateText(
     }
 }
 
+private fun parseTransferSpeedEta(progressText: String): String? {
+    if (progressText.isBlank()) return null
+    val speed = Regex("""at\s+([\d.]+\s*\S+/s)""").find(progressText)?.groupValues?.get(1)
+    val eta = Regex("""ETA\s+(\d+:\d+(?::\d+)?)""").find(progressText)?.groupValues?.get(1)
+    return when {
+        speed != null && eta != null -> "$speed • ETA $eta"
+        speed != null -> speed
+        eta != null -> "ETA $eta"
+        else -> null
+    }
+}
+
 @Composable
 private fun CardItemStateText(modifier: Modifier = Modifier, downloadState: Task.DownloadState) {
     val errorColor =
@@ -523,18 +538,39 @@ private fun CardItemStateText(modifier: Modifier = Modifier, downloadState: Task
 
     val text =
         when (downloadState) {
-            is Canceled -> R.string.status_canceled
-            is Completed -> R.string.status_downloaded
-            is Error -> R.string.status_error
-            is FetchingInfo -> R.string.status_fetching_video_info
-            Idle -> R.string.status_enqueued
-            is Paused -> R.string.status_paused
-            ReadyWithInfo -> R.string.status_enqueued
-            is Running ->
-                if (downloadState.phase == Task.TransferPhase.Merging)
-                    R.string.status_merging
-                else R.string.status_downloading
+            is Canceled -> stringResource(R.string.status_canceled)
+            is Completed -> stringResource(R.string.status_downloaded)
+            is Error -> stringResource(R.string.status_error)
+            is FetchingInfo -> stringResource(R.string.status_fetching_video_info)
+            Idle -> stringResource(R.string.status_enqueued)
+            is Paused -> {
+                val progress = downloadState.progress
+                if (progress != null && progress >= 0) {
+                    "Paused %.0f%%".format(progress * 100)
+                } else {
+                    stringResource(R.string.status_paused)
+                }
+            }
+            ReadyWithInfo -> stringResource(R.string.status_enqueued)
+            is Running -> {
+                val pct =
+                    if (downloadState.progress >= 0)
+                        " %.0f%%".format(downloadState.progress * 100)
+                    else ""
+                when (downloadState.phase) {
+                    Task.TransferPhase.Preparing -> "Preparing"
+                    Task.TransferPhase.Video -> "Video$pct"
+                    Task.TransferPhase.Audio -> "Audio$pct"
+                    Task.TransferPhase.Fragments -> "Fragments$pct"
+                    Task.TransferPhase.Merging -> stringResource(R.string.status_merging)
+                    Task.TransferPhase.RetryingNative -> "Native retry"
+                    Task.TransferPhase.Downloading ->
+                        if (pct.isNotEmpty()) "Downloading$pct"
+                        else stringResource(R.string.status_downloading)
+                }
+            }
         }
+
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         if (downloadState is Error) {
             Icon(
@@ -546,7 +582,7 @@ private fun CardItemStateText(modifier: Modifier = Modifier, downloadState: Task
             Spacer(Modifier.width(4.dp))
         }
         Text(
-            text = stringResource(id = text),
+            text = text,
             modifier = Modifier,
             style = textStyle,
             color = contentColor,
