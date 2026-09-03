@@ -1,6 +1,7 @@
 package com.junkfood.seal.ui.page.settings.format
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -91,6 +92,8 @@ import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateInt
 import com.junkfood.seal.util.PreferenceUtil.updateString
 import com.junkfood.seal.util.SORTING_FIELDS
+import com.junkfood.seal.util.SMART_DOWNLOAD_PROFILE
+import com.junkfood.seal.util.SmartDownloadProfiles
 import com.junkfood.seal.util.SUBTITLE
 import com.junkfood.seal.util.VIDEO_CLIP
 import com.junkfood.seal.util.VIDEO_FORMAT
@@ -136,6 +139,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
     var showAudioCoverFormatDialog by remember { mutableStateOf(false) }
     var showVideoCodecDialog by remember { mutableStateOf(false) }
     var showVideoContainerDialog by remember { mutableStateOf(false) }
+    var showSmartProfileDialog by remember { mutableStateOf(false) }
 
     var videoFormat by VIDEO_FORMAT.intState
     var videoQuality by VIDEO_QUALITY.intState
@@ -154,7 +158,26 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
     var isVideoClipEnabled by VIDEO_CLIP.booleanState
     var isFormatSelectionEnabled by FORMAT_SELECTION.booleanState
     var mergeAudioStream by MERGE_MULTI_AUDIO_STREAM.booleanState
+    var smartProfile by remember { mutableStateOf(SMART_DOWNLOAD_PROFILE.getInt()) }
     var showMergeAudioDialog by remember { mutableStateOf(false) }
+
+    fun refreshFormatState() {
+        audioSwitch = EXTRACT_AUDIO.getBoolean()
+        videoFormat = VIDEO_FORMAT.getInt()
+        videoQuality = VIDEO_QUALITY.getInt()
+        audioFormat = AUDIO_FORMAT.getInt()
+        audioQuality = AUDIO_QUALITY.getInt()
+        audioCodec = AUDIO_CODEC.getInt()
+        audioCoverMode = AUDIO_COVER_MODE.getInt()
+        audioCoverFormat = AUDIO_COVER_FORMAT.getInt()
+        videoCodec = VIDEO_CODEC.getInt()
+        videoContainer = VIDEO_CONTAINER.getInt()
+        convertFormat = AUDIO_CONVERSION_FORMAT.getInt()
+        sortingFields = SORTING_FIELDS.getString()
+        convertAudio = AUDIO_CONVERT.getBoolean()
+        isFormatSortingEnabled = FORMAT_SORTING.getBoolean()
+        smartProfile = SMART_DOWNLOAD_PROFILE.getInt()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -174,6 +197,23 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                             text = stringResource(id = R.string.custom_command_enabled_hint)
                         )
                     }
+                item { PreferenceSubtitle(text = "Smart profiles") }
+                item {
+                    PreferenceItem(
+                        title = "Smart Download Profile",
+                        description =
+                            "${SmartDownloadProfiles.label(smartProfile)} • one-tap preset; manual controls stay available",
+                        icon = Icons.Outlined.Tune,
+                        enabled = !isCustomCommandEnabled,
+                        onClick = { showSmartProfileDialog = true },
+                    )
+                }
+                item {
+                    PreferenceInfo(
+                        text =
+                            "Profiles are preference macros only. They do not change queue lifecycle, Aria2 protocol routing, or Gallery DL."
+                    )
+                }
                 item { PreferenceSubtitle(text = stringResource(id = R.string.audio)) }
                 item {
                     PreferenceSwitch(
@@ -429,6 +469,21 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
             }
         },
     )
+    if (showSmartProfileDialog) {
+        SmartDownloadProfileDialog(
+            selected = smartProfile,
+            onDismiss = { showSmartProfileDialog = false },
+            onApplied = {
+                smartProfile = it
+                refreshFormatState()
+                showSmartProfileDialog = false
+            },
+            onSaved = {
+                smartProfile = it
+                refreshFormatState()
+            },
+        )
+    }
     if (showAudioFormatDialog) {
         AudioFormatDialog {
             audioFormat = AUDIO_FORMAT.getInt()
@@ -622,6 +677,80 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
     }
 }
 
+
+@Composable
+private fun SmartDownloadProfileDialog(
+    selected: Int,
+    onDismiss: () -> Unit,
+    onApplied: (Int) -> Unit,
+    onSaved: (Int) -> Unit,
+) {
+    var current by remember { mutableStateOf(selected) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.Tune, null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text("Smart Download Profiles") },
+        text = {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    "Apply a complete media preset, or save your current format choices into one of three custom slots.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                SmartDownloadProfiles.builtIns.forEach { profile ->
+                    DialogSingleChoiceItemVariant(
+                        title = profile.title,
+                        desc = profile.description,
+                        selected = current == profile.id,
+                        onClick = {
+                            if (SmartDownloadProfiles.apply(profile.id)) {
+                                current = profile.id
+                                onApplied(profile.id)
+                            }
+                        },
+                    )
+                }
+                PreferenceSubtitle(text = "Custom slots")
+                listOf(
+                    SmartDownloadProfiles.CUSTOM_1 to "Custom Slot 1",
+                    SmartDownloadProfiles.CUSTOM_2 to "Custom Slot 2",
+                    SmartDownloadProfiles.CUSTOM_3 to "Custom Slot 3",
+                ).forEach { (id, label) ->
+                    val saved = SmartDownloadProfiles.customSlotSaved(id)
+                    androidx.compose.foundation.layout.Row(
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                if (saved && SmartDownloadProfiles.apply(id)) {
+                                    current = id
+                                    onApplied(id)
+                                }
+                            },
+                            enabled = saved,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(if (saved) "Apply $label" else "$label empty")
+                        }
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                if (SmartDownloadProfiles.saveCurrentToCustom(id)) {
+                                    current = id
+                                    onSaved(id)
+                                }
+                            },
+                        ) {
+                            Text("Save current")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { DismissButton { onDismiss() } },
+    )
+}
 
 @Composable
 private fun SimpleFormatChoiceDialog(

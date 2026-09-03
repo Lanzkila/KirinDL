@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
@@ -54,6 +55,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
@@ -127,6 +129,8 @@ import com.junkfood.seal.ui.svg.drawablevectors.download
 import com.junkfood.seal.ui.theme.SealTheme
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
+import com.junkfood.seal.util.QUEUE_BULK_CONFIRM
+import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.getErrorReport
 import com.junkfood.seal.util.makeToast
 import kotlinx.coroutines.CoroutineScope
@@ -408,12 +412,18 @@ fun DownloadPageImplV2(
             }
         }
     }
+    val completedCount by remember {
+        derivedStateOf {
+            taskDownloadStateMap.count { (_, state) -> state.downloadState is Completed }
+        }
+    }
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     var selectedTask by remember { mutableStateOf<Task?>(null) }
+    var showClearCompletedDialog by remember { mutableStateOf(false) }
     val view = LocalView.current
 
     fun showActionSheet(task: Task) {
@@ -429,6 +439,14 @@ fun DownloadPageImplV2(
         if (!taskDownloadStateMap.contains(selectedTask)) {
             selectedTask == null
         }
+    }
+
+    fun clearCompleted() {
+        taskDownloadStateMap
+            .filterValues { it.downloadState is Completed }
+            .keys
+            .toList()
+            .forEach { onActionPost(it, UiAction.Delete) }
     }
 
     Scaffold(
@@ -472,6 +490,42 @@ fun DownloadPageImplV2(
                         paused = pausedCount,
                         failed = failedCount,
                         modifier = Modifier.padding(horizontal = 20.dp),
+                    )
+                    QueueBulkActions(
+                        remaining = activeCount + queuedCount + pausedCount,
+                        canPause = activeCount > 0,
+                        canResume = pausedCount > 0,
+                        canRetry = failedCount > 0,
+                        canClearCompleted = completedCount > 0,
+                        onPauseAll = {
+                            taskDownloadStateMap
+                                .filterValues { it.downloadState is Running }
+                                .keys
+                                .toList()
+                                .forEach { onActionPost(it, UiAction.Pause) }
+                        },
+                        onResumeAll = {
+                            taskDownloadStateMap
+                                .filterValues { it.downloadState is Task.DownloadState.Paused }
+                                .keys
+                                .toList()
+                                .forEach { onActionPost(it, UiAction.Resume) }
+                        },
+                        onRetryFailed = {
+                            taskDownloadStateMap
+                                .filterValues {
+                                    it.downloadState is Error ||
+                                        it.downloadState is Task.DownloadState.Canceled
+                                }
+                                .keys
+                                .toList()
+                                .forEach { onActionPost(it, UiAction.Retry) }
+                        },
+                        onClearCompleted = {
+                            if (QUEUE_BULK_CONFIRM.getBoolean()) showClearCompletedDialog = true
+                            else clearCompleted()
+                        },
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                     )
                     OutlinedTextField(
                         value = searchQuery,
@@ -641,6 +695,28 @@ fun DownloadPageImplV2(
             }
         }
     }
+    if (showClearCompletedDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCompletedDialog = false },
+            title = { Text("Clear completed downloads?") },
+            text = {
+                Text(
+                    "This removes completed items from the active queue view. Downloaded media files are not deleted."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        clearCompleted()
+                        showClearCompletedDialog = false
+                    }
+                ) { Text("Clear") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCompletedDialog = false }) { Text("Cancel") }
+            },
+        )
+    }
     if (selectedTask != null) {
         val task = selectedTask!!
         val (downloadState, _, viewState) = taskDownloadStateMap[task] ?: return
@@ -660,6 +736,40 @@ fun DownloadPageImplV2(
                 },
                 onActionPost = onActionPost,
             )
+        }
+    }
+}
+
+@Composable
+private fun QueueBulkActions(
+    remaining: Int,
+    canPause: Boolean,
+    canResume: Boolean,
+    canRetry: Boolean,
+    canClearCompleted: Boolean,
+    onPauseAll: () -> Unit,
+    onResumeAll: () -> Unit,
+    onRetryFailed: () -> Unit,
+    onClearCompleted: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Remaining jobs: $remaining",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            TextButton(onClick = onPauseAll, enabled = canPause) { Text("Pause All") }
+            TextButton(onClick = onResumeAll, enabled = canResume) { Text("Resume All") }
+            TextButton(onClick = onRetryFailed, enabled = canRetry) { Text("Retry Failed") }
+            TextButton(onClick = onClearCompleted, enabled = canClearCompleted) {
+                Text("Clear Completed")
+            }
         }
     }
 }

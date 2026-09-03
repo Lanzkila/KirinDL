@@ -33,6 +33,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.junkfood.seal.Downloader
 import com.junkfood.seal.util.GalleryDlEngine
+import com.junkfood.seal.util.ARIA2C
+import com.junkfood.seal.util.ARIA2C_CONNECTIONS
+import com.junkfood.seal.util.CONCURRENT
 import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getLong
@@ -171,6 +174,15 @@ internal fun EngineUpdateCenterSection(
                 }
             }
         }
+
+        EngineHealthOverview(
+            ytdlp = ytdlpInstalled.ifBlank { "Unknown" },
+            gallery = galleryInstalled ?: "Not installed",
+            aria2 =
+                if (ARIA2C.getBoolean()) "Enabled • ${ARIA2C_CONNECTIONS.getInt()} direct connections"
+                else "Disabled",
+            fragments = "yt-dlp native • ${CONCURRENT.getInt()} fragments",
+        )
 
         EngineStatusCard(
             title = "yt-dlp",
@@ -322,6 +334,36 @@ internal fun EngineUpdateCenterSection(
             }
         }
 
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    busyAction = "Checking all engines…"
+                    errorMessage = null
+                    statusMessage = null
+                    refreshInstalledVersions()
+                    val ytResult = UpdateUtil.checkLatestYtDlpVersion()
+                    val galleryResult = GalleryDlEngine.latestMasterCommit()
+                    ytdlpLatest = ytResult.getOrNull()
+                    galleryLatestCommit = galleryResult.getOrNull()
+                    val errors =
+                        listOfNotNull(
+                            ytResult.exceptionOrNull()?.let { "yt-dlp: ${it.message ?: it.javaClass.simpleName}" },
+                            galleryResult.exceptionOrNull()?.let { "gallery-dl: ${it.message ?: it.javaClass.simpleName}" },
+                        )
+                    if (errors.isEmpty()) statusMessage = "Engine health check completed."
+                    else errorMessage = errors.joinToString(" • ")
+                    stampCheckedTime()
+                    busyAction = null
+                }
+            },
+            enabled = busyAction == null && !galleryBusy,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.Refresh, contentDescription = null)
+            Spacer(Modifier.size(6.dp))
+            Text("Check All Engines")
+        }
+
         Button(
             onClick = {
                 scope.launch {
@@ -412,6 +454,49 @@ internal fun EngineUpdateCenterSection(
                 color = MaterialTheme.colorScheme.error,
             )
         }
+    }
+}
+
+@Composable
+private fun EngineHealthOverview(
+    ytdlp: String,
+    gallery: String,
+    aria2: String,
+    fragments: String,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                "Engine Health",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            EngineHealthLine("yt-dlp", ytdlp)
+            EngineHealthLine("gallery-dl", gallery)
+            EngineHealthLine("Aria2 direct", aria2)
+            EngineHealthLine("Fragments", fragments)
+            EngineHealthLine("FFmpeg", "Bundled with KirinDL")
+            EngineHealthLine("Python bridge", "Bundled • Gallery DL runtime")
+        }
+    }
+}
+
+@Composable
+private fun EngineHealthLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

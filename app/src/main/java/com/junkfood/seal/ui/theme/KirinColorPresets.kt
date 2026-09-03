@@ -27,6 +27,15 @@ val KirinColorPresets =
         KirinColorPreset("Red", Color(0xFFFFF3F2), Color(0xFF24100F), Color(0xFFC73D37), Color(0xFFFF7770)),
         KirinColorPreset("Slate", Color(0xFFF5F7FA), Color(0xFF11151A), Color(0xFF526273), Color(0xFF9CAFC1)),
         KirinColorPreset("Monochrome", Color(0xFFF5F5F5), Color(0xFF111111), Color(0xFF3E3E3E), Color(0xFFD0D0D0)),
+        KirinColorPreset("Sky", Color(0xFFF1F9FF), Color(0xFF081923), Color(0xFF1976B8), Color(0xFF67C5FF)),
+        KirinColorPreset("Teal", Color(0xFFEFFAF8), Color(0xFF071B18), Color(0xFF087F73), Color(0xFF52D4C4)),
+        KirinColorPreset("Mint", Color(0xFFF0FBF7), Color(0xFF081B14), Color(0xFF299B70), Color(0xFF6EE0B0)),
+        KirinColorPreset("Lime", Color(0xFFF8FBEF), Color(0xFF171B08), Color(0xFF718D22), Color(0xFFB5D96B)),
+        KirinColorPreset("Gold", Color(0xFFFFFAEB), Color(0xFF201A08), Color(0xFF9B7610), Color(0xFFE2BD55)),
+        KirinColorPreset("Coral", Color(0xFFFFF3F0), Color(0xFF24110D), Color(0xFFC95645), Color(0xFFFF8B78)),
+        KirinColorPreset("Pink", Color(0xFFFFF1F8), Color(0xFF241019), Color(0xFFC54382), Color(0xFFFF7DB4)),
+        KirinColorPreset("Indigo", Color(0xFFF4F4FF), Color(0xFF111326), Color(0xFF4D58C7), Color(0xFF8993FF)),
+        KirinColorPreset("Midnight", Color(0xFFF3F5FA), Color(0xFF080D18), Color(0xFF334D78), Color(0xFF7F9FCE)),
     )
 
 fun kirinBodyColor(index: Int, darkTheme: Boolean): Color? =

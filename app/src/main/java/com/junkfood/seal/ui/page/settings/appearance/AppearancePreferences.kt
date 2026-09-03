@@ -25,7 +25,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Colorize
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
@@ -83,6 +85,9 @@ import com.junkfood.seal.util.STYLE_TONAL_SPOT
 import com.junkfood.seal.util.paletteStyles
 import com.junkfood.seal.util.toDisplayName
 import com.junkfood.seal.ui.theme.KirinColorPresets
+import com.junkfood.seal.ui.theme.kirinBodyColor
+import com.junkfood.seal.ui.theme.kirinButtonColor
+import com.junkfood.seal.ui.theme.readableOnColor
 import com.kyant.monet.LocalTonalPalettes
 import com.kyant.monet.PaletteStyle
 import com.kyant.monet.TonalPalettes
@@ -117,6 +122,8 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     val appSettings by PreferenceUtil.AppSettingsStateFlow.collectAsState()
     var showBodyColorDialog by remember { mutableStateOf(false) }
     var showButtonColorDialog by remember { mutableStateOf(false) }
+    var favoriteColorPair by remember { mutableStateOf(PreferenceUtil.getFavoriteColorPair()) }
+    val previewDarkTheme = LocalDarkTheme.current.isDarkTheme()
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -234,6 +241,35 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                     icon = Icons.Outlined.Colorize,
                     onClick = { showButtonColorDialog = true },
                 )
+                KirinColorPairPreview(
+                    bodyIndex = appSettings.bodyColorPreset,
+                    buttonIndex = appSettings.buttonColorPreset,
+                    darkTheme = previewDarkTheme,
+                )
+                PreferenceItem(
+                    title = "Save favorite color pair",
+                    description = "Remember the current body + button combination",
+                    icon = Icons.Outlined.FavoriteBorder,
+                    onClick = {
+                        PreferenceUtil.saveFavoriteColorPair()
+                        favoriteColorPair =
+                            appSettings.bodyColorPreset to appSettings.buttonColorPreset
+                    },
+                )
+                PreferenceItem(
+                    title = "Apply favorite color pair",
+                    description =
+                        "${KirinColorPresets.getOrNull(favoriteColorPair.first)?.title ?: "Follow theme"} + " +
+                            (KirinColorPresets.getOrNull(favoriteColorPair.second)?.title ?: "Follow theme"),
+                    icon = Icons.Outlined.Palette,
+                    onClick = { PreferenceUtil.applyFavoriteColorPair() },
+                )
+                PreferenceItem(
+                    title = "Reset KirinDL colors",
+                    description = "Return body and buttons to the active Material theme",
+                    icon = Icons.Outlined.RestartAlt,
+                    onClick = { PreferenceUtil.resetKirinColorPair() },
+                )
 
                 if (DynamicColors.isDynamicColorAvailable()) {
                     PreferenceSwitch(
@@ -305,6 +341,49 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                 showButtonColorDialog = false
             },
         )
+    }
+}
+
+@Composable
+private fun KirinColorPairPreview(
+    bodyIndex: Int,
+    buttonIndex: Int,
+    darkTheme: Boolean,
+) {
+    val body = kirinBodyColor(bodyIndex, darkTheme) ?: MaterialTheme.colorScheme.background
+    val button = kirinButtonColor(buttonIndex, darkTheme) ?: MaterialTheme.colorScheme.primary
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = body,
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                Text(
+                    "Live color preview",
+                    color = readableOnColor(body),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    "Body + independent accent",
+                    color = readableOnColor(body).copy(alpha = 0.72f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Surface(shape = RoundedCornerShape(12.dp), color = button) {
+                Text(
+                    "Button",
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    color = readableOnColor(button),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
     }
 }
 

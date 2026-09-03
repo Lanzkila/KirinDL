@@ -108,6 +108,8 @@ private const val HIGH_CONTRAST = "high_contrast"
 private const val GRADIENT_DARK_MODE = "gradient_dark_mode"
 private const val KIRIN_BODY_COLOR_PRESET = "kirin_body_color_preset"
 private const val KIRIN_BUTTON_COLOR_PRESET = "kirin_button_color_preset"
+private const val KIRIN_FAVORITE_BODY_COLOR_PRESET = "kirin_favorite_body_color_preset"
+private const val KIRIN_FAVORITE_BUTTON_COLOR_PRESET = "kirin_favorite_button_color_preset"
 const val DISABLE_PREVIEW = "disable_preview"
 const val PRIVATE_DIRECTORY = "private_directory"
 const val CROP_ARTWORK = "crop_artwork"
@@ -144,6 +146,13 @@ const val HOME_RECENT_LIMIT = "home_recent_limit"
 const val HOME_TRANSFER_DETAILS = "home_transfer_details"
 const val HOME_INPUT_ANIMATION = "home_input_animation"
 const val HOME_QUICK_TOOLS = "home_quick_tools"
+const val HOME_SHOW_ACTIVITY = "home_show_activity"
+const val HOME_COMPACT_ACTIVITY = "home_compact_activity"
+const val QUEUE_BULK_CONFIRM = "queue_bulk_confirm"
+const val SMART_DOWNLOAD_PROFILE = "smart_download_profile"
+const val SMART_PROFILE_SLOT_1 = "smart_profile_slot_1"
+const val SMART_PROFILE_SLOT_2 = "smart_profile_slot_2"
+const val SMART_PROFILE_SLOT_3 = "smart_profile_slot_3"
 
 // When true, the format-selection screen only lists MP4-family formats
 // (mp4 video / m4a audio). Falls back to showing all formats if a site has none.
@@ -349,6 +358,9 @@ private val BooleanPreferenceDefaults =
         HOME_TRANSFER_DETAILS to true,
         HOME_INPUT_ANIMATION to true,
         HOME_QUICK_TOOLS to true,
+        HOME_SHOW_ACTIVITY to true,
+        HOME_COMPACT_ACTIVITY to false,
+        QUEUE_BULK_CONFIRM to true,
         FORMAT_MP4_ONLY to true,
         DOWNLOAD_DOCS to false,
         USER_AGENT to true,
@@ -372,6 +384,9 @@ private val IntPreferenceDefaults =
         VIDEO_CONTAINER to VIDEO_CONTAINER_AUTO,
         KIRIN_BODY_COLOR_PRESET to 0,
         KIRIN_BUTTON_COLOR_PRESET to 0,
+        KIRIN_FAVORITE_BODY_COLOR_PRESET to 0,
+        KIRIN_FAVORITE_BUTTON_COLOR_PRESET to 0,
+        SMART_DOWNLOAD_PROFILE to 0,
         HOME_RECENT_LIMIT to 5,
         UPDATE_CHANNEL to STABLE,
         SHOW_SPONSOR_MSG to 0,
@@ -641,6 +656,27 @@ object PreferenceUtil {
             mutableAppSettingsStateFlow.update { it.copy(buttonColorPreset = index) }
             kv.encode(KIRIN_BUTTON_COLOR_PRESET, index)
         }
+    }
+
+    fun saveFavoriteColorPair() {
+        val current = AppSettingsStateFlow.value
+        kv.encode(KIRIN_FAVORITE_BODY_COLOR_PRESET, current.bodyColorPreset)
+        kv.encode(KIRIN_FAVORITE_BUTTON_COLOR_PRESET, current.buttonColorPreset)
+    }
+
+    fun getFavoriteColorPair(): Pair<Int, Int> =
+        kv.decodeInt(KIRIN_FAVORITE_BODY_COLOR_PRESET, 0) to
+            kv.decodeInt(KIRIN_FAVORITE_BUTTON_COLOR_PRESET, 0)
+
+    fun applyFavoriteColorPair() {
+        val (body, button) = getFavoriteColorPair()
+        modifyBodyColorPreset(body)
+        modifyButtonColorPreset(button)
+    }
+
+    fun resetKirinColorPair() {
+        modifyBodyColorPreset(0)
+        modifyButtonColorPreset(0)
     }
 
     fun switchDynamicColor(

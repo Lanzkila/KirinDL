@@ -156,6 +156,10 @@ import com.junkfood.seal.util.HOME_RECENT_LIMIT
 import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
 import com.junkfood.seal.util.HOME_INPUT_ANIMATION
 import com.junkfood.seal.util.HOME_QUICK_TOOLS
+import com.junkfood.seal.util.HOME_SHOW_ACTIVITY
+import com.junkfood.seal.util.HOME_COMPACT_ACTIVITY
+import com.junkfood.seal.util.SMART_DOWNLOAD_PROFILE
+import com.junkfood.seal.util.SmartDownloadProfiles
 import java.io.File
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
@@ -403,6 +407,10 @@ fun NewHomePage(
     val showTransferDetails = HOME_TRANSFER_DETAILS.getBoolean()
     val animateUrlHints = HOME_INPUT_ANIMATION.getBoolean()
     val showQuickTools = HOME_QUICK_TOOLS.getBoolean()
+    val showHomeActivity = HOME_SHOW_ACTIVITY.getBoolean()
+    val compactHomeActivity = HOME_COMPACT_ACTIVITY.getBoolean()
+    var smartProfile by remember { mutableStateOf(SMART_DOWNLOAD_PROFILE.getInt()) }
+    var smartProfileRevision by remember { mutableStateOf(0) }
     val recentFiveDownloads = remember(recentDownloads, homeRecentLimit) {
         recentDownloads
             .distinctBy { it.videoUrl + it.videoPath }
@@ -841,6 +849,17 @@ fun NewHomePage(
                 HomeInputLabel("Media / yt-dlp")
             }
             item {
+                SmartProfileQuickPicker(
+                    selected = smartProfile,
+                    onSelect = { selected ->
+                        if (SmartDownloadProfiles.apply(selected)) {
+                            smartProfile = selected
+                            smartProfileRevision++
+                        }
+                    },
+                )
+            }
+            item {
                 URLInputField(
                     value = urlText,
                     onValueChange = { urlText = it },
@@ -867,14 +886,17 @@ fun NewHomePage(
                     animatePlaceholder = animateUrlHints,
                 )
             }
-            item {
-                DownloadActivityStrip(
-                    activeCount = runningDownloadCount,
-                    queuedCount = queuedDownloadCount,
-                    pausedCount = pausedDownloadCount,
-                    completedCount = recentDownloads.size,
-                    onClick = onNavigateToDownloads,
-                )
+            if (showHomeActivity) {
+                item {
+                    DownloadActivityStrip(
+                        activeCount = runningDownloadCount,
+                        queuedCount = queuedDownloadCount,
+                        pausedCount = pausedDownloadCount,
+                        completedCount = recentDownloads.size,
+                        compact = compactHomeActivity,
+                        onClick = onNavigateToDownloads,
+                    )
+                }
             }
 
             item {
@@ -910,14 +932,17 @@ fun NewHomePage(
                     animatePlaceholder = animateUrlHints,
                 )
             }
-            item {
-                GalleryActivityStrip(
-                    pendingCount = galleryPendingCount,
-                    failedCount = galleryFailedCount,
-                    completedCount = galleryDoneCount,
-                    fileCount = galleryFileCount,
-                    onClick = onNavigateToGalleryDl,
-                )
+            if (showHomeActivity) {
+                item {
+                    GalleryActivityStrip(
+                        pendingCount = galleryPendingCount,
+                        failedCount = galleryFailedCount,
+                        completedCount = galleryDoneCount,
+                        fileCount = galleryFileCount,
+                        compact = compactHomeActivity,
+                        onClick = onNavigateToGalleryDl,
+                    )
+                }
             }
             
             // Recent Downloads Section - combines both active and completed.
@@ -1167,6 +1192,9 @@ fun NewHomePage(
     var preferences by remember {
         mutableStateOf(DownloadUtil.DownloadPreferences.createFromPreferences())
     }
+    LaunchedEffect(smartProfileRevision) {
+        preferences = DownloadUtil.DownloadPreferences.createFromPreferences()
+    }
     val sheetValue by dialogViewModel.sheetValueFlow.collectAsStateWithLifecycle()
     val dialogState by dialogViewModel.sheetStateFlow.collectAsStateWithLifecycle()
     val selectionState = dialogViewModel.selectionStateFlow.collectAsStateWithLifecycle().value
@@ -1222,6 +1250,85 @@ private fun HomeInputLabel(title: String) {
 }
 
 @Composable
+private fun SmartProfileQuickPicker(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Quick profile",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        SmartDownloadProfiles.label(selected),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Text(
+                    "Change",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SmartDownloadProfiles.builtIns.forEach { profile ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(profile.title, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                profile.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(profile.id)
+                    },
+                )
+            }
+            listOf(
+                SmartDownloadProfiles.CUSTOM_1 to "Custom Slot 1",
+                SmartDownloadProfiles.CUSTOM_2 to "Custom Slot 2",
+                SmartDownloadProfiles.CUSTOM_3 to "Custom Slot 3",
+            ).forEach { (id, label) ->
+                if (SmartDownloadProfiles.customSlotSaved(id)) {
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            expanded = false
+                            onSelect(id)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun HomeInputDivider(title: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1245,6 +1352,7 @@ private fun GalleryActivityStrip(
     failedCount: Int,
     completedCount: Int,
     fileCount: Int,
+    compact: Boolean = false,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -1254,7 +1362,7 @@ private fun GalleryActivityStrip(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1272,6 +1380,7 @@ private fun DownloadActivityStrip(
     queuedCount: Int,
     pausedCount: Int,
     completedCount: Int,
+    compact: Boolean = false,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -1281,7 +1390,7 @@ private fun DownloadActivityStrip(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

@@ -10,7 +10,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -18,7 +21,9 @@ import androidx.compose.material.icons.outlined.VolunteerActivism
 import androidx.compose.material.icons.outlined.SignalCellular4Bar
 import androidx.compose.material.icons.outlined.SignalWifi4Bar
 import androidx.compose.material.icons.rounded.NetworkCheck
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -27,10 +32,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +65,12 @@ import com.junkfood.seal.util.HOME_RECENT_LIMIT
 import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
 import com.junkfood.seal.util.HOME_INPUT_ANIMATION
 import com.junkfood.seal.util.HOME_QUICK_TOOLS
+import com.junkfood.seal.util.HOME_SHOW_ACTIVITY
+import com.junkfood.seal.util.HOME_COMPACT_ACTIVITY
+import com.junkfood.seal.util.QUEUE_BULK_CONFIRM
 import com.junkfood.seal.util.MAX_CONCURRENT_DOWNLOADS
+import com.junkfood.seal.util.FileUtil
+import com.junkfood.seal.util.GALLERY_DL_DIRECTORY
 import com.junkfood.seal.util.NETWORK_ANY
 import com.junkfood.seal.util.NETWORK_MOBILE_ONLY
 import com.junkfood.seal.util.NETWORK_PAUSE_DELAY_SECONDS
@@ -75,10 +87,15 @@ import com.junkfood.seal.util.SPONSOR_FREQ_OFF
 import com.junkfood.seal.util.SPONSOR_FREQ_WEEKLY
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getInt
+import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateInt
 import com.junkfood.seal.util.makeToast
 import com.junkfood.seal.util.GalleryDlBehaviorPreference
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +125,21 @@ fun SealPlusExtrasPage(
     var homeTransferDetails by remember { mutableStateOf(HOME_TRANSFER_DETAILS.getBoolean()) }
     var homeInputAnimation by remember { mutableStateOf(HOME_INPUT_ANIMATION.getBoolean()) }
     var homeQuickTools by remember { mutableStateOf(HOME_QUICK_TOOLS.getBoolean()) }
+    var homeShowActivity by remember { mutableStateOf(HOME_SHOW_ACTIVITY.getBoolean()) }
+    var homeCompactActivity by remember { mutableStateOf(HOME_COMPACT_ACTIVITY.getBoolean()) }
+    var queueBulkConfirm by remember { mutableStateOf(QUEUE_BULK_CONFIRM.getBoolean()) }
     var showHomeRecentDialog by remember { mutableStateOf(false) }
+    var storageSnapshot by remember { mutableStateOf(StorageSnapshot()) }
+    var storageMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun refreshStorage() {
+        scope.launch {
+            storageSnapshot = withContext(Dispatchers.IO) { measureStorage() }
+        }
+    }
+
+    LaunchedEffect(Unit) { refreshStorage() }
 
     val galleryConfirmBeforeDownload by
         GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsState()
@@ -253,6 +284,40 @@ fun SealPlusExtrasPage(
             }
             
             item {
+                PreferenceSwitch(
+                    title = "Confirm bulk queue cleanup",
+                    description = "Ask before Clear Completed removes completed items from the active queue view",
+                    icon = Icons.Outlined.Delete,
+                    isChecked = queueBulkConfirm,
+                    onClick = {
+                        queueBulkConfirm = !queueBulkConfirm
+                        QUEUE_BULK_CONFIRM.updateBoolean(queueBulkConfirm)
+                    },
+                )
+            }
+
+            item {
+                PreferenceSubtitle(text = "Storage Manager")
+            }
+            item {
+                StorageManagerCard(
+                    snapshot = storageSnapshot,
+                    message = storageMessage,
+                    onRefresh = { refreshStorage() },
+                    onClearTemp = {
+                        scope.launch {
+                            val removed =
+                                withContext(Dispatchers.IO) {
+                                    FileUtil.clearTempFiles(FileUtil.getExternalTempDir())
+                                }
+                            storageMessage = "Cleared $removed temporary file${if (removed == 1) "" else "s"}."
+                            refreshStorage()
+                        }
+                    },
+                )
+            }
+
+            item {
                 PreferenceSubtitle(text = "Gallery DL")
             }
 
@@ -366,6 +431,31 @@ fun SealPlusExtrasPage(
                     onClick = {
                         homeQuickTools = !homeQuickTools
                         HOME_QUICK_TOOLS.updateBoolean(homeQuickTools)
+                    },
+                )
+            }
+            item {
+                PreferenceSwitch(
+                    title = "Home activity statistics",
+                    description = "Show Media and Gallery Active/Queue/Done dashboard cards",
+                    icon = Icons.Outlined.ViewAgenda,
+                    isChecked = homeShowActivity,
+                    onClick = {
+                        homeShowActivity = !homeShowActivity
+                        HOME_SHOW_ACTIVITY.updateBoolean(homeShowActivity)
+                    },
+                )
+            }
+            item {
+                PreferenceSwitch(
+                    title = "Compact activity cards",
+                    description = "Use shorter Home statistics cards while keeping all counters",
+                    icon = Icons.Outlined.ViewAgenda,
+                    isChecked = homeCompactActivity,
+                    enabled = homeShowActivity,
+                    onClick = {
+                        homeCompactActivity = !homeCompactActivity
+                        HOME_COMPACT_ACTIVITY.updateBoolean(homeCompactActivity)
                     },
                 )
             }
@@ -644,6 +734,105 @@ fun SealPlusExtrasPage(
                     showNetworkDialog = false
                 }
             )
+        }
+    }
+}
+
+private data class StorageSnapshot(
+    val kirinRootBytes: Long = 0L,
+    val galleryBytes: Long = 0L,
+    val tempBytes: Long = 0L,
+    val freeBytes: Long = 0L,
+)
+
+private fun measureStorage(): StorageSnapshot {
+    val root = FileUtil.getExternalDownloadDirectory()
+    val galleryConfigured = GALLERY_DL_DIRECTORY.getString().trim()
+    val gallery =
+        if (galleryConfigured.isNotBlank()) File(galleryConfigured)
+        else File(root, "GalleryDL")
+    val temp = FileUtil.getExternalTempDir()
+    return StorageSnapshot(
+        kirinRootBytes = directorySize(root),
+        galleryBytes = directorySize(gallery),
+        tempBytes = directorySize(temp),
+        freeBytes = root.usableSpace.coerceAtLeast(0L),
+    )
+}
+
+private fun directorySize(root: File): Long {
+    if (!root.exists()) return 0L
+    return runCatching {
+            root.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        }
+        .getOrDefault(0L)
+}
+
+private fun readableBytes(bytes: Long): String {
+    if (bytes <= 0L) return "0 B"
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
+    var value = bytes.toDouble()
+    var unit = 0
+    while (value >= 1024.0 && unit < units.lastIndex) {
+        value /= 1024.0
+        unit++
+    }
+    return if (unit == 0) "${value.toLong()} ${units[unit]}"
+    else "%.1f %s".format(value, units[unit])
+}
+
+@Composable
+private fun StorageManagerCard(
+    snapshot: StorageSnapshot,
+    message: String?,
+    onRefresh: () -> Unit,
+    onClearTemp: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Storage, contentDescription = null)
+                Text(
+                    "  Download storage",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text("KirinDL root • ${readableBytes(snapshot.kirinRootBytes)}")
+            Text("Gallery DL • ${readableBytes(snapshot.galleryBytes)}")
+            Text("Temporary files • ${readableBytes(snapshot.tempBytes)}")
+            Text(
+                "Free storage • ${readableBytes(snapshot.freeBytes)}",
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(onClick = onRefresh, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = null)
+                    Text(" Refresh")
+                }
+                Button(onClick = onClearTemp, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.Delete, contentDescription = null)
+                    Text(" Clear temp")
+                }
+            }
+            Text(
+                "Clear temp only removes temporary downloader files; completed media is untouched.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            message?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }
