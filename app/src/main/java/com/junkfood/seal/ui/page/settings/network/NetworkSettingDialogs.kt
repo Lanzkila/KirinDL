@@ -1,6 +1,5 @@
 package com.junkfood.seal.ui.page.settings.network
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,14 +14,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,20 +27,18 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.core.text.isDigitsOnly
 import com.junkfood.seal.R
 import com.junkfood.seal.ui.component.ConfirmButton
 import com.junkfood.seal.ui.component.DismissButton
 import com.junkfood.seal.ui.component.DialogSingleChoiceItem
-import com.junkfood.seal.util.CONCURRENT
+import com.junkfood.seal.ui.component.DialogSingleChoiceItemVariant
 import com.junkfood.seal.util.MAX_RATE
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.PreferenceUtil.updateString
 import com.junkfood.seal.util.isNumberInRange
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -103,54 +96,54 @@ fun RateLimitDialog(onDismissRequest: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConcurrentDownloadDialog(onDismissRequest: () -> Unit) {
-    var concurrentFragments by remember {
-        mutableFloatStateOf(PreferenceUtil.getConcurrentFragments())
+fun ConcurrentDownloadDialog(
+    selected: Int,
+    onDismissRequest: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    val standardOptions = listOf(1, 4, 8, 12, 16)
+    val options = remember(selected) {
+        (standardOptions + listOfNotNull(selected.takeIf { it > 0 && it !in standardOptions }))
+            .distinct()
+            .sorted()
     }
-    val count by remember {
-        derivedStateOf {
-            if (concurrentFragments <= 0.125f) 1 else ((concurrentFragments * 3f).roundToInt()) * 8
-        }
+    var value by remember(selected) {
+        mutableStateOf(selected.coerceAtLeast(1))
     }
+
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text(stringResource(R.string.dismiss)) }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest()
-                    PreferenceUtil.encodeInt(CONCURRENT, count)
-                }
-            ) {
-                Text(stringResource(R.string.confirm))
-            }
-        },
         icon = { Icon(Icons.Outlined.OfflineBolt, null, tint = MaterialTheme.colorScheme.primary) },
         title = { Text(stringResource(R.string.concurrent_download)) },
         text = {
             Column {
-                val interactionSource = remember { MutableInteractionSource() }
-                Text(text = stringResource(R.string.concurrent_download_num, count))
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Slider(
-                    value = concurrentFragments,
-                    onValueChange = { concurrentFragments = it },
-                    steps = 2,
-                    valueRange = 0f..1f,
-                    thumb = {
-                        SliderDefaults.Thumb(
-                            modifier = Modifier,
-                            interactionSource = interactionSource,
-                            thumbSize = DpSize(4.dp, 32.dp),
-                        )
-                    },
+                Text(
+                    "yt-dlp native fragment parallelism for DASH/HLS streams. " +
+                        "This can stay enabled together with Aria2, which handles direct HTTP/HTTPS downloads.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
+                options.forEach { option ->
+                    val description =
+                        when (option) {
+                            1 -> "Single fragment • maximum compatibility"
+                            4 -> "Balanced • lighter network usage"
+                            8 -> "Recommended • good speed/stability balance"
+                            12 -> "Fast • higher parallelism"
+                            16 -> "Maximum standard preset • use on strong connections"
+                            else -> "Legacy/custom value • preserved from your previous setting"
+                        }
+                    DialogSingleChoiceItemVariant(
+                        title = "$option fragment${if (option == 1) "" else "s"}",
+                        desc = description,
+                        selected = value == option,
+                        onClick = { value = option },
+                    )
+                }
             }
         },
+        dismissButton = { DismissButton { onDismissRequest() } },
+        confirmButton = { ConfirmButton { onConfirm(value) } },
     )
 }
 

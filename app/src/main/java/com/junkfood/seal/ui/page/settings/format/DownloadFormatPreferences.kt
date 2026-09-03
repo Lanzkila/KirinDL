@@ -1,6 +1,8 @@
 package com.junkfood.seal.ui.page.settings.format
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArtTrack
@@ -473,6 +475,21 @@ private val ytdlpFormatProfiles =
             fields = "res,fps,vcodec,channels,acodec,br",
         ),
         YtdlpFormatProfile(
+            title = "High FPS",
+            description = "Prefer higher frame rate first, then resolution and codec quality.",
+            fields = "fps,res,hdr:12,vcodec,channels,acodec,br",
+        ),
+        YtdlpFormatProfile(
+            title = "HDR quality",
+            description = "Prefer HDR/10-bit capable formats, then resolution and FPS.",
+            fields = "hdr:12,res,fps,vcodec,channels,acodec,br",
+        ),
+        YtdlpFormatProfile(
+            title = "SDR compatibility",
+            description = "Prefer SDR + H.264 + AAC for broad device/player compatibility.",
+            fields = "hdr:sdr,vcodec:h264,acodec:aac,ext,res,fps",
+        ),
+        YtdlpFormatProfile(
             title = "AV1 quality",
             description = "Prefer AV1, then resolution/FPS/bitrate.",
             fields = "vcodec:av01,res,fps,br",
@@ -486,6 +503,11 @@ private val ytdlpFormatProfiles =
             title = "Smaller files",
             description = "Prefer smaller size/bitrate/resolution where available.",
             fields = "+size,+br,+res",
+        ),
+        YtdlpFormatProfile(
+            title = "Low bandwidth",
+            description = "Prefer lower bitrate, resolution and FPS to reduce transfer size.",
+            fields = "+br,+res,+fps",
         ),
     )
 
@@ -508,7 +530,9 @@ private fun YtdlpFormatProfileDialog(
         icon = { Icon(Icons.Outlined.Tune, null, tint = MaterialTheme.colorScheme.primary) },
         title = { Text("yt-dlp format profile") },
         text = {
-            androidx.compose.foundation.layout.Column {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
                 Text(
                     "Quick format presets inspired by YTDLnis. The normal custom -S editor remains available below.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -516,7 +540,12 @@ private fun YtdlpFormatProfileDialog(
                 ytdlpFormatProfiles.forEach { profile ->
                     DialogSingleChoiceItemVariant(
                         title = profile.title,
-                        desc = profile.description,
+                        desc =
+                            if (profile.fields.isBlank()) {
+                                profile.description
+                            } else {
+                                "${profile.description}\n-S ${profile.fields}"
+                            },
                         selected = selectedFields == profile.fields,
                         onClick = { onSelect(profile.fields) },
                     )

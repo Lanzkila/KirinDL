@@ -37,6 +37,7 @@ import com.junkfood.seal.util.ARIA2C
 import com.junkfood.seal.util.ARIA2C_CONNECTIONS
 import com.junkfood.seal.util.CELLULAR_DOWNLOAD
 import com.junkfood.seal.util.COOKIES
+import com.junkfood.seal.util.CONCURRENT
 import com.junkfood.seal.util.CUSTOM_COMMAND
 import com.junkfood.seal.util.FORCE_IPV4
 import com.junkfood.seal.util.NO_CHECK_CERTIFICATE
@@ -61,6 +62,9 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
     var showAria2ConnectionsDialog by remember { mutableStateOf(false) }
     var aria2c by remember { mutableStateOf(ARIA2C.getBoolean()) }
     var aria2Connections by remember { mutableStateOf(ARIA2C_CONNECTIONS.getInt()) }
+    var concurrentFragments by remember {
+        mutableStateOf(CONCURRENT.getInt().coerceAtLeast(1))
+    }
     var isCookiesEnabled by COOKIES.booleanState
     var forceIpv4 by FORCE_IPV4.booleanState
     var noCheckCertificate by NO_CHECK_CERTIFICATE.booleanState
@@ -145,11 +149,27 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
                 item {
                     PreferenceItem(
                         title = stringResource(id = R.string.concurrent_download),
-                        description = stringResource(R.string.concurrent_download_desc),
+                        description =
+                            "$concurrentFragments fragment${if (concurrentFragments == 1) "" else "s"} • " +
+                                "yt-dlp native DASH/HLS parallelism",
                         icon = Icons.Outlined.OfflineBolt,
                         enabled = !isCustomCommandEnabled,
                     ) {
                         showConcurrentDownloadDialog = true
+                    }
+                }
+                if (!isCustomCommandEnabled) {
+                    item {
+                        PreferenceInfo(
+                            text =
+                                if (aria2c) {
+                                    "Hybrid parallel mode • Aria2: up to $aria2Connections direct connections • " +
+                                        "yt-dlp: $concurrentFragments fragments for DASH/HLS"
+                                } else {
+                                    "yt-dlp native fragment parallelism is active independently. " +
+                                        "Enable Aria2 if you also want multi-connection direct HTTP/HTTPS downloads."
+                                },
+                        )
                     }
                 }
                 item {
@@ -189,7 +209,15 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
     )
 
     if (showConcurrentDownloadDialog) {
-        ConcurrentDownloadDialog { showConcurrentDownloadDialog = false }
+        ConcurrentDownloadDialog(
+            selected = concurrentFragments,
+            onDismissRequest = { showConcurrentDownloadDialog = false },
+            onConfirm = { value ->
+                concurrentFragments = value
+                CONCURRENT.updateInt(value)
+                showConcurrentDownloadDialog = false
+            },
+        )
     }
 
     if (showRateLimitDialog) {

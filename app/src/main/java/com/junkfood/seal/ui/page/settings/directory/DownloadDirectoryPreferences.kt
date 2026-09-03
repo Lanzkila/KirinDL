@@ -166,6 +166,9 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
     var sdcardUri by remember { mutableStateOf(SDCARD_URI.getString()) }
     var customCommandDirectory by COMMAND_DIRECTORY.stringState
     var galleryDirectoryText by GALLERY_DL_DIRECTORY.stringState
+    val defaultGalleryDirectory = remember {
+        File(FileUtil.getExternalDownloadDirectory(), "GalleryDL").absolutePath
+    }
 
     var sdcardDownload by remember { mutableStateOf(SDCARD_DOWNLOAD.getBoolean()) }
 
@@ -313,12 +316,33 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
                     PreferenceItem(
                         title = "Gallery DL directory",
                         description =
-                            galleryDirectoryText.ifBlank {
-                                File(FileUtil.getExternalDownloadDirectory(), "GalleryDL").absolutePath
+                            if (galleryDirectoryText.isBlank()) {
+                                "Default • $defaultGalleryDirectory"
+                            } else {
+                                "Custom • $galleryDirectoryText"
                             },
                         icon = Icons.Outlined.FolderSpecial,
                     ) {
                         openDirectoryChooser(directory = Directory.GALLERY)
+                    }
+                }
+                item {
+                    PreferenceInfo(
+                        text =
+                            "Gallery DL saves into [Site]/[Gallery] folders under the selected root. " +
+                                "Primary shared storage is supported for custom Gallery paths."
+                    )
+                }
+                if (galleryDirectoryText.isNotBlank()) {
+                    item {
+                        PreferenceItem(
+                            title = "Reset Gallery DL directory",
+                            description = "Return to default • $defaultGalleryDirectory",
+                            icon = Icons.Outlined.FolderDelete,
+                        ) {
+                            GALLERY_DL_DIRECTORY.updateString("")
+                            galleryDirectoryText = ""
+                        }
                     }
                 }
             }
