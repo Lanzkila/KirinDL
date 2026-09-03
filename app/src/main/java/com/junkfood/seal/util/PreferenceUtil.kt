@@ -54,6 +54,7 @@ const val ONBOARDING_COMPLETED = "onboarding_completed"
 const val VIDEO_DIRECTORY = "download_dir"
 const val AUDIO_DIRECTORY = "audio_dir"
 const val COMMAND_DIRECTORY = "command_directory"
+const val GALLERY_DL_DIRECTORY = "gallery_dl_directory"
 const val SDCARD_DOWNLOAD = "sdcard_download"
 const val SDCARD_URI = "sd_card_uri"
 const val SUBDIRECTORY_EXTRACTOR = "sub-directory"
@@ -669,6 +670,10 @@ object PreferenceStrings {
             5 -> "480p"
             6 -> "360p"
             7 -> stringResource(R.string.lowest_quality)
+            8 -> "4320p (8K)"
+            9 -> "2880p (5K)"
+            10 -> "240p"
+            11 -> "144p"
             else -> stringResource(R.string.best_quality)
         }
     }

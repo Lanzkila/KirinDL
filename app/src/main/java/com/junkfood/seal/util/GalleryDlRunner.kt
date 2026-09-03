@@ -3,6 +3,7 @@ package com.junkfood.seal.util
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
+import com.junkfood.seal.util.PreferenceUtil.getString
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import java.io.File
@@ -244,10 +245,7 @@ object GalleryDlRunner {
                             throw IOException("gallery-dl finished but no files were produced")
                         }
 
-                        val galleryRoot =
-                            File(FileUtil.getExternalDownloadDirectory(), "GalleryDL").apply {
-                                mkdirs()
-                            }
+                        val galleryRoot = galleryRootDirectory(context)
                         val destination =
                             buildGalleryDestination(
                                 galleryRoot = galleryRoot,
@@ -300,6 +298,19 @@ object GalleryDlRunner {
                 if (value.isNotBlank()) add(value)
             }
         }
+    }
+
+    /** Root used for Gallery DL exports. Empty preference keeps the legacy Download/GalleryDL path. */
+    fun galleryRootDirectory(context: Context): File {
+        val configured = GALLERY_DL_DIRECTORY.getString().trim()
+        val root =
+            if (configured.isNotBlank()) File(configured)
+            else File(FileUtil.getExternalDownloadDirectory(), "GalleryDL")
+        val canonical = root.canonicalFile
+        if (!canonical.exists() && !canonical.mkdirs() && !canonical.isDirectory) {
+            throw IOException("Could not create Gallery DL download directory")
+        }
+        return canonical
     }
 
     /** Build Download/GalleryDL/[Site]/[Gallery]/ from the real HTTP(S) URL. */

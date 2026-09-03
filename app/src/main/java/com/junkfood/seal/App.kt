@@ -34,6 +34,7 @@ import com.junkfood.seal.ui.page.tools.VideoInfoDownloadViewModel
 import com.junkfood.seal.ui.page.videolist.VideoListViewModel
 import com.junkfood.seal.util.AUDIO_DIRECTORY
 import com.junkfood.seal.util.COMMAND_DIRECTORY
+import com.junkfood.seal.util.GALLERY_DL_DIRECTORY
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.FileUtil.createEmptyFile
@@ -291,6 +292,15 @@ class App : Application(), SingletonImageLoader.Factory {
                     val path = FileUtil.getRealPath(uri)
                     videoDownloadDir = path
                     PreferenceUtil.encodeString(VIDEO_DIRECTORY, path)
+                }
+
+                Directory.GALLERY -> {
+                    if (!FileUtil.isPrimaryStorageUri(uri)) {
+                        context.makeToast(R.string.directory_not_supported)
+                        return
+                    }
+                    val path = FileUtil.getRealPath(uri)
+                    PreferenceUtil.encodeString(GALLERY_DL_DIRECTORY, path)
                 }
 
                 Directory.CUSTOM_COMMAND -> {

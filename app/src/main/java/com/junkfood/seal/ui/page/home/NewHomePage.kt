@@ -148,8 +148,7 @@ import com.junkfood.seal.ui.theme.GradientDarkColors
 import com.junkfood.seal.util.DatabaseUtil
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
-import com.junkfood.seal.util.GalleryDlEngine
-import com.junkfood.seal.util.GalleryDlStore
+import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import java.io.File
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
@@ -216,6 +215,7 @@ fun NewHomePage(
     
     var showExitDialog by remember { mutableStateOf(false) }
     var urlText by remember { mutableStateOf("") }
+    var galleryUrlText by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     // Pre-fill URL from share intent
@@ -782,14 +782,7 @@ fun NewHomePage(
                 )
             }
 
-            item {
-                GalleryDlHomeCard(
-                    refreshKey = lifecycleRefreshTrigger,
-                    onClick = onNavigateToGalleryDl,
-                )
-            }
-            
-            // URL Input Field with Download Button
+            // Main yt-dlp URL input.
             item {
                 URLInputField(
                     value = urlText,
@@ -813,6 +806,35 @@ fun NewHomePage(
                             } ?: context.makeToast(R.string.paste_fail_msg)
                         }
                     }
+                )
+            }
+
+            // Compact Gallery DL URL input. Keep Home clean: no engine/status dashboard here.
+            item {
+                URLInputField(
+                    value = galleryUrlText,
+                    onValueChange = { galleryUrlText = it },
+                    placeholderText = "Enter Gallery DL URL",
+                    onDownloadClick = {
+                        if (galleryUrlText.isNotBlank()) {
+                            view.slightHapticFeedback()
+                            GalleryDlBehaviorPreference.setPendingHomeUrl(galleryUrlText)
+                            galleryUrlText = ""
+                            keyboardController?.hide()
+                            onNavigateToGalleryDl()
+                        } else {
+                            context.makeToast(R.string.url_empty)
+                        }
+                    },
+                    onPasteClick = {
+                        val clipText = clipboardManager.getText()?.text?.trim()
+                        if (!clipText.isNullOrBlank()) {
+                            context.matchUrlFromClipboard(clipText)?.let { url ->
+                                galleryUrlText = url
+                                context.makeToast(R.string.paste_msg)
+                            } ?: context.makeToast(R.string.paste_fail_msg)
+                        }
+                    },
                 )
             }
             
@@ -1101,16 +1123,18 @@ fun URLInputField(
     onValueChange: (String) -> Unit,
     onDownloadClick: () -> Unit,
     onPasteClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    placeholderText: String? = null,
 ) {
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
     val isGradientDark = LocalGradientDarkMode.current
-    val fullPlaceholder = stringResource(R.string.enter_url_to_download)
+    val defaultPlaceholder = stringResource(R.string.enter_url_to_download)
+    val fullPlaceholder = placeholderText ?: defaultPlaceholder
 
     // Typewriter animation: reveal characters one by one
     var displayedLength by remember { mutableStateOf(0) }
     
-    LaunchedEffect(Unit) {
+    LaunchedEffect(fullPlaceholder) {
         displayedLength = 0
         for (i in 1..fullPlaceholder.length) {
             delay(50L)
@@ -2614,115 +2638,6 @@ fun AnimatedGlowingPlus() {
         ),
         fontWeight = FontWeight.Bold
     )
-}
-
-@Composable
-private fun GalleryDlHomeCard(
-    refreshKey: Int,
-    onClick: () -> Unit,
-) {
-    val context = LocalContext.current
-    val engineVersion = remember(refreshKey) { GalleryDlEngine.installedVersion(context) }
-    val queue = remember(refreshKey) { GalleryDlStore.loadQueue(context) }
-    val history = remember(refreshKey) { GalleryDlStore.loadHistory(context) }
-    val pending = queue.count { it.state == "pending" || it.state == "failed" }
-    val completed = history.count { it.success }
-
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier =
-                        Modifier.size(46.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Outlined.AutoAwesome,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(23.dp),
-                    )
-                }
-                Spacer(Modifier.size(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Gallery DL",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text =
-                            engineVersion?.let { "gallery-dl $it • Engine ready" }
-                                ?: "Gallery downloader • Engine setup required",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Icon(
-                    Icons.Outlined.FileDownload,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                GalleryHomeMetric(
-                    label = "Pending",
-                    value = pending.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-                GalleryHomeMetric(
-                    label = "Completed",
-                    value = completed.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-                GalleryHomeMetric(
-                    label = "Engine",
-                    value = if (engineVersion != null) "Ready" else "Setup",
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun GalleryHomeMetric(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier =
-            modifier.clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                .padding(horizontal = 10.dp, vertical = 9.dp),
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
 }
 
 /**

@@ -2,8 +2,6 @@ package com.junkfood.seal.ui.page.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -16,13 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Cookie
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
@@ -34,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -45,17 +39,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.junkfood.seal.ui.component.BackButton
-import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.page.settings.general.YtdlpUpdateChannelDialog
 import com.junkfood.seal.ui.page.tools.GalleryDlViewModel
-import com.junkfood.seal.util.GalleryDlBehaviorPreference
-import com.junkfood.seal.util.GalleryDlThemePreference
-import com.junkfood.seal.util.GalleryDlThemeStyle
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,9 +54,6 @@ fun GalleryDlSettingsPage(
     viewModel: GalleryDlViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val selectedTheme by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
-    val confirmBeforeDownload by
-        GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showYtdlpSettings by remember { mutableStateOf(false) }
 
@@ -111,40 +97,6 @@ fun GalleryDlSettingsPage(
                 onOpenYtdlpSettings = { showYtdlpSettings = true },
                 onGalleryUpdated = viewModel::refreshFromDisk,
             )
-
-            SettingsSection(
-                icon = Icons.Outlined.Palette,
-                title = "Gallery appearance",
-                description =
-                    "Gallery DL follows KirinDL's active Light/Dark/Dynamic theme. " +
-                        "Choose an optional accent variation below.",
-            ) {
-                GalleryDlThemeStyle.entries.forEach { style ->
-                    GalleryThemeChoice(
-                        style = style,
-                        selected = selectedTheme == style,
-                        onClick = { GalleryDlThemePreference.setStyle(style) },
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-            }
-
-            SettingsSection(
-                icon = Icons.Outlined.Check,
-                title = "Download confirmation",
-                description =
-                    "Seal-style Gallery DL preflight before a download or queue action starts.",
-            ) {
-                PreferenceSwitch(
-                    title = "Confirm before downloading",
-                    description =
-                        "Default ON. Analyze extractor and available metadata first, then show a review sheet. Turn this off to start Gallery DL actions immediately.",
-                    isChecked = confirmBeforeDownload,
-                    onClick = {
-                        GalleryDlBehaviorPreference.setConfirmBeforeDownload(!confirmBeforeDownload)
-                    },
-                )
-            }
 
             SettingsSection(
                 icon = Icons.Outlined.Settings,
@@ -324,74 +276,6 @@ fun GalleryDlSettingsPage(
                 showYtdlpSettings = false
             }
         )
-    }
-}
-
-@Composable
-private fun GalleryThemeChoice(
-    style: GalleryDlThemeStyle,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-
-    val swatch =
-        when (style) {
-            GalleryDlThemeStyle.APP_DEFAULT -> scheme.primary
-            GalleryDlThemeStyle.KIRIN_CYAN -> Color(0xFF18BFEA)
-            GalleryDlThemeStyle.OCEAN -> Color(0xFF4B8DFF)
-            GalleryDlThemeStyle.EMERALD -> Color(0xFF2DBF85)
-            GalleryDlThemeStyle.VIOLET -> Color(0xFF8B7CFF)
-        }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        color =
-            if (selected) {
-                scheme.primaryContainer.copy(alpha = 0.55f)
-            } else {
-                scheme.surfaceVariant.copy(alpha = 0.45f)
-            },
-        border =
-            BorderStroke(
-                1.dp,
-                if (selected) scheme.primary else scheme.outlineVariant,
-            ),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                modifier = Modifier.size(24.dp),
-                shape = RoundedCornerShape(99.dp),
-                color = swatch,
-            ) {}
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    style.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    style.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = scheme.onSurfaceVariant,
-                )
-            }
-
-            if (selected) {
-                Icon(
-                    Icons.Outlined.Check,
-                    contentDescription = "Selected",
-                    tint = scheme.primary,
-                )
-            }
-        }
     }
 }
 

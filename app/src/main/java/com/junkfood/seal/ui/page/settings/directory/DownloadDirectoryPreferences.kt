@@ -92,6 +92,7 @@ import com.junkfood.seal.util.COMMAND_DIRECTORY
 import com.junkfood.seal.util.CUSTOM_COMMAND
 import com.junkfood.seal.util.CUSTOM_OUTPUT_TEMPLATE
 import com.junkfood.seal.util.DownloadUtil
+import com.junkfood.seal.util.GALLERY_DL_DIRECTORY
 import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.FileUtil.getConfigDirectory
 import com.junkfood.seal.util.FileUtil.getExternalTempDir
@@ -107,6 +108,7 @@ import com.junkfood.seal.util.SDCARD_DOWNLOAD
 import com.junkfood.seal.util.SDCARD_URI
 import com.junkfood.seal.util.SUBDIRECTORY_EXTRACTOR
 import com.junkfood.seal.util.SUBDIRECTORY_PLAYLIST_TITLE
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -125,6 +127,7 @@ private fun String.isValidDirectory(): Boolean {
 enum class Directory {
     AUDIO,
     VIDEO,
+    GALLERY,
     SDCARD,
     CUSTOM_COMMAND,
 }
@@ -162,6 +165,7 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
         }
     var sdcardUri by remember { mutableStateOf(SDCARD_URI.getString()) }
     var customCommandDirectory by COMMAND_DIRECTORY.stringState
+    var galleryDirectoryText by GALLERY_DL_DIRECTORY.stringState
 
     var sdcardDownload by remember { mutableStateOf(SDCARD_DOWNLOAD.getBoolean()) }
 
@@ -181,6 +185,7 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
             !Environment.isExternalStorageManager() &&
             (!audioDirectoryText.isValidDirectory() ||
                 !videoDirectoryText.isValidDirectory() ||
+                !galleryDirectoryText.isValidDirectory() ||
                 !customCommandDirectory.isValidDirectory())
 
     val launcher =
@@ -207,6 +212,12 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
 
                         Directory.VIDEO -> {
                             videoDirectoryText = path
+                        }
+
+                        Directory.GALLERY -> {
+                            if (FileUtil.isPrimaryStorageUri(uri)) {
+                                galleryDirectoryText = path
+                            }
                         }
 
                         Directory.SDCARD -> {
@@ -296,6 +307,18 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
                         icon = Icons.Outlined.LibraryMusic,
                     ) {
                         openDirectoryChooser(directory = Directory.AUDIO)
+                    }
+                }
+                item {
+                    PreferenceItem(
+                        title = "Gallery DL directory",
+                        description =
+                            galleryDirectoryText.ifBlank {
+                                File(FileUtil.getExternalDownloadDirectory(), "GalleryDL").absolutePath
+                            },
+                        icon = Icons.Outlined.FolderSpecial,
+                    ) {
+                        openDirectoryChooser(directory = Directory.GALLERY)
                     }
                 }
             }

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Colorize
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
@@ -37,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,6 +63,7 @@ import com.junkfood.seal.ui.common.LocalSeedColor
 import com.junkfood.seal.ui.common.Route
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.PreferenceItem
+import com.junkfood.seal.ui.component.PreferenceSubtitle
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.component.PreferenceSwitchWithDivider
 import com.junkfood.seal.ui.page.downloadv2.ActionButton
@@ -69,6 +72,8 @@ import com.junkfood.seal.ui.page.downloadv2.VideoCardV2
 import com.junkfood.seal.util.DarkThemePreference.Companion.OFF
 import com.junkfood.seal.util.DarkThemePreference.Companion.ON
 import com.junkfood.seal.util.PreferenceUtil
+import com.junkfood.seal.util.GalleryDlThemePreference
+import com.junkfood.seal.util.GalleryDlThemeStyle
 import com.junkfood.seal.util.STYLE_MONOCHROME
 import com.junkfood.seal.util.STYLE_TONAL_SPOT
 import com.junkfood.seal.util.paletteStyles
@@ -102,6 +107,8 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     val index by remember { mutableIntStateOf(DrawableList.indices.random()) }
 
     val image by remember(index) { mutableIntStateOf(DrawableList[index]) }
+
+    val galleryTheme by GalleryDlThemePreference.style.collectAsState()
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -237,6 +244,15 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                     description = Locale.getDefault().toDisplayName(),
                 ) {
                     onNavigateTo(Route.LANGUAGES)
+                }
+                PreferenceSubtitle(text = "Gallery DL")
+                GalleryDlThemeStyle.entries.forEach { style ->
+                    PreferenceItem(
+                        title = style.title,
+                        description = style.description,
+                        icon = if (galleryTheme == style) Icons.Outlined.Check else Icons.Outlined.Palette,
+                        onClick = { GalleryDlThemePreference.setStyle(style) },
+                    )
                 }
             }
         },

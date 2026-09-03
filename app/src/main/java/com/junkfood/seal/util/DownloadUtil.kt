@@ -1014,6 +1014,10 @@ object DownloadUtil {
                     5 -> "res:480"
                     6 -> "res:360"
                     7 -> "+res"
+                    8 -> "res:4320"
+                    9 -> "res:2880"
+                    10 -> "res:240"
+                    11 -> "res:144"
                     else -> ""
                 }
             val sorter = if (videoFormat == FORMAT_COMPATIBILITY) {

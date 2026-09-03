@@ -799,13 +799,14 @@ fun VideoQualityDialog(
                 )
                 LazyColumn() {
                     //                    item { videoResolutionSelectField() }
-                    for (i in 0..7) {
+                    val resolutionOrder = listOf(0, 8, 9, 1, 2, 3, 4, 5, 6, 10, 11, 7)
+                    resolutionOrder.forEach { option ->
                         item {
                             DialogSingleChoiceItem(
-                                text = PreferenceStrings.getVideoResolutionDesc(i),
-                                selected = videoResolution == i,
+                                text = PreferenceStrings.getVideoResolutionDesc(option),
+                                selected = videoResolution == option,
                             ) {
-                                videoResolution = i
+                                videoResolution = option
                             }
                         }
                     }

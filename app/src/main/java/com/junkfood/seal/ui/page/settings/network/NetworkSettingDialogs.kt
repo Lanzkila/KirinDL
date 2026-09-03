@@ -38,6 +38,7 @@ import androidx.core.text.isDigitsOnly
 import com.junkfood.seal.R
 import com.junkfood.seal.ui.component.ConfirmButton
 import com.junkfood.seal.ui.component.DismissButton
+import com.junkfood.seal.ui.component.DialogSingleChoiceItem
 import com.junkfood.seal.util.CONCURRENT
 import com.junkfood.seal.util.MAX_RATE
 import com.junkfood.seal.util.PreferenceUtil
@@ -155,3 +156,40 @@ fun ConcurrentDownloadDialog(onDismissRequest: () -> Unit) {
 
 
 
+
+
+@Composable
+fun Aria2ConnectionsDialog(
+    selected: Int,
+    onDismissRequest: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    val options = listOf(2, 4, 8, 16, 32)
+    var value by remember(selected) {
+        mutableStateOf(selected.takeIf { it in options } ?: 16)
+    }
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        icon = { Icon(Icons.Outlined.OfflineBolt, null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text(stringResource(R.string.aria2c_connections)) },
+        text = {
+            Column {
+                Text(
+                    "Connections used by Aria2 for direct HTTP/HTTPS downloads. " +
+                        "Concurrent fragments can remain enabled for DASH/HLS at the same time.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                options.forEach { option ->
+                    DialogSingleChoiceItem(
+                        text = option.toString(),
+                        selected = value == option,
+                        onClick = { value = option },
+                    )
+                }
+            }
+        },
+        dismissButton = { DismissButton { onDismissRequest() } },
+        confirmButton = { ConfirmButton { onConfirm(value) } },
+    )
+}

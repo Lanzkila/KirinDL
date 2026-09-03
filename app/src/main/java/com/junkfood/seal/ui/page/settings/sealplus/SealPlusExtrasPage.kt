@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +45,6 @@ import com.junkfood.seal.ui.component.PreferenceSingleChoiceItem
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.page.security.LockScreen
 import com.junkfood.seal.util.AuthenticationManager
-import com.junkfood.seal.util.ARIA2C_CONNECTIONS
 import com.junkfood.seal.util.BILIBILI_CUSTOM_FRAGMENTS
 import com.junkfood.seal.util.BILIBILI_SPEED_AUTO
 import com.junkfood.seal.util.BILIBILI_SPEED_BALANCED
@@ -72,7 +72,7 @@ import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateInt
 import com.junkfood.seal.util.makeToast
-import kotlin.math.roundToInt
+import com.junkfood.seal.util.GalleryDlBehaviorPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +97,9 @@ fun SealPlusExtrasPage(
     var showSponsorFrequencyDialog by remember { mutableStateOf(false) }
     var notificationErrorSound by remember { mutableStateOf(NOTIFICATION_ERROR_SOUND.getBoolean()) }
     var formatListView by remember { mutableStateOf(FORMAT_LIST_VIEW.getBoolean()) }
+
+    val galleryConfirmBeforeDownload by
+        GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsState()
 
     val bilibiliFragmentOptions = remember { listOf(1, 4, 8, 12, 16) }
     var bilibiliSpeedMode by remember {
@@ -238,74 +241,20 @@ fun SealPlusExtrasPage(
             }
             
             item {
-                val aria2cConnectionOptions = listOf(2, 4, 8, 16, 32)
-                var aria2cConnections by remember {
-                    mutableStateOf(ARIA2C_CONNECTIONS.getInt().let { saved ->
-                        if (saved in aria2cConnectionOptions) saved else 16
-                    })
-                }
-                val aria2cSliderIndex = aria2cConnectionOptions.indexOf(aria2cConnections).coerceAtLeast(0)
+                PreferenceSubtitle(text = "Gallery DL")
+            }
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.aria2c_connections),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = stringResource(R.string.aria2c_connections_desc, aria2cConnections),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Text(
-                            text = aria2cConnections.toString(),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    androidx.compose.material3.Slider(
-                        value = aria2cSliderIndex.toFloat(),
-                        onValueChange = { newValue ->
-                            val idx = newValue.roundToInt().coerceIn(0, aria2cConnectionOptions.size - 1)
-                            aria2cConnections = aria2cConnectionOptions[idx]
-                        },
-                        onValueChangeFinished = {
-                            ARIA2C_CONNECTIONS.updateInt(aria2cConnections)
-                        },
-                        valueRange = 0f..4f,
-                        steps = 3,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "2",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "32",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            item {
+                PreferenceSwitch(
+                    title = "Confirm before downloading",
+                    description =
+                        "Analyze the Gallery DL URL and show the Seal-style review sheet before Download or Queue.",
+                    icon = Icons.Outlined.ViewAgenda,
+                    isChecked = galleryConfirmBeforeDownload,
+                    onClick = {
+                        GalleryDlBehaviorPreference.setConfirmBeforeDownload(!galleryConfirmBeforeDownload)
+                    },
+                )
             }
 
             item {

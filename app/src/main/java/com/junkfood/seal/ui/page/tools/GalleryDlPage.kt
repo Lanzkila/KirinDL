@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,6 +69,7 @@ import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.SealModalBottomSheet
 import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import com.junkfood.seal.util.GalleryDlStore
+import com.junkfood.seal.util.GalleryDlRunner
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
 import java.text.DateFormat
@@ -146,12 +148,23 @@ fun GalleryDlPage(
         GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
     val colors = kirinGalleryColors(themeStyle)
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    val outputRoot = remember {
+        runCatching { GalleryDlRunner.galleryRootDirectory(context).absolutePath }
+            .getOrDefault("Download/GalleryDL/")
+    }
     var tab by remember { mutableIntStateOf(0) }
     var showBatch by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<GalleryConfirmAction?>(null) }
     var pendingBatchText by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) { viewModel.refreshFromDisk() }
+    LaunchedEffect(Unit) {
+        viewModel.refreshFromDisk()
+        GalleryDlBehaviorPreference.consumePendingHomeUrl()?.let { pendingUrl ->
+            viewModel.updateUrl(pendingUrl)
+            viewModel.checkExtractor()
+        }
+    }
 
     Scaffold(
         containerColor = colors.background,
@@ -1033,7 +1046,7 @@ private fun GalleryDownloadConfirmDialog(
                 if (state.isInstalled) colors.success else colors.error,
                 colors,
             )
-            FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
+            FlatInfoRow("Output", outputRoot, colors.text, colors)
 
             if (info?.largeGallery == true) {
                 Notice(
@@ -1196,7 +1209,7 @@ private fun GalleryBatchConfirmDialog(
 
             FlatInfoRow("Queue mode", "Separate jobs", colors.text, colors)
             FlatInfoRow("Failure handling", "Continue remaining URLs", colors.text, colors)
-            FlatInfoRow("Output", "Download/GalleryDL/", colors.text, colors)
+            FlatInfoRow("Output", outputRoot, colors.text, colors)
 
             if (largeBatch) {
                 Notice(

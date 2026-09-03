@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.SpatialAudioOff
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.VideoFile
 import androidx.compose.material.icons.outlined.VideoSettings
 import androidx.compose.material3.AlertDialog
@@ -44,6 +45,7 @@ import com.junkfood.seal.ui.component.PreferenceItem
 import com.junkfood.seal.ui.component.PreferenceSubtitle
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.component.PreferenceSwitchWithDivider
+import com.junkfood.seal.ui.component.DialogSingleChoiceItemVariant
 import com.junkfood.seal.util.AUDIO_CONVERSION_FORMAT
 import com.junkfood.seal.util.AUDIO_CONVERT
 import com.junkfood.seal.util.CROP_ARTWORK
@@ -92,6 +94,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
     var showVideoQualityDialog by remember { mutableStateOf(false) }
     var showVideoFormatDialog by remember { mutableStateOf(false) }
     var showFormatSorterDialog by remember { mutableStateOf(false) }
+    var showYtdlpFormatProfileDialog by remember { mutableStateOf(false) }
     var showVideoClipDialog by remember { mutableStateOf(false) }
 
     var videoFormat by VIDEO_FORMAT.intState
@@ -269,6 +272,15 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                     }
                 }
                 item {
+                    PreferenceItem(
+                        title = "yt-dlp format profile",
+                        description = ytdlpFormatProfileLabel(isFormatSortingEnabled, sortingFields),
+                        icon = Icons.Outlined.Tune,
+                        enabled = !isCustomCommandEnabled,
+                        onClick = { showYtdlpFormatProfileDialog = true },
+                    )
+                }
+                item {
                     PreferenceSwitchWithDivider(
                         title = stringResource(id = R.string.format_sorting),
                         icon = Icons.Outlined.Sort,
@@ -378,6 +390,20 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
             },
         )
     }
+    if (showYtdlpFormatProfileDialog) {
+        YtdlpFormatProfileDialog(
+            currentFields = sortingFields,
+            sortingEnabled = isFormatSortingEnabled,
+            onDismissRequest = { showYtdlpFormatProfileDialog = false },
+            onSelect = { fields ->
+                sortingFields = fields
+                SORTING_FIELDS.updateString(fields)
+                isFormatSortingEnabled = fields.isNotEmpty()
+                FORMAT_SORTING.updateBoolean(isFormatSortingEnabled)
+                showYtdlpFormatProfileDialog = false
+            },
+        )
+    }
     if (showVideoClipDialog) {
         AlertDialog(
             onDismissRequest = { showVideoClipDialog = false },
@@ -420,4 +446,84 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
             },
         )
     }
+}
+
+
+private data class YtdlpFormatProfile(
+    val title: String,
+    val description: String,
+    val fields: String,
+)
+
+private val ytdlpFormatProfiles =
+    listOf(
+        YtdlpFormatProfile(
+            title = "App default",
+            description = "Use KirinDL video quality/format preferences.",
+            fields = "",
+        ),
+        YtdlpFormatProfile(
+            title = "Compatibility",
+            description = "Prefer H.264 video + AAC audio and compatible containers.",
+            fields = "vcodec:h264,acodec:aac,ext",
+        ),
+        YtdlpFormatProfile(
+            title = "Best quality",
+            description = "Prioritize resolution, FPS, codecs, channels and bitrate.",
+            fields = "res,fps,vcodec,channels,acodec,br",
+        ),
+        YtdlpFormatProfile(
+            title = "AV1 quality",
+            description = "Prefer AV1, then resolution/FPS/bitrate.",
+            fields = "vcodec:av01,res,fps,br",
+        ),
+        YtdlpFormatProfile(
+            title = "VP9 quality",
+            description = "Prefer VP9 Profile 2, then resolution/FPS/bitrate.",
+            fields = "vcodec:vp9.2,res,fps,br",
+        ),
+        YtdlpFormatProfile(
+            title = "Smaller files",
+            description = "Prefer smaller size/bitrate/resolution where available.",
+            fields = "+size,+br,+res",
+        ),
+    )
+
+private fun ytdlpFormatProfileLabel(enabled: Boolean, fields: String): String {
+    if (!enabled || fields.isBlank()) return "App default • quality/format preferences"
+    return ytdlpFormatProfiles.firstOrNull { it.fields == fields }?.title
+        ?: "Custom • -S $fields"
+}
+
+@Composable
+private fun YtdlpFormatProfileDialog(
+    currentFields: String,
+    sortingEnabled: Boolean,
+    onDismissRequest: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val selectedFields = if (sortingEnabled) currentFields else ""
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        icon = { Icon(Icons.Outlined.Tune, null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text("yt-dlp format profile") },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                Text(
+                    "Quick format presets inspired by YTDLnis. The normal custom -S editor remains available below.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                ytdlpFormatProfiles.forEach { profile ->
+                    DialogSingleChoiceItemVariant(
+                        title = profile.title,
+                        desc = profile.description,
+                        selected = selectedFields == profile.fields,
+                        onClick = { onSelect(profile.fields) },
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { DismissButton { onDismissRequest() } },
+    )
 }

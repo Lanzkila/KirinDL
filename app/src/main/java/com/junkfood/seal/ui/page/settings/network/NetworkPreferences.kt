@@ -34,14 +34,17 @@ import com.junkfood.seal.ui.component.PreferenceSubtitle
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.component.PreferenceSwitchWithDivider
 import com.junkfood.seal.util.ARIA2C
+import com.junkfood.seal.util.ARIA2C_CONNECTIONS
 import com.junkfood.seal.util.CELLULAR_DOWNLOAD
 import com.junkfood.seal.util.COOKIES
 import com.junkfood.seal.util.CUSTOM_COMMAND
 import com.junkfood.seal.util.FORCE_IPV4
 import com.junkfood.seal.util.NO_CHECK_CERTIFICATE
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
+import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateValue
+import com.junkfood.seal.util.PreferenceUtil.updateInt
 import com.junkfood.seal.util.RATE_LIMIT
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +58,9 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
 
     var showConcurrentDownloadDialog by remember { mutableStateOf(false) }
     var showRateLimitDialog by remember { mutableStateOf(false) }
+    var showAria2ConnectionsDialog by remember { mutableStateOf(false) }
     var aria2c by remember { mutableStateOf(ARIA2C.getBoolean()) }
+    var aria2Connections by remember { mutableStateOf(ARIA2C_CONNECTIONS.getInt()) }
     var isCookiesEnabled by COOKIES.booleanState
     var forceIpv4 by FORCE_IPV4.booleanState
     var noCheckCertificate by NO_CHECK_CERTIFICATE.booleanState
@@ -130,10 +135,19 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
                 }
                 item {
                     PreferenceItem(
+                        title = stringResource(R.string.aria2c_connections),
+                        description = stringResource(R.string.aria2c_connections_desc, aria2Connections),
+                        icon = Icons.Outlined.SettingsEthernet,
+                        enabled = aria2c && !isCustomCommandEnabled,
+                        onClick = { showAria2ConnectionsDialog = true },
+                    )
+                }
+                item {
+                    PreferenceItem(
                         title = stringResource(id = R.string.concurrent_download),
                         description = stringResource(R.string.concurrent_download_desc),
                         icon = Icons.Outlined.OfflineBolt,
-                        enabled = !aria2c && !isCustomCommandEnabled,
+                        enabled = !isCustomCommandEnabled,
                     ) {
                         showConcurrentDownloadDialog = true
                     }
@@ -180,5 +194,17 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
 
     if (showRateLimitDialog) {
         RateLimitDialog { showRateLimitDialog = false }
+    }
+
+    if (showAria2ConnectionsDialog) {
+        Aria2ConnectionsDialog(
+            selected = aria2Connections,
+            onDismissRequest = { showAria2ConnectionsDialog = false },
+            onConfirm = { value ->
+                aria2Connections = value
+                ARIA2C_CONNECTIONS.updateInt(value)
+                showAria2ConnectionsDialog = false
+            },
+        )
     }
 }
