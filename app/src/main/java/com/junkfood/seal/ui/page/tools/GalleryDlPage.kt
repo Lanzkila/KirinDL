@@ -291,6 +291,7 @@ fun GalleryDlPage(
         GalleryDownloadConfirmDialog(
             state = state,
             colors = colors,
+            outputRoot = outputRoot,
             action = action,
             onDismiss = { pendingAction = null },
             onConfirm = {
@@ -310,6 +311,7 @@ fun GalleryDlPage(
         GalleryBatchConfirmDialog(
             text = batchText,
             colors = colors,
+            outputRoot = outputRoot,
             onDismiss = { pendingBatchText = null },
             onConfirm = {
                 viewModel.addBatch(batchText)
@@ -859,6 +861,7 @@ private fun EmptyState(
 private fun GalleryDownloadConfirmDialog(
     state: GalleryDlViewModel.ViewState,
     colors: KirinGalleryColors,
+    outputRoot: String,
     action: GalleryConfirmAction,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -1126,6 +1129,7 @@ private fun GalleryDownloadConfirmDialog(
 private fun GalleryBatchConfirmDialog(
     text: String,
     colors: KirinGalleryColors,
+    outputRoot: String,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
