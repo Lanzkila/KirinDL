@@ -641,6 +641,7 @@ private fun SimpleFormatChoiceDialog(
                 options.forEach { (value, label) ->
                     DialogSingleChoiceItemVariant(
                         title = label,
+                        desc = "",
                         selected = selected == value,
                         onClick = { onSelect(value) },
                     )
