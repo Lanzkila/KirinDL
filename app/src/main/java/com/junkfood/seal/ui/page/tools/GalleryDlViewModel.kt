@@ -191,6 +191,49 @@ class GalleryDlViewModel : ViewModel() {
         mutableState.update { it.copy(queue = updated) }
     }
 
+    fun retryFailedQueue() {
+        if (mutableState.value.isQueueRunning) return
+        val updated =
+            mutableState.value.queue.map {
+                if (it.state == "failed") it.copy(state = "pending", error = "") else it
+            }
+        GalleryDlStore.saveQueue(App.context, updated)
+        mutableState.update {
+            it.copy(queue = updated, statusMessage = "Failed Gallery jobs reset to pending")
+        }
+    }
+
+    fun clearFailedQueue() {
+        if (mutableState.value.isQueueRunning) return
+        val updated = mutableState.value.queue.filterNot { it.state == "failed" }
+        GalleryDlStore.saveQueue(App.context, updated)
+        mutableState.update {
+            it.copy(queue = updated, statusMessage = "Failed Gallery jobs cleared")
+        }
+    }
+
+    fun clearCompletedQueue() {
+        if (mutableState.value.isQueueRunning) return
+        val updated = mutableState.value.queue.filterNot { it.state == "completed" }
+        GalleryDlStore.saveQueue(App.context, updated)
+        mutableState.update {
+            it.copy(queue = updated, statusMessage = "Completed Gallery jobs cleared")
+        }
+    }
+
+    fun moveQueueItem(id: String, direction: Int) {
+        if (mutableState.value.isQueueRunning || direction == 0) return
+        val current = mutableState.value.queue.toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index < 0) return
+        val target = (index + direction).coerceIn(0, current.lastIndex)
+        if (target == index) return
+        val record = current.removeAt(index)
+        current.add(target, record)
+        GalleryDlStore.saveQueue(App.context, current)
+        mutableState.update { it.copy(queue = current) }
+    }
+
     fun runQueue() {
         val current = mutableState.value
         if (
@@ -256,6 +299,24 @@ class GalleryDlViewModel : ViewModel() {
         GalleryDlStore.clearHistory(App.context)
         mutableState.update {
             it.copy(history = emptyList(), statusMessage = "Gallery history cleared", errorMessage = null)
+        }
+    }
+
+    fun clearSuccessfulHistory() {
+        if (mutableState.value.isBusy) return
+        val updated = mutableState.value.history.filterNot { it.success }
+        GalleryDlStore.saveHistory(App.context, updated)
+        mutableState.update {
+            it.copy(history = updated, statusMessage = "Completed Gallery history cleared")
+        }
+    }
+
+    fun clearFailedHistory() {
+        if (mutableState.value.isBusy) return
+        val updated = mutableState.value.history.filter { it.success }
+        GalleryDlStore.saveHistory(App.context, updated)
+        mutableState.update {
+            it.copy(history = updated, statusMessage = "Failed Gallery history cleared")
         }
     }
 

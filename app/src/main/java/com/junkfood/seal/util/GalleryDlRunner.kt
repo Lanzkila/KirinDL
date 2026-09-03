@@ -245,6 +245,14 @@ object GalleryDlRunner {
                             throw IOException("gallery-dl finished but no files were produced")
                         }
 
+                        val exportFilter = GalleryDlBehaviorPreference.effectiveExportFilter(trimmedUrl)
+                        val exportFiles = filterExportFiles(files, exportFilter)
+                        if (exportFiles.isEmpty()) {
+                            throw IOException(
+                                "No files matched the selected Gallery export filter: " +
+                                    GalleryDlBehaviorPreference.exportFilterLabel(exportFilter)
+                            )
+                        }
                         val galleryRoot = galleryRootDirectory(context)
                         val destination =
                             buildGalleryDestination(
@@ -257,7 +265,7 @@ object GalleryDlRunner {
                         // flattened into the app-created [Site]/[Gallery] folder using a sanitized
                         // filename. Files are still accepted only when their canonical source path
                         // is inside the private temporary job sandbox.
-                        val saved = files.map { source -> exportFileSafely(source, destination) }
+                        val saved = exportFiles.map { source -> exportFileSafely(source, destination) }
 
                         runCatching {
                             MediaScannerConnection.scanFile(
@@ -281,6 +289,25 @@ object GalleryDlRunner {
                     }
                 }
             }
+        }
+
+    private val imageExtensions =
+        setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "avif", "heic", "heif")
+    private val videoExtensions =
+        setOf("mp4", "webm", "mkv", "mov", "avi", "m4v", "ts", "mpeg", "mpg")
+
+    private fun filterExportFiles(files: List<File>, filter: Int): List<File> =
+        when (filter) {
+            GalleryDlBehaviorPreference.EXPORT_IMAGES ->
+                files.filter { it.extension.lowercase() in imageExtensions }
+            GalleryDlBehaviorPreference.EXPORT_VIDEOS ->
+                files.filter { it.extension.lowercase() in videoExtensions }
+            GalleryDlBehaviorPreference.EXPORT_MEDIA ->
+                files.filter {
+                    it.extension.lowercase() in imageExtensions ||
+                        it.extension.lowercase() in videoExtensions
+                }
+            else -> files
         }
 
     private fun getBridge(context: Context): com.chaquo.python.PyObject {

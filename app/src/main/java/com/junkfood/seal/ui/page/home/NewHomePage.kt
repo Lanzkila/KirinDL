@@ -160,6 +160,7 @@ import com.junkfood.seal.util.HOME_SHOW_ACTIVITY
 import com.junkfood.seal.util.HOME_COMPACT_ACTIVITY
 import com.junkfood.seal.util.SMART_DOWNLOAD_PROFILE
 import com.junkfood.seal.util.SmartDownloadProfiles
+import com.junkfood.seal.util.SiteProfileManager
 import java.io.File
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
@@ -411,6 +412,24 @@ fun NewHomePage(
     val compactHomeActivity = HOME_COMPACT_ACTIVITY.getBoolean()
     var smartProfile by remember { mutableStateOf(SMART_DOWNLOAD_PROFILE.getInt()) }
     var smartProfileRevision by remember { mutableStateOf(0) }
+    var siteProfileRevision by remember { mutableStateOf(0) }
+    val activeSite =
+        remember(urlText, siteProfileRevision) { SiteProfileManager.detect(urlText) }
+    val rememberedSiteProfile =
+        remember(urlText, siteProfileRevision) {
+            SiteProfileManager.rememberedProfile(activeSite)
+        }
+    LaunchedEffect(activeSite.key, rememberedSiteProfile) {
+        val remembered = rememberedSiteProfile ?: return@LaunchedEffect
+        if (
+            urlText.isNotBlank() &&
+                remembered != smartProfile &&
+                SmartDownloadProfiles.apply(remembered)
+        ) {
+            smartProfile = remembered
+            smartProfileRevision++
+        }
+    }
     val recentFiveDownloads = remember(recentDownloads, homeRecentLimit) {
         recentDownloads
             .distinctBy { it.videoUrl + it.videoPath }
@@ -858,6 +877,23 @@ fun NewHomePage(
                         }
                     },
                 )
+            }
+            if (urlText.isNotBlank() && activeSite != SiteProfileManager.generic) {
+                item {
+                    SiteProfileMemoryRow(
+                        site = activeSite,
+                        selectedProfile = smartProfile,
+                        rememberedProfile = rememberedSiteProfile,
+                        onSave = {
+                            SiteProfileManager.remember(urlText, smartProfile)
+                            siteProfileRevision++
+                        },
+                        onClear = {
+                            SiteProfileManager.clear(urlText)
+                            siteProfileRevision++
+                        },
+                    )
+                }
             }
             item {
                 URLInputField(
@@ -1322,6 +1358,57 @@ private fun SmartProfileQuickPicker(
                             onSelect(id)
                         },
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SiteProfileMemoryRow(
+    site: SiteProfileManager.Site,
+    selectedProfile: Int,
+    rememberedProfile: Int?,
+    onSave: () -> Unit,
+    onClear: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f),
+    ) {
+        Row(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    site.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    rememberedProfile?.let {
+                        "Remembered • ${SmartDownloadProfiles.label(it)}"
+                    } ?: "No site profile saved",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                if (rememberedProfile != selectedProfile) {
+                    TextButton(onClick = onSave) { Text("Remember") }
+                } else {
+                    Text(
+                        "Active",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+                if (rememberedProfile != null) {
+                    TextButton(onClick = onClear) { Text("Clear") }
                 }
             }
         }

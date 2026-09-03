@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VideoFile
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Share
@@ -72,6 +73,11 @@ import com.junkfood.seal.ui.page.downloadv2.configure.PreferencesMock
 import com.junkfood.seal.ui.theme.ErrorTonalPalettes
 import com.junkfood.seal.ui.theme.SealTheme
 import com.junkfood.seal.util.Format
+import com.junkfood.seal.util.PreferenceStrings
+import com.junkfood.seal.util.BILIBILI_SPEED_AUTO
+import com.junkfood.seal.util.BILIBILI_SPEED_BALANCED
+import com.junkfood.seal.util.BILIBILI_SPEED_FAST
+import com.junkfood.seal.util.BILIBILI_SPEED_CUSTOM
 import com.junkfood.seal.util.toBitrateText
 import com.junkfood.seal.util.toDurationText
 import com.junkfood.seal.util.toFileSizeText
@@ -544,6 +550,78 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                 )
             }
 
+            val preferences = task.preferences
+            val mediaMode = if (preferences.extractAudio) "Audio" else "Video"
+            val engine =
+                if (preferences.aria2c) {
+                    "Aria2 direct + yt-dlp native fragments"
+                } else {
+                    "yt-dlp native"
+                }
+            val formatSummary =
+                when {
+                    preferences.formatIdString.isNotBlank() ->
+                        "Format ID • ${preferences.formatIdString}"
+                    preferences.formatSorting && preferences.sortingFields.isNotBlank() ->
+                        "Sorting • ${preferences.sortingFields}"
+                    preferences.extractAudio ->
+                        "Quality • ${PreferenceStrings.getAudioQualityDesc(preferences.audioQuality)}"
+                    else ->
+                        "Resolution • ${PreferenceStrings.getVideoResolutionDesc(preferences.videoResolution)}"
+                }
+            val codecSummary =
+                if (preferences.extractAudio) {
+                    PreferenceStrings.getAudioCodecDesc(preferences.audioCodec)
+                } else {
+                    "${PreferenceStrings.getVideoCodecDesc(preferences.videoCodec)} • " +
+                        PreferenceStrings.getVideoContainerDesc(preferences.videoContainer)
+                }
+            val storageSummary =
+                when {
+                    preferences.sdcard -> "SD card"
+                    preferences.privateDirectory || preferences.privateMode -> "Private storage"
+                    else -> "KirinDL download folder"
+                }
+
+            ActionSheetItem(
+                text = {
+                    Text("Download configuration", style = MaterialTheme.typography.titleSmall)
+                    Text("$mediaMode • $formatSummary", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "$codecSummary • $engine • " +
+                            "${preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Output • $storageSummary",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (
+                        viewState.url.contains("bilibili", true) ||
+                            viewState.url.contains("b23.tv", true)
+                    ) {
+                        Text(
+                            "Bilibili • " +
+                                bilibiliSpeedLabel(
+                                    preferences.bilibiliSpeedMode,
+                                    preferences.bilibiliCustomFragments,
+                                ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Outlined.Settings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+            )
+
             ActionSheetItem(
                 text = {
                     Text(text = extractorKey, style = MaterialTheme.typography.titleSmall)
@@ -553,4 +631,12 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
             )
         }
     }
+}
+
+private fun bilibiliSpeedLabel(mode: Int, customFragments: Int): String = when (mode) {
+    BILIBILI_SPEED_BALANCED -> "Balanced • 4 fragments"
+    BILIBILI_SPEED_FAST -> "Fast • 12 fragments"
+    BILIBILI_SPEED_CUSTOM -> "Custom • ${customFragments.coerceAtLeast(1)} fragments"
+    BILIBILI_SPEED_AUTO -> "Auto • 8 fragments"
+    else -> "Auto"
 }

@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Clear
@@ -147,8 +149,8 @@ fun GalleryDlPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val themeStyle by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
-    val confirmBeforeDownload by
-        GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
+    val confirmBeforeDownload by GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
+    val exportFilter by GalleryDlBehaviorPreference.exportFilter.collectAsStateWithLifecycle()
     val colors = kirinGalleryColors(themeStyle)
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
@@ -156,7 +158,8 @@ fun GalleryDlPage(
         runCatching { GalleryDlRunner.galleryRootDirectory(context).absolutePath }
             .getOrDefault("Download/GalleryDL/")
     }
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(GalleryDlBehaviorPreference.lastTab()) }
+    var siteFilterRevision by remember { mutableIntStateOf(0) }
     var showBatch by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<GalleryConfirmAction?>(null) }
     var pendingBatchText by remember { mutableStateOf<String?>(null) }
@@ -168,6 +171,16 @@ fun GalleryDlPage(
             viewModel.checkExtractor()
         }
     }
+
+    val siteExportFilter =
+        remember(state.url, exportFilter, siteFilterRevision) {
+            GalleryDlBehaviorPreference.siteExportFilter(state.url)
+        }
+    val effectiveExportFilter = siteExportFilter ?: exportFilter
+    val gallerySiteLabel =
+        remember(state.url, siteFilterRevision) {
+            GalleryDlBehaviorPreference.siteLabel(state.url)
+        }
 
     Scaffold(
         containerColor = colors.background,
@@ -219,7 +232,10 @@ fun GalleryDlPage(
                 queueCount = state.queue.count { it.state == "pending" || it.state == "running" },
                 historyCount = state.history.size,
                 colors = colors,
-                onSelected = { tab = it },
+                onSelected = {
+                    tab = it
+                    GalleryDlBehaviorPreference.setLastTab(it)
+                },
             )
 
             when (tab) {
@@ -245,9 +261,24 @@ fun GalleryDlPage(
                             } else {
                                 viewModel.addCurrentToQueue()
                                 tab = 1
+                                GalleryDlBehaviorPreference.setLastTab(1)
                             }
                         },
                         onBatch = { showBatch = true },
+                        exportFilter = effectiveExportFilter,
+                        siteLabel = gallerySiteLabel,
+                        siteFilterSaved = siteExportFilter != null,
+                        onRememberSiteFilter = {
+                            GalleryDlBehaviorPreference.rememberSiteExportFilter(
+                                state.url,
+                                exportFilter,
+                            )
+                            siteFilterRevision++
+                        },
+                        onClearSiteFilter = {
+                            GalleryDlBehaviorPreference.clearSiteExportFilter(state.url)
+                            siteFilterRevision++
+                        },
                     )
                 1 ->
                     QueueTab(
@@ -255,7 +286,10 @@ fun GalleryDlPage(
                         colors = colors,
                         onRun = viewModel::runQueue,
                         onRemove = viewModel::removeQueueItem,
-                        onClearFinished = viewModel::clearFinishedQueue,
+                        onRetryFailed = viewModel::retryFailedQueue,
+                        onClearFailed = viewModel::clearFailedQueue,
+                        onClearCompleted = viewModel::clearCompletedQueue,
+                        onMove = viewModel::moveQueueItem,
                     )
                 else ->
                     HistoryTab(
@@ -264,8 +298,11 @@ fun GalleryDlPage(
                         onReuse = {
                             viewModel.reuseHistoryUrl(it)
                             tab = 0
+                            GalleryDlBehaviorPreference.setLastTab(0)
                         },
                         onClear = viewModel::clearHistory,
+                        onClearSuccessful = viewModel::clearSuccessfulHistory,
+                        onClearFailed = viewModel::clearFailedHistory,
                     )
             }
 
@@ -286,6 +323,7 @@ fun GalleryDlPage(
                 } else {
                     viewModel.addBatch(it)
                     tab = 1
+                    GalleryDlBehaviorPreference.setLastTab(1)
                 }
             },
         )
@@ -304,6 +342,7 @@ fun GalleryDlPage(
                     GalleryConfirmAction.QUEUE -> {
                         viewModel.addCurrentToQueue()
                         tab = 1
+                        GalleryDlBehaviorPreference.setLastTab(1)
                     }
                 }
                 pendingAction = null
@@ -321,6 +360,7 @@ fun GalleryDlPage(
                 viewModel.addBatch(batchText)
                 pendingBatchText = null
                 tab = 1
+                GalleryDlBehaviorPreference.setLastTab(1)
             },
         )
     }
@@ -386,6 +426,11 @@ private fun DownloadTab(
     onDownload: () -> Unit,
     onQueue: () -> Unit,
     onBatch: () -> Unit,
+    exportFilter: Int,
+    siteLabel: String?,
+    siteFilterSaved: Boolean,
+    onRememberSiteFilter: () -> Unit,
+    onClearSiteFilter: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
@@ -498,6 +543,26 @@ private fun DownloadTab(
             null -> Unit
         }
 
+        FlatInfoRow(
+            "Export filter",
+            GalleryDlBehaviorPreference.exportFilterLabel(exportFilter),
+            colors.accent,
+            colors,
+        )
+        siteLabel?.let { label ->
+            GallerySiteFilterMemory(
+                siteLabel = label,
+                filterLabel = GalleryDlBehaviorPreference.exportFilterLabel(exportFilter),
+                saved = siteFilterSaved,
+                onRemember = onRememberSiteFilter,
+                onClear = onClearSiteFilter,
+                colors = colors,
+            )
+        }
+        if (state.preflightInfo != null || state.extractorSupported != null) {
+            GalleryPreflightDiagnostic(state, colors)
+        }
+
         Button(
             onClick = onDownload,
             enabled = state.canDownload,
@@ -571,7 +636,10 @@ private fun QueueTab(
     colors: KirinGalleryColors,
     onRun: () -> Unit,
     onRemove: (String) -> Unit,
-    onClearFinished: () -> Unit,
+    onRetryFailed: () -> Unit,
+    onClearFailed: () -> Unit,
+    onClearCompleted: () -> Unit,
+    onMove: (String, Int) -> Unit,
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val visibleQueue =
@@ -609,13 +677,6 @@ private fun QueueTab(
                     fontSize = 12.sp,
                 )
             }
-            IconButton(onClick = onClearFinished, enabled = !state.isQueueRunning) {
-                Icon(
-                    Icons.Outlined.ClearAll,
-                    contentDescription = "Clear finished",
-                    tint = colors.muted,
-                )
-            }
         }
 
         GalleryStatsStrip(
@@ -630,6 +691,32 @@ private fun QueueTab(
             colors = colors,
         )
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            TextButton(
+                onClick = onRetryFailed,
+                enabled = failedCount > 0 && !state.isQueueRunning,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Retry failed")
+            }
+            TextButton(
+                onClick = onClearFailed,
+                enabled = failedCount > 0 && !state.isQueueRunning,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Clear failed")
+            }
+            TextButton(
+                onClick = onClearCompleted,
+                enabled = completedCount > 0 && !state.isQueueRunning,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Clear done")
+            }
+        }
         if (state.queue.isNotEmpty()) {
             GallerySearchField(
                 value = searchQuery,
@@ -680,10 +767,18 @@ private fun QueueTab(
                 )
             } else {
                 visibleQueue.forEach { item ->
+                    val actualIndex = state.queue.indexOfFirst { it.id == item.id }
                     QueueRow(
                         item = item,
                         colors = colors,
                         removeEnabled = !state.isQueueRunning && item.state != "running",
+                        canMoveUp = !state.isQueueRunning && actualIndex > 0,
+                        canMoveDown =
+                            !state.isQueueRunning &&
+                                actualIndex >= 0 &&
+                                actualIndex < state.queue.lastIndex,
+                        onMoveUp = { onMove(item.id, -1) },
+                        onMoveDown = { onMove(item.id, 1) },
                         onRemove = { onRemove(item.id) },
                     )
                 }
@@ -697,6 +792,10 @@ private fun QueueRow(
     item: GalleryDlStore.QueueRecord,
     colors: KirinGalleryColors,
     removeEnabled: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onRemove: () -> Unit,
 ) {
     val statusColor =
@@ -745,7 +844,33 @@ private fun QueueRow(
                 )
             }
         }
-        IconButton(onClick = onRemove, enabled = removeEnabled) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            IconButton(
+                onClick = onMoveUp,
+                enabled = canMoveUp,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.ArrowUpward,
+                    contentDescription = "Move up",
+                    tint = colors.muted,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            IconButton(
+                onClick = onMoveDown,
+                enabled = canMoveDown,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.ArrowDownward,
+                    contentDescription = "Move down",
+                    tint = colors.muted,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        IconButton(onClick = onRemove, enabled = removeEnabled, modifier = Modifier.size(38.dp)) {
             Icon(
                 Icons.Outlined.Delete,
                 contentDescription = "Remove",
@@ -761,6 +886,8 @@ private fun HistoryTab(
     colors: KirinGalleryColors,
     onReuse: (String) -> Unit,
     onClear: () -> Unit,
+    onClearSuccessful: () -> Unit,
+    onClearFailed: () -> Unit,
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val visibleHistory =
@@ -817,6 +944,25 @@ private fun HistoryTab(
             colors = colors,
         )
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = onClearSuccessful,
+                enabled = successCount > 0 && !state.isBusy,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Clear done")
+            }
+            OutlinedButton(
+                onClick = onClearFailed,
+                enabled = failureCount > 0 && !state.isBusy,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Clear failed")
+            }
+        }
         if (state.history.isNotEmpty()) {
             GallerySearchField(
                 value = searchQuery,
@@ -904,6 +1050,112 @@ private fun HistoryRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+@Composable
+private fun GallerySiteFilterMemory(
+    siteLabel: String,
+    filterLabel: String,
+    saved: Boolean,
+    onRemember: () -> Unit,
+    onClear: () -> Unit,
+    colors: KirinGalleryColors,
+) {
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(colors.panelAlt, RoundedCornerShape(12.dp))
+                .padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Site profile • $siteLabel",
+                color = colors.text,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                if (saved) "Remembered • $filterLabel" else "Using global export filter",
+                color = colors.muted,
+                fontSize = 10.sp,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            if (!saved) {
+                TextButton(onClick = onRemember) { Text("Remember") }
+            } else {
+                Text(
+                    "Active",
+                    color = colors.accent,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+                TextButton(onClick = onClear) { Text("Clear") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GalleryPreflightDiagnostic(
+    state: GalleryDlViewModel.ViewState,
+    colors: KirinGalleryColors,
+) {
+    val info = state.preflightInfo
+    val errorText =
+        listOfNotNull(info?.preflightError, state.errorMessage)
+            .joinToString(" ")
+            .lowercase()
+    val authLabel =
+        when {
+            info?.cookiesLoaded == true -> "Cookies loaded for this extractor"
+            state.cookiesImported -> "Cookies imported • available if the site needs login"
+            errorText.contains("login") ||
+                errorText.contains("auth") ||
+                errorText.contains("unauthorized") ||
+                errorText.contains("forbidden") -> "Authentication may be required"
+            else -> "No authentication warning detected"
+        }
+    val rateWarning =
+        errorText.contains("429") ||
+            errorText.contains("rate limit") ||
+            errorText.contains("too many requests")
+    val rateLabel =
+        when {
+            rateWarning -> "Rate-limit warning detected"
+            info?.largeGallery == true ->
+                "Large gallery • conservative retry behavior recommended"
+            else -> "No rate-limit warning detected"
+        }
+
+    Column(
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(colors.panelAlt, RoundedCornerShape(12.dp))
+                .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            "Preflight diagnostics",
+            color = colors.text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(authLabel, color = colors.muted, fontSize = 10.sp)
+        Text(
+            rateLabel,
+            color = if (rateWarning) colors.error else colors.muted,
+            fontSize = 10.sp,
+        )
+        info?.mediaType?.takeIf(String::isNotBlank)?.let {
+            Text("Media • $it", color = colors.muted, fontSize = 10.sp)
+        }
     }
 }
 
