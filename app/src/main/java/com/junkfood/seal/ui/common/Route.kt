@@ -4,6 +4,8 @@ object Route {
 
     const val HOME = "home"
     const val DOWNLOADS = "download_history"
+    const val MEDIA_QUEUE = "media_queue"
+    const val MEDIA_HISTORY = "media_history"
     const val PLAYLIST = "playlist"
     const val SETTINGS = "settings"
     const val FORMAT_SELECTION = "format"

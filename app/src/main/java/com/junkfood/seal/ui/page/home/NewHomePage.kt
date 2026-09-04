@@ -63,6 +63,7 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -810,12 +811,31 @@ fun NewHomePage(
                             tint = MaterialTheme.colorScheme.secondary
                         )
                     }
-                    IconButton(onClick = onNavigateToDownloads) {
-                        Icon(
-                            imageVector = Icons.Outlined.FileDownload,
-                            contentDescription = stringResource(R.string.downloads_history),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                    val downloadCenterBadgeCount =
+                        runningDownloadCount + queuedDownloadCount + pausedDownloadCount + galleryPendingCount
+                    Box {
+                        IconButton(onClick = onNavigateToDownloads) {
+                            Icon(
+                                imageVector = Icons.Outlined.FileDownload,
+                                contentDescription = "Download Center",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        if (downloadCenterBadgeCount > 0) {
+                            Surface(
+                                modifier = Modifier.align(Alignment.TopEnd).size(18.dp),
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.error,
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = if (downloadCenterBadgeCount > 99) "99+" else downloadCenterBadgeCount.toString(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onError,
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -865,7 +885,7 @@ fun NewHomePage(
 
             // Main yt-dlp URL input + its own live dashboard.
             item {
-                HomeInputLabel("Media / yt-dlp")
+                HomeInputDivider("Media / yt-dlp")
             }
             item {
                 SmartProfileQuickPicker(
@@ -922,19 +942,6 @@ fun NewHomePage(
                     animatePlaceholder = animateUrlHints,
                 )
             }
-            if (showHomeActivity) {
-                item {
-                    DownloadActivityStrip(
-                        activeCount = runningDownloadCount,
-                        queuedCount = queuedDownloadCount,
-                        pausedCount = pausedDownloadCount,
-                        completedCount = recentDownloads.size,
-                        compact = compactHomeActivity,
-                        onClick = onNavigateToDownloads,
-                    )
-                }
-            }
-
             item {
                 HomeInputDivider("Gallery DL")
             }
@@ -968,236 +975,9 @@ fun NewHomePage(
                     animatePlaceholder = animateUrlHints,
                 )
             }
-            if (showHomeActivity) {
-                item {
-                    GalleryActivityStrip(
-                        pendingCount = galleryPendingCount,
-                        failedCount = galleryFailedCount,
-                        completedCount = galleryDoneCount,
-                        fileCount = galleryFileCount,
-                        compact = compactHomeActivity,
-                        onClick = onNavigateToGalleryDl,
-                    )
-                }
-            }
-            
-            // Recent Downloads Section - combines both active and completed.
-            // Use activeDownloads (not taskStateMap) so the header hides correctly when all
-            // tasks are Completed and already present in the DB-backed section.
-            if (activeDownloads.isNotEmpty() || recentFiveDownloadsFiltered.isNotEmpty()) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.recent_downloads),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = onNavigateToDownloads) {
-                            Text("View all")
-                        }
-                    }
-                }
-            }
-            
-            // Show active downloads first
-            if (activeDownloads.isNotEmpty()) {
-                items(
-                    items = activeDownloads,
-                    key = { (task, _) -> task.id }
-                ) { (task, state) ->
-                    var showDetailsDialog by remember { mutableStateOf(false) }
-                    var detailsTask by remember { mutableStateOf<Task?>(null) }
-                    var detailsState by remember { mutableStateOf<Task.State?>(null) }
-                    var showActiveDeleteDialog by remember { mutableStateOf(false) }
-                    
-                    ActiveDownloadCard(
-                        task = task,
-                        state = state,
-                        showTransferDetails = showTransferDetails,
-                        queuePosition =
-                            queuedTaskIds.indexOf(task.id).takeIf { it >= 0 }?.plus(1),
-                        onAction = { action ->
-                            view.slightHapticFeedback()
-                            when (action) {
-                                UiAction.Pause -> downloader.pause(task)
-                                UiAction.Cancel -> downloader.cancel(task)
-                                UiAction.Delete -> showActiveDeleteDialog = true
-                                UiAction.Resume -> downloader.resume(task)
-                                UiAction.Retry -> downloader.restart(task)
-                                is UiAction.CopyErrorReport -> {
-                                    clipboardManager.setText(
-                                        AnnotatedString(getErrorReport(action.throwable, task.url))
-                                    )
-                                    context.makeToast(R.string.error_copied)
-                                }
-                                is UiAction.CopyVideoURL -> {
-                                    clipboardManager.setText(AnnotatedString(task.url))
-                                    context.makeToast(R.string.link_copied)
-                                }
-                                UiAction.ShowDetails -> {
-                                    detailsTask = task
-                                    detailsState = state
-                                    showDetailsDialog = true
-                                }
-                                is UiAction.OpenFile -> {
-                                    action.filePath?.let {
-                                        FileUtil.openFile(path = it) { 
-                                            context.makeToast(R.string.file_unavailable) 
-                                        }
-                                    }
-                                }
-                                is UiAction.OpenThumbnailURL -> {
-                                    uriHandler.openUri(action.url)
-                                }
-                                is UiAction.OpenVideoURL -> {
-                                    uriHandler.openUri(action.url)
-                                }
-                                is UiAction.ShareFile -> {
-                                    val shareTitle = context.getString(R.string.share)
-                                    FileUtil.createIntentForSharingFile(action.filePath)?.let {
-                                        context.startActivity(Intent.createChooser(it, shareTitle))
-                                    }
-                                }
-                            }
-                        }
-                    )
-                    
-                    if (showDetailsDialog && detailsTask != null && detailsState != null) {
-                        DownloadDetailsDialog(
-                            task = detailsTask!!,
-                            state = detailsState!!,
-                            onDismiss = { showDetailsDialog = false }
-                        )
-                    }
+            // Download activity is intentionally kept out of Home.
+            // Media + Gallery jobs now live in the unified Download Center.
 
-                    if (showActiveDeleteDialog) {
-                        val deleteTitle = state.viewState.title.ifBlank { task.url }
-                        SealDialog(
-                            onDismissRequest = { showActiveDeleteDialog = false },
-                            title = { Text(text = stringResource(R.string.delete_info)) },
-                            icon = {
-                                Icon(
-                                    Icons.Outlined.Delete,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.tertiary
-                                )
-                            },
-                            text = {
-                                Text(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                                    text = stringResource(R.string.delete_info_msg).format(deleteTitle),
-                                )
-                            },
-                            confirmButton = {
-                                ConfirmButton {
-                                    showActiveDeleteDialog = false
-                                    scope.launch(Dispatchers.IO) {
-                                        val videoId = state.videoInfo?.id
-                                        val baseName =
-                                            state.videoInfo?.title?.ifBlank { deleteTitle }
-                                                ?: deleteTitle
-                                        FileUtil.deleteTempFilesForTask(baseName, videoId)
-                                        downloader.remove(task)
-                                    }
-                                }
-                            },
-                            dismissButton = { DismissButton { showActiveDeleteDialog = false } },
-                        )
-                    }
-                }
-            }
-            
-            // Show recent completed downloads
-            if (recentFiveDownloadsFiltered.isNotEmpty()) {
-                items(
-                    items = recentFiveDownloadsFiltered,
-                    key = { it.id }
-                ) { downloadInfo ->
-                    var showRecentDeleteDialog by remember { mutableStateOf(false) }
-                    
-                    RecentDownloadCard(
-                        downloadInfo = downloadInfo,
-                        refreshKey = lifecycleRefreshTrigger,
-                        onClick = {
-                            FileUtil.openFile(downloadInfo.videoPath) {
-                                context.makeToast(R.string.file_unavailable)
-                            }
-                        },
-                        onShare = {
-                            view.slightHapticFeedback()
-                            val shareTitle = context.getString(R.string.share)
-                            FileUtil.createIntentForSharingFile(downloadInfo.videoPath)?.let {
-                                context.startActivity(Intent.createChooser(it, shareTitle))
-                            }
-                        },
-                        onCopyLink = {
-                            view.slightHapticFeedback()
-                            clipboardManager.setText(AnnotatedString(downloadInfo.videoUrl))
-                            context.makeToast(R.string.link_copied)
-                        },
-                        onShowDetails = {
-                            view.slightHapticFeedback()
-                            val idx = recentFiveDownloadsFiltered.indexOfFirst { it.id == downloadInfo.id }
-                            detailsDialogIndex = if (idx >= 0) idx else 0
-                        },
-                        onDelete = {
-                            view.slightHapticFeedback()
-                            showRecentDeleteDialog = true
-                        },
-                        onHide = {
-                            view.slightHapticFeedback()
-                            // Optimistically remove from UI immediately, then persist to DB
-                            localHiddenIds = localHiddenIds + downloadInfo.id
-                            scope.launch(Dispatchers.IO) {
-                                DatabaseUtil.hideItem(downloadInfo)
-                            }
-                        }
-                    )
-                    
-                    if (showRecentDeleteDialog) {
-                        SealDialog(
-                            onDismissRequest = { showRecentDeleteDialog = false },
-                            title = { Text(text = stringResource(R.string.delete_info)) },
-                            icon = {
-                                Icon(
-                                    Icons.Outlined.Delete,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.tertiary
-                                )
-                            },
-                            text = {
-                                Text(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                                    text = stringResource(R.string.delete_info_msg).format(downloadInfo.videoTitle),
-                                )
-                            },
-                            confirmButton = {
-                                ConfirmButton {
-                                    showRecentDeleteDialog = false
-                                    localHiddenIds = localHiddenIds + downloadInfo.id
-                                    scope.launch(Dispatchers.IO) {
-                                        val baseName =
-                                            File(downloadInfo.videoPath)
-                                                .nameWithoutExtension
-                                                .ifEmpty { downloadInfo.videoTitle }
-                                        FileUtil.deleteTempFilesForTask(baseName, downloadInfo.videoId)
-                                        DatabaseUtil.deleteInfoList(
-                                            infoList = listOf(downloadInfo),
-                                            deleteFile = false
-                                        )
-                                    }
-                                }
-                            },
-                            dismissButton = { DismissButton { showRecentDeleteDialog = false } },
-                        )
-                    }
-                }
-            }
-            
             // Bottom spacing
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1205,25 +985,6 @@ fun NewHomePage(
         }
     }
 
-    // Spotify-style swipeable details sheet for recent downloads. A single sheet instance is
-    // shared across all cards; detailsDialogIndex tracks which item (by position in
-    // recentFiveDownloadsFiltered) is currently shown, so left/right swipes just move the index.
-    detailsDialogIndex?.let { index ->
-        // The underlying list is a live Flow and can shrink while the sheet is open (e.g. the
-        // user deletes/hides the item they're viewing). Clamp to the last valid index, or close
-        // the sheet entirely if nothing is left to show.
-        if (recentFiveDownloadsFiltered.isEmpty()) {
-            detailsDialogIndex = null
-        } else {
-            val safeIndex = index.coerceIn(0, recentFiveDownloadsFiltered.lastIndex)
-            RecentDownloadDetailsDialog(
-                downloadInfoList = recentFiveDownloadsFiltered,
-                initialIndex = safeIndex,
-                onDismiss = { detailsDialogIndex = null }
-            )
-        }
-    }
-    
     // Download Dialog
     var preferences by remember {
         mutableStateOf(DownloadUtil.DownloadPreferences.createFromPreferences())

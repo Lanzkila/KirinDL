@@ -21,12 +21,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Subscriptions
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -349,7 +351,7 @@ fun NavigationDrawerSheetContent(
                     modifier = Modifier.padding(vertical = 2.dp)
                 )
                 NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.downloads_history)) },
+                    label = { Text("Download Center") },
                     icon = { Icon(Icons.Outlined.Subscriptions, null, tint = ThemedIconColors.secondary) },
                     onClick = {
                         scope
@@ -516,7 +518,7 @@ fun NavigationRailContent(
                 Icon(
                     if (currentTopDestination == Route.DOWNLOADS) Icons.Filled.Subscriptions
                     else Icons.Outlined.Subscriptions,
-                    stringResource(R.string.downloads_history),
+                    "Download Center",
                     tint = ThemedIconColors.secondary,
                 )
             },

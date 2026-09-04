@@ -210,6 +210,7 @@ sealed interface UiAction {
 fun DownloadPageV2(
     modifier: Modifier = Modifier,
     onMenuOpen: (() -> Unit) = {},
+    onBack: (() -> Unit)? = null,
     dialogViewModel: DownloadDialogViewModel,
     downloader: DownloaderV2 = koinInject(),
 ) {
@@ -221,9 +222,9 @@ fun DownloadPageV2(
     val activity = context as? Activity
     var showExitDialog by remember { mutableStateOf(false) }
 
-    // Handle back press to show exit confirmation
+    // Top-level queue can still confirm app exit; nested Download Center navigation goes back.
     BackHandler {
-        showExitDialog = true
+        if (onBack != null) onBack() else showExitDialog = true
     }
 
     // Exit confirmation dialog

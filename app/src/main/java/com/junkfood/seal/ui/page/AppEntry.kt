@@ -40,6 +40,8 @@ import com.junkfood.seal.ui.common.id
 import com.junkfood.seal.ui.common.slideInVerticallyComposable
 import com.junkfood.seal.ui.page.command.TaskListPage
 import com.junkfood.seal.ui.page.command.TaskLogPage
+import com.junkfood.seal.ui.page.downloadv2.DownloadPageV2
+import com.junkfood.seal.ui.page.downloadv2.UnifiedDownloadCenterPage
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel
 import com.junkfood.seal.ui.page.home.NewHomePage
 import com.junkfood.seal.ui.page.onboarding.OnboardingScreen
@@ -193,7 +195,30 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                         },
                     )
                 }
-                animatedComposable(Route.DOWNLOADS) { VideoListPage { onNavigateBack() } }
+                animatedComposable(Route.DOWNLOADS) {
+                    UnifiedDownloadCenterPage(
+                        onNavigateBack = onNavigateBack,
+                        onOpenMediaQueue = {
+                            navController.navigate(Route.MEDIA_QUEUE) { launchSingleTop = true }
+                        },
+                        onOpenMediaHistory = {
+                            navController.navigate(Route.MEDIA_HISTORY) { launchSingleTop = true }
+                        },
+                        onOpenGallery = {
+                            navController.navigate(Route.GALLERY_DL) { launchSingleTop = true }
+                        },
+                    )
+                }
+                animatedComposable(Route.MEDIA_QUEUE) {
+                    DownloadPageV2(
+                        dialogViewModel = dialogViewModel,
+                        onMenuOpen = onNavigateBack,
+                        onBack = onNavigateBack,
+                    )
+                }
+                animatedComposable(Route.MEDIA_HISTORY) {
+                    VideoListPage { onNavigateBack() }
+                }
                 animatedComposableVariant(Route.TASK_LIST) {
                     TaskListPage(
                         onNavigateBack = onNavigateBack,
