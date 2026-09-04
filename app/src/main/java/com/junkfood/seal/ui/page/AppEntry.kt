@@ -114,6 +114,31 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
         }
     }
 
+    val openConfigureFromDiscovery: (String) -> Unit = openConfigure@{ url ->
+        if (url.isBlank()) return@openConfigure
+        // The configure sheet is hosted by Home. Always settle navigation on Home first so
+        // Search and Saved Sources cannot race the shared sheet during route transitions.
+        scope.launch {
+            val returnedHome =
+                navController.popBackStack(
+                    route = Route.HOME,
+                    inclusive = false,
+                )
+            if (!returnedHome && navController.currentDestination?.route != Route.HOME) {
+                navController.navigate(Route.HOME) {
+                    launchSingleTop = true
+                    popUpTo(Route.HOME) { inclusive = false }
+                }
+            }
+            navController.currentBackStackEntryFlow.first { entry ->
+                entry.destination.route == Route.HOME
+            }
+            dialogViewModel.postAction(
+                DownloadDialogViewModel.Action.ShowSheet(listOf(url)),
+            )
+        }
+    }
+
     if (sheetState is DownloadDialogViewModel.SheetState.Configure) {
         if (navController.currentDestination?.route != Route.HOME) {
             navController.popBackStack(route = Route.HOME, inclusive = false, saveState = true)
@@ -214,30 +239,7 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                         onNavigateToSavedSources = {
                             navController.navigate(Route.SAVED_SOURCES) { launchSingleTop = true }
                         },
-                        onConfigureUrl = { url ->
-                            // Configure is hosted by Home. Return there first and only then
-                            // expand the shared configure sheet. This avoids the navigation/sheet
-                            // race that could make Kirin Search feel stuck or jumpy.
-                            scope.launch {
-                                val returnedHome =
-                                    navController.popBackStack(
-                                        route = Route.HOME,
-                                        inclusive = false,
-                                    )
-                                if (!returnedHome && navController.currentDestination?.route != Route.HOME) {
-                                    navController.navigate(Route.HOME) {
-                                        launchSingleTop = true
-                                        popUpTo(Route.HOME) { inclusive = false }
-                                    }
-                                }
-                                navController.currentBackStackEntryFlow.first { entry ->
-                                    entry.destination.route == Route.HOME
-                                }
-                                dialogViewModel.postAction(
-                                    DownloadDialogViewModel.Action.ShowSheet(listOf(url)),
-                                )
-                            }
-                        },
+                        onConfigureUrl = openConfigureFromDiscovery,
                     )
                 }
                 animatedComposable(Route.SAVED_SOURCES) {
@@ -247,6 +249,7 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                         onNavigateToDownloads = {
                             navController.navigate(Route.DOWNLOADS) { launchSingleTop = true }
                         },
+                        onConfigureUrl = openConfigureFromDiscovery,
                     )
                 }
                 animatedComposable(Route.DOWNLOADS) {

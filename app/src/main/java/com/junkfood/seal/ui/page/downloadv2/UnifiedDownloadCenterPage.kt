@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -284,11 +285,15 @@ fun UnifiedDownloadCenterPage(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentAlignment = Alignment.TopCenter,
         ) {
+            LazyColumn(
+                modifier = Modifier.widthIn(max = 920.dp).fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
             item {
                 CenterMetrics(
                     active = activeCount,
@@ -431,9 +436,18 @@ fun UnifiedDownloadCenterPage(
                             modifier = Modifier.fillMaxWidth().padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Text("No matching activity", fontWeight = FontWeight.SemiBold)
                             Text(
-                                "New Media and Gallery DL activity will appear here.",
+                                if (searchQuery.isNotBlank() || status != CenterStatus.All || engine != CenterEngine.All)
+                                    "No matching activity"
+                                else
+                                    "No download activity yet",
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                if (searchQuery.isNotBlank() || status != CenterStatus.All || engine != CenterEngine.All)
+                                    "Try clearing Search or changing the current filters."
+                                else
+                                    "New Media and Gallery DL activity will appear here.",
                                 modifier = Modifier.padding(top = 6.dp),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -465,7 +479,8 @@ fun UnifiedDownloadCenterPage(
                 }
             }
 
-            item { Spacer(Modifier.height(24.dp)) }
+                item { Spacer(Modifier.height(24.dp)) }
+            }
         }
     }
 

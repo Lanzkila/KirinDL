@@ -291,11 +291,15 @@ fun KirinSearchPage(
             )
         },
     ) { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentAlignment = Alignment.TopCenter,
         ) {
+            LazyColumn(
+                modifier = Modifier.widthIn(max = 920.dp).fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
             item {
                 SearchIntroCard()
             }
@@ -518,7 +522,10 @@ fun KirinSearchPage(
                         configureEnabled = !configureBusy,
                         onDownload = { downloadWithConfigure(item.url) },
                         onQueue = { queueUrls(listOf(item.url)) },
-                        onOpen = { uriHandler.openUri(item.url) },
+                        onOpen = {
+                            runCatching { uriHandler.openUri(item.url) }
+                                .onFailure { context.makeToast("Could not open this link") }
+                        },
                         onCopy = {
                             clipboard.setText(AnnotatedString(item.url))
                             context.makeToast("Link copied")
@@ -563,7 +570,8 @@ fun KirinSearchPage(
                 }
             }
 
-            item { Spacer(Modifier.height(24.dp)) }
+                item { Spacer(Modifier.height(24.dp)) }
+            }
         }
     }
 
@@ -575,7 +583,10 @@ fun KirinSearchPage(
                 detailsTarget = null
                 downloadWithConfigure(item.url)
             },
-            onOpen = { uriHandler.openUri(item.url) },
+            onOpen = {
+                            runCatching { uriHandler.openUri(item.url) }
+                                .onFailure { context.makeToast("Could not open this link") }
+                        },
         )
     }
 }

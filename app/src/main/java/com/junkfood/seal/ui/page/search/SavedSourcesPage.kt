@@ -96,6 +96,7 @@ fun SavedSourcesPage(
     dialogViewModel: DownloadDialogViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToDownloads: () -> Unit,
+    onConfigureUrl: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -108,6 +109,7 @@ fun SavedSourcesPage(
     var showAddDialog by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<SavedSourceStore.SavedSource?>(null) }
     var deleteTarget by remember { mutableStateOf<SavedSourceStore.SavedSource?>(null) }
+    var configureBusy by remember { mutableStateOf(false) }
 
     var browseItems by remember { mutableStateOf(emptyList<SavedSourceStore.SourceItem>()) }
     var browseLoading by remember { mutableStateOf(false) }
@@ -157,7 +159,9 @@ fun SavedSourcesPage(
     }
 
     fun configure(url: String) {
-        dialogViewModel.postAction(Action.ShowSheet(listOf(url)))
+        if (configureBusy || url.isBlank()) return
+        configureBusy = true
+        onConfigureUrl(url)
     }
 
     fun openSource(source: SavedSourceStore.SavedSource) {
@@ -259,9 +263,13 @@ fun SavedSourcesPage(
             )
         },
     ) { padding ->
-        if (selectedSource == null) {
-            SavedSourcesList(
-                modifier = Modifier.fillMaxSize().padding(padding),
+        Box(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            if (selectedSource == null) {
+                SavedSourcesList(
+                    modifier = Modifier.widthIn(max = 920.dp).fillMaxSize(),
                 sources = visibleSources,
                 totalCount = sources.size,
                 filterText = filterText,
@@ -283,11 +291,14 @@ fun SavedSourcesPage(
                     sourceRevision += 1
                 },
                 onDelete = { deleteTarget = it },
-                onOpenExternal = { uriHandler.openUri(it.url) },
-            )
-        } else {
-            SavedSourceBrowser(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                onOpenExternal = { source ->
+                        runCatching { uriHandler.openUri(source.url) }
+                            .onFailure { context.makeToast("Could not open this source") }
+                    },
+                )
+            } else {
+                SavedSourceBrowser(
+                    modifier = Modifier.widthIn(max = 920.dp).fillMaxSize(),
                 source = selectedSource,
                 title = browseTitle,
                 creator = browseCreator,
@@ -309,12 +320,16 @@ fun SavedSourcesPage(
                 onQueueSelected = { queueUrls(selectedUrls.toList()) },
                 onClearSelection = { selectedUrls.clear() },
                 onRetry = { refreshRevision += 1 },
-                onOpen = { uriHandler.openUri(it) },
+                onOpen = { url ->
+                        runCatching { uriHandler.openUri(url) }
+                            .onFailure { context.makeToast("Could not open this link") }
+                    },
                 onCopy = {
                     clipboard.setText(AnnotatedString(it))
                     context.makeToast("Link copied")
-                },
-            )
+                    },
+                )
+            }
         }
     }
 
