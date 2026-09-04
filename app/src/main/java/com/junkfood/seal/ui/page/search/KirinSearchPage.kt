@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.PlaylistPlay
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -91,6 +92,7 @@ fun KirinSearchPage(
     dialogViewModel: DownloadDialogViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToDownloads: () -> Unit,
+    onNavigateToSavedSources: () -> Unit,
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -166,6 +168,12 @@ fun KirinSearchPage(
                 title = { Text("Kirin Search") },
                 navigationIcon = { BackButton(onNavigateBack) },
                 actions = {
+                    IconButton(onClick = onNavigateToSavedSources) {
+                        Icon(
+                            imageVector = Icons.Outlined.PlaylistPlay,
+                            contentDescription = "Saved Sources",
+                        )
+                    }
                     IconButton(onClick = onNavigateToDownloads) {
                         Icon(
                             imageVector = Icons.Outlined.FileDownload,

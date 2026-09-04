@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Search
@@ -368,6 +369,17 @@ fun NavigationDrawerSheetContent(
                         scope
                             .launch { onDismissRequest() }
                             .invokeOnCompletion { onNavigateToRoute(Route.KIRIN_SEARCH) }
+                    },
+                    selected = false,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                )
+                NavigationDrawerItem(
+                    label = { Text("Saved Sources") },
+                    icon = { Icon(Icons.Outlined.FolderOpen, null, tint = ThemedIconColors.primary) },
+                    onClick = {
+                        scope
+                            .launch { onDismissRequest() }
+                            .invokeOnCompletion { onNavigateToRoute(Route.SAVED_SOURCES) }
                     },
                     selected = false,
                     modifier = Modifier.padding(vertical = 2.dp)

@@ -7,6 +7,7 @@ object Route {
     const val MEDIA_QUEUE = "media_queue"
     const val MEDIA_HISTORY = "media_history"
     const val KIRIN_SEARCH = "kirin_search"
+    const val SAVED_SOURCES = "saved_sources"
     const val PLAYLIST = "playlist"
     const val SETTINGS = "settings"
     const val FORMAT_SELECTION = "format"

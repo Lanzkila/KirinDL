@@ -45,6 +45,7 @@ import com.junkfood.seal.ui.page.downloadv2.UnifiedDownloadCenterPage
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel
 import com.junkfood.seal.ui.page.home.NewHomePage
 import com.junkfood.seal.ui.page.search.KirinSearchPage
+import com.junkfood.seal.ui.page.search.SavedSourcesPage
 import com.junkfood.seal.ui.page.onboarding.OnboardingScreen
 import com.junkfood.seal.ui.page.settings.GalleryDlSettingsPage
 import com.junkfood.seal.ui.page.settings.SettingsPage
@@ -204,6 +205,18 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                 }
                 animatedComposable(Route.KIRIN_SEARCH) {
                     KirinSearchPage(
+                        dialogViewModel = dialogViewModel,
+                        onNavigateBack = onNavigateBack,
+                        onNavigateToDownloads = {
+                            navController.navigate(Route.DOWNLOADS) { launchSingleTop = true }
+                        },
+                        onNavigateToSavedSources = {
+                            navController.navigate(Route.SAVED_SOURCES) { launchSingleTop = true }
+                        },
+                    )
+                }
+                animatedComposable(Route.SAVED_SOURCES) {
+                    SavedSourcesPage(
                         dialogViewModel = dialogViewModel,
                         onNavigateBack = onNavigateBack,
                         onNavigateToDownloads = {
