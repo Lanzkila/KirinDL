@@ -210,6 +210,7 @@ import org.koin.compose.koinInject
 fun NewHomePage(
     modifier: Modifier = Modifier,
     onMenuOpen: () -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
     onNavigateToDownloads: () -> Unit = {},
     onNavigateToSupport: () -> Unit = {},
     onNavigateToBatchUrlImport: () -> Unit = {},
@@ -804,6 +805,13 @@ fun NewHomePage(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToSearch) {
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = "Kirin Search",
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
                     IconButton(onClick = onNavigateToSupport) {
                         Icon(
                             imageVector = Icons.Outlined.AttachMoney,

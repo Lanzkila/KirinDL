@@ -362,6 +362,17 @@ fun NavigationDrawerSheetContent(
                     modifier = Modifier.padding(vertical = 2.dp)
                 )
                 NavigationDrawerItem(
+                    label = { Text("Kirin Search") },
+                    icon = { Icon(Icons.Outlined.Search, null, tint = ThemedIconColors.tertiary) },
+                    onClick = {
+                        scope
+                            .launch { onDismissRequest() }
+                            .invokeOnCompletion { onNavigateToRoute(Route.KIRIN_SEARCH) }
+                    },
+                    selected = false,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                )
+                NavigationDrawerItem(
                     label = { Text(stringResource(R.string.hidden_content)) },
                     icon = { Icon(Icons.Outlined.VisibilityOff, null, tint = ThemedIconColors.secondary) },
                     onClick = {

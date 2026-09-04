@@ -44,6 +44,7 @@ import com.junkfood.seal.ui.page.downloadv2.DownloadPageV2
 import com.junkfood.seal.ui.page.downloadv2.UnifiedDownloadCenterPage
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel
 import com.junkfood.seal.ui.page.home.NewHomePage
+import com.junkfood.seal.ui.page.search.KirinSearchPage
 import com.junkfood.seal.ui.page.onboarding.OnboardingScreen
 import com.junkfood.seal.ui.page.settings.GalleryDlSettingsPage
 import com.junkfood.seal.ui.page.settings.SettingsPage
@@ -156,6 +157,12 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                             view.slightHapticFeedback()
                             scope.launch { drawerState.open() }
                         },
+                        onNavigateToSearch = {
+                            view.slightHapticFeedback()
+                            navController.navigate(Route.KIRIN_SEARCH) {
+                                launchSingleTop = true
+                            }
+                        },
                         onNavigateToDownloads = {
                             view.slightHapticFeedback()
                             navController.navigate(Route.DOWNLOADS) {
@@ -192,6 +199,15 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                             navController.navigate(Route.GALLERY_DL) {
                                 launchSingleTop = true
                             }
+                        },
+                    )
+                }
+                animatedComposable(Route.KIRIN_SEARCH) {
+                    KirinSearchPage(
+                        dialogViewModel = dialogViewModel,
+                        onNavigateBack = onNavigateBack,
+                        onNavigateToDownloads = {
+                            navController.navigate(Route.DOWNLOADS) { launchSingleTop = true }
                         },
                     )
                 }
