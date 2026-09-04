@@ -10,6 +10,8 @@ import androidx.compose.material.icons.outlined.Cookie
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Spellcheck
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -23,9 +25,9 @@ import com.junkfood.seal.ui.component.PreferenceSubtitle
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.page.settings.BasePreferencePage
 import com.junkfood.seal.util.PreferenceUtil.getString
+import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.RESTRICT_FILENAMES
 import com.junkfood.seal.util.YT_DLP_VERSION
-import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 
 @Composable
 fun TroubleShootingPage(
