@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -104,6 +106,8 @@ fun TemplateListPage(onNavigateBack: () -> Unit, onNavigateToEditPage: (Int) -> 
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     var showHelpDialog by remember { mutableStateOf(false) }
+    var showKirinPresetsDialog by remember { mutableStateOf(false) }
+    var presetInsertInProgress by remember { mutableStateOf(false) }
 
     var isMultiSelectEnabled by remember { mutableStateOf(false) }
 
@@ -346,6 +350,15 @@ fun TemplateListPage(onNavigateBack: () -> Unit, onNavigateToEditPage: (Int) -> 
             if (!isMultiSelectEnabled) {
                 item {
                     PreferenceItemVariant(
+                        title = "Kirin Presets",
+                        description = "Ready-to-use yt-dlp commands grouped by purpose",
+                        icon = Icons.Outlined.BookmarkAdd,
+                    ) {
+                        showKirinPresetsDialog = true
+                    }
+                }
+                item {
+                    PreferenceItemVariant(
                         title = stringResource(id = R.string.new_template),
                         icon = Icons.Outlined.Add,
                     ) {
@@ -391,6 +404,108 @@ fun TemplateListPage(onNavigateBack: () -> Unit, onNavigateToEditPage: (Int) -> 
                     }
                     showDeleteDialog = false
                 }
+            },
+        )
+    }
+
+    if (showKirinPresetsDialog) {
+        AlertDialog(
+            onDismissRequest = { showKirinPresetsDialog = false },
+            title = { Text("Kirin Command Presets") },
+            text = {
+                LazyColumn(modifier = Modifier.heightIn(max = 520.dp)) {
+                    KirinCommandCategory.entries.forEach { category ->
+                        val categoryPresets =
+                            KirinCommandPresets.all.filter { it.category == category }
+                        if (categoryPresets.isNotEmpty()) {
+                            item(key = "category_${category.name}") {
+                                Text(
+                                    text = category.label,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                                )
+                            }
+                            items(categoryPresets, key = { "preset_${it.name}" }) { preset ->
+                                val installed = KirinCommandPresets.isInstalled(preset, templates)
+                                ListItem(
+                                    headlineContent = { Text(preset.name) },
+                                    supportingContent = {
+                                        Text(
+                                            text = preset.description,
+                                            maxLines = 3,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
+                                    trailingContent = {
+                                        TextButton(
+                                            enabled = !installed && !presetInsertInProgress,
+                                            onClick = {
+                                                view.slightHapticFeedback()
+                                                presetInsertInProgress = true
+                                                scope.launch {
+                                                    try {
+                                                        val stillInstalled =
+                                                            KirinCommandPresets.isInstalled(
+                                                                preset,
+                                                                templates,
+                                                            )
+                                                        if (!stillInstalled) {
+                                                            withContext(Dispatchers.IO) {
+                                                                DatabaseUtil.insertTemplate(
+                                                                    preset.asTemplate()
+                                                                )
+                                                            }
+                                                            snackbarHostState.showSnackbar(
+                                                                "${preset.name} added"
+                                                            )
+                                                        }
+                                                    } finally {
+                                                        presetInsertInProgress = false
+                                                    }
+                                                }
+                                            },
+                                        ) {
+                                            Text(if (installed) "Added" else "Add")
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !presetInsertInProgress,
+                    onClick = {
+                        view.slightHapticFeedback()
+                        presetInsertInProgress = true
+                        scope.launch {
+                            try {
+                                val pending =
+                                    KirinCommandPresets.all.filterNot {
+                                        KirinCommandPresets.isInstalled(it, templates)
+                                    }
+                                withContext(Dispatchers.IO) {
+                                    pending.forEach { DatabaseUtil.insertTemplate(it.asTemplate()) }
+                                }
+                                if (pending.isNotEmpty()) {
+                                    snackbarHostState.showSnackbar(
+                                        "${pending.size} Kirin presets added"
+                                    )
+                                }
+                            } finally {
+                                presetInsertInProgress = false
+                            }
+                        }
+                    },
+                ) {
+                    Text("Add all")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showKirinPresetsDialog = false }) { Text("Close") }
             },
         )
     }
