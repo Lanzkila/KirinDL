@@ -96,7 +96,7 @@ fun SavedSourcesPage(
     dialogViewModel: DownloadDialogViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToDownloads: () -> Unit,
-    onConfigureUrl: (String) -> Unit,
+    onConfigureUrls: (List<String>) -> Unit,
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -158,10 +158,16 @@ fun SavedSourcesPage(
         )
     }
 
-    fun configure(url: String) {
-        if (configureBusy || url.isBlank()) return
+    fun configureUrls(urls: List<String>) {
+        val clean = urls.distinct().filter { it.isNotBlank() }
+        if (configureBusy || clean.isEmpty()) return
         configureBusy = true
-        onConfigureUrl(url)
+        selectedUrls.clear()
+        onConfigureUrls(clean)
+    }
+
+    fun configure(url: String) {
+        configureUrls(listOf(url))
     }
 
     fun openSource(source: SavedSourceStore.SavedSource) {
@@ -317,6 +323,7 @@ fun SavedSourcesPage(
                 },
                 onConfigure = ::configure,
                 onQueue = { queueUrls(listOf(it)) },
+                onConfigureSelected = { configureUrls(selectedUrls.toList()) },
                 onQueueSelected = { queueUrls(selectedUrls.toList()) },
                 onClearSelection = { selectedUrls.clear() },
                 onRetry = { refreshRevision += 1 },
@@ -779,6 +786,7 @@ private fun SavedSourceBrowser(
     onSelectedChange: (String, Boolean) -> Unit,
     onConfigure: (String) -> Unit,
     onQueue: (String) -> Unit,
+    onConfigureSelected: () -> Unit,
     onQueueSelected: () -> Unit,
     onClearSelection: () -> Unit,
     onRetry: () -> Unit,
@@ -873,6 +881,9 @@ private fun SavedSourceBrowser(
                     ) {
                         if (selectedUrls.isNotEmpty()) {
                             TextButton(onClick = onClearSelection) { Text("Clear") }
+                            OutlinedButton(onClick = onConfigureSelected) {
+                                Text("Configure ${selectedUrls.size}")
+                            }
                             FilledTonalButton(onClick = onQueueSelected) {
                                 Text("Queue ${selectedUrls.size}")
                             }

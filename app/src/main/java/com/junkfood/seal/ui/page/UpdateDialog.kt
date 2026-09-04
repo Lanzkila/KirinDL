@@ -49,6 +49,7 @@ fun UpdateDialog(
     onDismissRequest: () -> Unit,
     release: UpdateUtil.Release,
     isUpdateAvailable: Boolean = true,
+    backgroundUpdateBusy: Boolean = false,
     onBackgroundUpdate: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -63,6 +64,7 @@ fun UpdateDialog(
         publishedDate = release.publishedAt?.take(10) ?: release.createdAt?.take(10),
         isUpdateAvailable = isUpdateAvailable,
         backgroundUpdateMode = isUpdateAvailable && onBackgroundUpdate != null,
+        backgroundUpdateBusy = backgroundUpdateBusy,
         onConfirmUpdate = {
             if (isUpdateAvailable && onBackgroundUpdate != null) {
                 onBackgroundUpdate()
@@ -93,6 +95,7 @@ fun UpdateDialogImpl(
     publishedDate: String?,
     isUpdateAvailable: Boolean,
     backgroundUpdateMode: Boolean = false,
+    backgroundUpdateBusy: Boolean = false,
     onConfirmUpdate: () -> Unit,
     releaseNote: String,
 ) {
@@ -101,9 +104,13 @@ fun UpdateDialogImpl(
         title = { Text(title) },
         icon = { Icon(Icons.Outlined.NewReleases, null, tint = MaterialTheme.colorScheme.primary) },
         confirmButton = {
-            Button(onClick = onConfirmUpdate) {
+            Button(
+                onClick = onConfirmUpdate,
+                enabled = !backgroundUpdateBusy,
+            ) {
                 Text(
                     when {
+                        backgroundUpdateBusy -> "Starting…"
                         backgroundUpdateMode -> "Update"
                         isUpdateAvailable -> "View update"
                         else -> "Open release"

@@ -24,6 +24,7 @@ fun AppUpdater() {
     val context = LocalContext.current
     var showUpdateDialog by rememberSaveable { mutableStateOf(false) }
     var release by remember { mutableStateOf(UpdateUtil.Release()) }
+    var backgroundUpdateBusy by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (
@@ -46,19 +47,26 @@ fun AppUpdater() {
         UpdateDialog(
             onDismissRequest = { showUpdateDialog = false },
             release = release,
+            backgroundUpdateBusy = backgroundUpdateBusy,
             onBackgroundUpdate =
                 if (UpdateUtil.hasBackgroundAppUpdate(release)) {
                     {
-                        UpdateUtil.enqueueBackgroundAppUpdate(context, release)
-                            .onSuccess {
-                                context.makeToast(
-                                    "KirinDL update is downloading in the background"
-                                )
-                            }
-                            .onFailure { error ->
-                                error.printStackTrace()
-                                context.makeToast("Could not start the background update")
-                            }
+                        if (!backgroundUpdateBusy) {
+                            backgroundUpdateBusy = true
+                            UpdateUtil.enqueueBackgroundAppUpdate(context, release)
+                                .onSuccess {
+                                    backgroundUpdateBusy = false
+                                    showUpdateDialog = false
+                                    context.makeToast(
+                                        "KirinDL update started — check your notification"
+                                    )
+                                }
+                                .onFailure { error ->
+                                    backgroundUpdateBusy = false
+                                    error.printStackTrace()
+                                    context.makeToast("Could not start the background update")
+                                }
+                        }
                     }
                 } else {
                     null

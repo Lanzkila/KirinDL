@@ -114,8 +114,9 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
         }
     }
 
-    val openConfigureFromDiscovery: (String) -> Unit = openConfigure@{ url ->
-        if (url.isBlank()) return@openConfigure
+    val openConfigureFromDiscovery: (List<String>) -> Unit = openConfigure@{ urls ->
+        val cleanUrls = urls.distinct().filter { it.isNotBlank() }
+        if (cleanUrls.isEmpty()) return@openConfigure
         // The configure sheet is hosted by Home. Always settle navigation on Home first so
         // Search and Saved Sources cannot race the shared sheet during route transitions.
         scope.launch {
@@ -134,7 +135,7 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                 entry.destination.route == Route.HOME
             }
             dialogViewModel.postAction(
-                DownloadDialogViewModel.Action.ShowSheet(listOf(url)),
+                DownloadDialogViewModel.Action.ShowSheet(cleanUrls),
             )
         }
     }
@@ -239,7 +240,7 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                         onNavigateToSavedSources = {
                             navController.navigate(Route.SAVED_SOURCES) { launchSingleTop = true }
                         },
-                        onConfigureUrl = openConfigureFromDiscovery,
+                        onConfigureUrls = openConfigureFromDiscovery,
                     )
                 }
                 animatedComposable(Route.SAVED_SOURCES) {
@@ -249,7 +250,7 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                         onNavigateToDownloads = {
                             navController.navigate(Route.DOWNLOADS) { launchSingleTop = true }
                         },
-                        onConfigureUrl = openConfigureFromDiscovery,
+                        onConfigureUrls = openConfigureFromDiscovery,
                     )
                 }
                 animatedComposable(Route.DOWNLOADS) {

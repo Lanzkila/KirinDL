@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.PlaylistPlay
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -90,6 +91,8 @@ import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.KirinSearchEngine
 import com.junkfood.seal.util.KirinSearchStore
 import com.junkfood.seal.util.makeToast
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -112,7 +115,7 @@ fun KirinSearchPage(
     onNavigateBack: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToSavedSources: () -> Unit,
-    onConfigureUrl: (String) -> Unit,
+    onConfigureUrls: (List<String>) -> Unit,
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -211,12 +214,18 @@ fun KirinSearchPage(
         )
     }
 
-    fun downloadWithConfigure(url: String) {
-        if (configureBusy || url.isBlank()) return
+    fun configureUrls(urls: List<String>) {
+        val clean = urls.distinct().filter { it.isNotBlank() }
+        if (configureBusy || clean.isEmpty()) return
         configureBusy = true
         view.slightHapticFeedback()
         keyboard?.hide()
-        onConfigureUrl(url)
+        selectedUrls.clear()
+        onConfigureUrls(clean)
+    }
+
+    fun downloadWithConfigure(url: String) {
+        configureUrls(listOf(url))
     }
 
     fun runSearch(
@@ -581,6 +590,7 @@ fun KirinSearchPage(
                         source = source,
                         count = displayResults.size,
                         selectedCount = selectedUrls.size,
+                        onConfigureSelected = { configureUrls(selectedUrls.toList()) },
                         onQueueSelected = { queueUrls(selectedUrls.toList()) },
                         onClearSelection = { selectedUrls.clear() },
                     )
@@ -795,28 +805,38 @@ private fun ResultsHeader(
     source: KirinSearchStore.SearchSource,
     count: Int,
     selectedCount: Int,
+    onConfigureSelected: () -> Unit,
     onQueueSelected: () -> Unit,
     onClearSelection: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = "${source.label} results",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "$count result${if (count == 1) "" else "s"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (selectedCount > 0) {
+        Column {
+            Text(
+                text = "${source.label} results",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "$count result${if (count == 1) "" else "s"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (selectedCount > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 TextButton(onClick = onClearSelection) { Text("Clear") }
+                OutlinedButton(onClick = onConfigureSelected) {
+                    Icon(
+                        imageVector = Icons.Outlined.Tune,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(" Configure $selectedCount")
+                }
                 FilledTonalButton(onClick = onQueueSelected) {
                     Icon(
                         imageVector = Icons.Outlined.PlaylistAdd,
@@ -920,7 +940,11 @@ private fun SearchResultCard(
                     text =
                         buildString {
                             append(item.creator.ifBlank { item.extractor.ifBlank { item.source.label } })
+                            resultKindLabel(item)?.let { kind -> append(" • $kind") }
                             item.viewCount?.let { count -> append(" • ${formatViewCount(count)} views") }
+                            item.uploadTimestamp?.let { timestamp ->
+                                append(" • ${formatUploadDate(timestamp)}")
+                            }
                         },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1148,6 +1172,28 @@ private fun DetailLine(label: String, value: String) {
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+private fun resultKindLabel(item: KirinSearchEngine.ResultItem): String? {
+    if (item.source != KirinSearchStore.SearchSource.YOUTUBE_MUSIC) return null
+    val text = "${item.title} ${item.creator} ${item.extractor}".lowercase()
+    return when {
+        item.creator.contains(" - Topic", ignoreCase = true) ||
+            item.creator.endsWith("Topic", ignoreCase = true) -> "Topic"
+        "official audio" in text -> "Official Audio"
+        "original audio" in text -> "Original Audio"
+        "original song" in text -> "Original Song"
+        item.musicSongHint -> "Song"
+        else -> null
+    }
+}
+
+private fun formatUploadDate(timestamp: Long): String {
+    val millis = if (timestamp < 10_000_000_000L) timestamp * 1000L else timestamp
+    return runCatching {
+            DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(millis))
+        }
+        .getOrDefault("")
 }
 
 private fun formatViewCount(value: Long): String =
