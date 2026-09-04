@@ -77,7 +77,8 @@ fun SealDialog(
     title: @Composable (() -> Unit)? = null,
     text: @Composable (() -> Unit)? = null,
     shape: Shape = AlertDialogDefaults.shape,
-    containerColor: Color = AlertDialogDefaults.containerColor,
+    // Keep the dialog and option rows on the exact same surface color.
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     iconContentColor: Color = AlertDialogDefaults.iconContentColor,
     titleContentColor: Color = AlertDialogDefaults.titleContentColor,
     textContentColor: Color = AlertDialogDefaults.textContentColor,
@@ -115,7 +116,6 @@ fun SealDialog(
                             )
                         ProvideTextStyle(textStyle) {
                             Box(
-                                // Align the title to the center when an icon is present.
                                 Modifier.padding(TitlePadding)
                                     .padding(DialogHorizontalPadding)
                                     .align(
@@ -136,12 +136,6 @@ fun SealDialog(
                         val textStyle = MaterialTheme.typography.bodyMedium
                         ProvideTextStyle(textStyle) {
                             Box(
-                                // BUG FIX: this Box was only getting TextPadding (vertical), not
-                                // DialogHorizontalPadding — unlike the icon/title Boxes above,
-                                // which both apply DialogHorizontalPadding in addition to their
-                                // own vertical padding. Without it, the body text ran edge-to-edge
-                                // ("chipka hua"/stuck to the left+right sides) since the outer
-                                // Column only has vertical padding (DialogVerticalPadding).
                                 Modifier.weight(weight = 1f, fill = false)
                                     .padding(TextPadding)
                                     .padding(DialogHorizontalPadding)
@@ -248,7 +242,8 @@ fun SealDialogVariant(
     title: @Composable (() -> Unit)? = null,
     text: @Composable (() -> Unit)? = null,
     shape: Shape = AlertDialogDefaults.shape,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    // Use one surface color for the whole popup instead of a second tinted layer.
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     iconContentColor: Color = AlertDialogDefaults.iconContentColor,
     titleContentColor: Color = AlertDialogDefaults.titleContentColor,
     textContentColor: Color = AlertDialogDefaults.textContentColor,
@@ -279,7 +274,6 @@ fun SealDialogVariant(
                         val textStyle = MaterialTheme.typography.headlineSmall
                         ProvideTextStyle(textStyle.copy(textAlign = TextAlign.Center)) {
                             Box(
-                                // Align the title to the center when an icon is present.
                                 Modifier.padding(TitlePadding)
                                     .padding(DialogHorizontalPadding)
                                     .align(

@@ -45,7 +45,7 @@ import com.junkfood.seal.ui.component.PreferenceInfo
 import com.junkfood.seal.ui.component.PreferenceItem
 import com.junkfood.seal.ui.component.PreferenceSingleChoiceItem
 import com.junkfood.seal.ui.component.PreferenceSubtitle
-import com.junkfood.seal.ui.component.PreferenceSwitchWithContainer
+import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.page.UpdateDialog
 import com.junkfood.seal.util.APP_UPDATE_CHECK_TIME
 import com.junkfood.seal.util.AUTO_UPDATE
@@ -108,8 +108,10 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                     )
                 }
 
+                // Compact switch here intentionally: the previous highlighted container used
+                // the large 20sp preference title and looked oversized on the App Update page.
                 item {
-                    PreferenceSwitchWithContainer(
+                    PreferenceSwitch(
                         title = "Check for KirinDL updates automatically",
                         icon = null,
                         isChecked = automaticChecks,
