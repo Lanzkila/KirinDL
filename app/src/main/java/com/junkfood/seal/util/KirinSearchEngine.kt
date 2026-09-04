@@ -3,13 +3,18 @@ package com.junkfood.seal.util
 import android.net.Uri
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
+import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import okhttp3.Call
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 /**
  * Lightweight discovery layer over KirinDL's existing yt-dlp runtime.
@@ -18,6 +23,12 @@ import org.json.JSONObject
  * downloader routing, Aria2, Bilibili fallback and format logic untouched.
  */
 object KirinSearchEngine {
+    enum class YoutubeContent {
+        ALL,
+        VIDEO,
+        MUSIC,
+    }
+
     data class ResultItem(
         val id: String,
         val title: String,
@@ -41,14 +52,22 @@ object KirinSearchEngine {
     private const val CACHE_TTL_MS = 5 * 60 * 1000L
     private const val MAX_CACHE_ENTRIES = 8
     private val cache = LinkedHashMap<String, CacheEntry>(MAX_CACHE_ENTRIES, 0.75f, true)
+    private val bilibiliClient =
+        OkHttpClient.Builder()
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(8, TimeUnit.SECONDS)
+            .build()
     private val processLock = Any()
 
     @Volatile private var activeProcessId: String? = null
+    @Volatile private var activeBilibiliCall: Call? = null
 
     suspend fun search(
         query: String,
         source: KirinSearchStore.SearchSource,
         songsOnly: Boolean = true,
+        youtubeContent: YoutubeContent = YoutubeContent.ALL,
         limit: Int = DEFAULT_LIMIT,
     ): Result<List<ResultItem>> =
         withContext(Dispatchers.IO) {
@@ -58,56 +77,280 @@ object KirinSearchEngine {
 
                 val boundedLimit = limit.coerceIn(8, 30)
                 val cacheKey =
-                    "${source.name}:${if (songsOnly) "songs" else "all"}:${clean.lowercase()}:$boundedLimit"
+                    "${source.name}:${if (songsOnly) "songs" else "all"}:${youtubeContent.name}:" +
+                        "${clean.lowercase()}:$boundedLimit"
                 getCached(cacheKey)?.let { return@runCatching it }
 
-                // Song filtering needs a slightly wider lightweight result pool because obvious
-                // lyric/live/video entries are discarded after flat metadata parsing.
-                val discoveryLimit =
-                    if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC && songsOnly) {
-                        (boundedLimit * 2).coerceAtMost(36)
-                    } else {
-                        boundedLimit
-                    }
-
-                val target =
-                    when (source) {
-                        KirinSearchStore.SearchSource.YOUTUBE -> "ytsearch$discoveryLimit:$clean"
-                        KirinSearchStore.SearchSource.YOUTUBE_MUSIC ->
-                            "https://music.youtube.com/search?q=" +
-                                URLEncoder.encode(clean, StandardCharsets.UTF_8.toString())
-                        KirinSearchStore.SearchSource.BILIBILI -> "bilisearch$discoveryLimit:$clean"
-                    }
-
-                val discovered =
-                    executeDiscovery(
-                        target = target,
-                        source = source,
-                        limit = discoveryLimit,
-                    )
                 val finalItems =
-                    if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC && songsOnly) {
-                        discovered
-                            .filter(::isFocusedSong)
-                            .sortedByDescending(::musicPriority)
-                            .take(boundedLimit)
-                    } else {
-                        discovered.take(boundedLimit)
+                    when (source) {
+                        KirinSearchStore.SearchSource.YOUTUBE ->
+                            searchYouTube(
+                                query = clean,
+                                content = youtubeContent,
+                                limit = boundedLimit,
+                            )
+
+                        KirinSearchStore.SearchSource.YOUTUBE_MUSIC ->
+                            if (songsOnly) {
+                                searchFocusedYouTubeMusicSongs(clean, boundedLimit)
+                            } else {
+                                searchYouTubeMusicAll(clean, boundedLimit)
+                            }
+
+                        KirinSearchStore.SearchSource.BILIBILI ->
+                            runCatching { searchBilibiliRich(clean, boundedLimit) }
+                                .getOrElse { error ->
+                                    if (
+                                        error is IOException &&
+                                            error.message.orEmpty()
+                                                .contains("canceled", ignoreCase = true)
+                                    ) {
+                                        throw error
+                                    }
+                                    executeDiscovery(
+                                        target = "bilisearch$boundedLimit:$clean",
+                                        source = KirinSearchStore.SearchSource.BILIBILI,
+                                        limit = boundedLimit,
+                                    )
+                                }
                     }
+                        .distinctBy { it.url }
+                        .take(boundedLimit)
 
                 putCached(cacheKey, finalItems)
                 finalItems
             }
         }
 
+    private fun searchYouTube(
+        query: String,
+        content: YoutubeContent,
+        limit: Int,
+    ): List<ResultItem> {
+        val poolLimit =
+            when (content) {
+                YoutubeContent.ALL -> limit
+                YoutubeContent.VIDEO -> (limit * 2).coerceAtMost(30)
+                YoutubeContent.MUSIC -> (limit + 10).coerceAtMost(30)
+            }
+        val primary =
+            executeDiscovery(
+                target = "ytsearch$poolLimit:$query",
+                source = KirinSearchStore.SearchSource.YOUTUBE,
+                limit = poolLimit,
+            )
+
+        return when (content) {
+            YoutubeContent.ALL -> primary.take(limit)
+            YoutubeContent.VIDEO -> primary.filterNot(::isMusicResult).take(limit)
+            YoutubeContent.MUSIC -> {
+                val music = primary.filter(::isMusicResult).sortedByDescending(::musicPriority)
+                if (music.size >= minOf(5, limit)) {
+                    music.take(limit)
+                } else {
+                    val extra =
+                        runCatching {
+                                executeDiscovery(
+                                    target = "ytsearch$poolLimit:$query official audio",
+                                    source = KirinSearchStore.SearchSource.YOUTUBE,
+                                    limit = poolLimit,
+                                )
+                            }
+                            .getOrDefault(emptyList())
+                    (music + extra.filter(::isMusicResult))
+                        .distinctBy { it.url }
+                        .sortedByDescending(::musicPriority)
+                        .take(limit)
+                }
+            }
+        }
+    }
+
+    /**
+     * Songs-only intentionally uses YouTube search instead of the fragile music.youtube.com
+     * search endpoint. Topic / official / original audio results are then ranked locally.
+     */
+    private fun searchFocusedYouTubeMusicSongs(query: String, limit: Int): List<ResultItem> {
+        val poolLimit = (limit + 10).coerceAtMost(28)
+        val focused =
+            runCatching {
+                    executeDiscovery(
+                        target = "ytsearch$poolLimit:$query official audio",
+                        source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
+                        limit = poolLimit,
+                    )
+                }
+                .getOrDefault(emptyList())
+        val primarySongs = focused.filter(::isFocusedSong)
+        if (primarySongs.size >= minOf(5, limit)) {
+            return primarySongs.sortedByDescending(::musicPriority).take(limit)
+        }
+
+        val fallback =
+            runCatching {
+                    executeDiscovery(
+                        target = "ytsearch$poolLimit:$query",
+                        source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
+                        limit = poolLimit,
+                    )
+                }
+                .getOrDefault(emptyList())
+        return (primarySongs + fallback.filter(::isFocusedSong))
+            .distinctBy { it.url }
+            .sortedByDescending(::musicPriority)
+            .take(limit)
+    }
+
+    private fun searchYouTubeMusicAll(query: String, limit: Int): List<ResultItem> {
+        val target =
+            "https://music.youtube.com/search?q=" +
+                URLEncoder.encode(query, StandardCharsets.UTF_8.toString())
+        return runCatching {
+                executeDiscovery(
+                    target = target,
+                    source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
+                    limit = limit,
+                )
+            }
+            .getOrElse {
+                executeDiscovery(
+                    target = "ytsearch$limit:$query",
+                    source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
+                    limit = limit,
+                )
+            }
+            .take(limit)
+    }
+
+    /**
+     * Bilibili's yt-dlp flat search entries are intentionally minimal. Query the same public
+     * video-search endpoint directly for rich card metadata, then fall back to bilisearch if the
+     * endpoint is unavailable. This remains discovery-only and never changes download routing.
+     */
+    private fun searchBilibiliRich(query: String, limit: Int): List<ResultItem> {
+        val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.toString())
+        val url =
+            "https://api.bilibili.com/x/web-interface/search/type" +
+                "?Search_key=$encoded&keyword=$encoded&page=1&context=&duration=0" +
+                "&tids_2=&__refresh__=true&search_type=video&tids=0&highlight=1"
+        val request =
+            Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 KirinDL/3.1")
+                .header("Referer", "https://www.bilibili.com/")
+                .header("Cookie", "buvid3=${UUID.randomUUID()}infoc")
+                .build()
+
+        val call = bilibiliClient.newCall(request)
+        synchronized(processLock) {
+            activeBilibiliCall?.cancel()
+            activeBilibiliCall = call
+        }
+        val body =
+            try {
+                call.execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw IllegalStateException("Bilibili search HTTP ${response.code}")
+                    }
+                    response.body?.string()?.takeIf { it.isNotBlank() }
+                        ?: throw IllegalStateException(
+                            "Bilibili search returned an empty response"
+                        )
+                }
+            } finally {
+                synchronized(processLock) {
+                    if (activeBilibiliCall === call) activeBilibiliCall = null
+                }
+            }
+        val root = JSONObject(body)
+        if (root.optInt("code", -1) != 0) {
+            throw IllegalStateException(
+                root.optString("message").ifBlank { "Bilibili search unavailable" }
+            )
+        }
+        val entries = root.optJSONObject("data")?.optJSONArray("result") ?: return emptyList()
+
+        return buildList {
+                for (index in 0 until entries.length()) {
+                    val entry = entries.optJSONObject(index) ?: continue
+                    val bvid = entry.optString("bvid")
+                    val aid = entry.optString("aid")
+                    val rawUrl = entry.optString("arcurl")
+                    val mediaUrl =
+                        rawUrl.takeIf { it.startsWith("http") }
+                            ?: bvid.takeIf { it.isNotBlank() }?.let {
+                                "https://www.bilibili.com/video/$it"
+                            }
+                            ?: continue
+                    val rawThumb = entry.optString("pic")
+                    val thumbnail =
+                        when {
+                            rawThumb.startsWith("//") -> "https:$rawThumb"
+                            rawThumb.startsWith("http") -> rawThumb
+                            else -> null
+                        }
+                    add(
+                        ResultItem(
+                            id = bvid.ifBlank { aid.ifBlank { mediaUrl } },
+                            title = cleanBilibiliText(entry.optString("title")).ifBlank { mediaUrl },
+                            url = mediaUrl,
+                            thumbnail = thumbnail,
+                            creator = cleanBilibiliText(entry.optString("author")),
+                            durationSeconds = parseBilibiliDuration(entry.opt("duration")),
+                            source = KirinSearchStore.SearchSource.BILIBILI,
+                            extractor = "BiliBiliSearch",
+                            viewCount = parseLongValue(entry.opt("play")),
+                            uploadTimestamp = parseLongValue(entry.opt("pubdate")),
+                        )
+                    )
+                }
+            }
+            .distinctBy { it.url }
+            .take(limit)
+    }
+
+    private fun cleanBilibiliText(value: String): String =
+        value
+            .replace(Regex("<[^>]+>"), "")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .trim()
+
+    private fun parseLongValue(value: Any?): Long? =
+        when (value) {
+            is Number -> value.toLong().takeIf { it >= 0L }
+            is String -> value.replace(",", "").toLongOrNull()?.takeIf { it >= 0L }
+            else -> null
+        }
+
+    private fun parseBilibiliDuration(value: Any?): Int? {
+        if (value is Number) return value.toInt().takeIf { it >= 0 }
+        val text = value?.toString()?.trim().orEmpty()
+        if (text.isBlank()) return null
+        text.toIntOrNull()?.let { return it.takeIf { seconds -> seconds >= 0 } }
+        val parts = text.split(':').mapNotNull { it.toIntOrNull() }
+        if (parts.isEmpty()) return null
+        return when (parts.size) {
+            2 -> parts[0] * 60 + parts[1]
+            3 -> parts[0] * 3600 + parts[1] * 60 + parts[2]
+            else -> null
+        }
+    }
+
     /** Stops only the currently running Kirin Search discovery process, never a download task. */
     fun cancelActiveSearch() {
-        val processId = synchronized(processLock) {
-            val current = activeProcessId
+        val (processId, biliCall) = synchronized(processLock) {
+            val currentProcess = activeProcessId
+            val currentBiliCall = activeBilibiliCall
             activeProcessId = null
-            current
+            activeBilibiliCall = null
+            currentProcess to currentBiliCall
         }
         processId?.let { runCatching { YoutubeDL.destroyProcessById(it) } }
+        biliCall?.cancel()
     }
 
     private fun executeDiscovery(

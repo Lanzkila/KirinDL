@@ -891,10 +891,8 @@ fun NewHomePage(
                 }
             }
 
-            // Main yt-dlp URL input + its own live dashboard.
-            item {
-                HomeInputDivider("Media / yt-dlp")
-            }
+            // Keep Quick Profile above the media divider so profile choice happens before
+            // entering the yt-dlp URL. The divider now cleanly starts the Media input block.
             item {
                 SmartProfileQuickPicker(
                     selected = smartProfile,
@@ -905,6 +903,9 @@ fun NewHomePage(
                         }
                     },
                 )
+            }
+            item {
+                HomeInputDivider("Media / yt-dlp")
             }
             if (urlText.isNotBlank() && activeSite != SiteProfileManager.generic) {
                 item {

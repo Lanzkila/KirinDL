@@ -219,11 +219,17 @@ fun KirinSearchPage(
         onConfigureUrl(url)
     }
 
-    fun runSearch() {
+    fun runSearch(
+        sourceOverride: KirinSearchStore.SearchSource? = null,
+        songsOnlyOverride: Boolean? = null,
+        filterOverride: SearchResultFilter? = null,
+        force: Boolean = false,
+    ) {
         val clean = query.trim()
-        if (clean.isBlank() || loading || configureBusy) return
+        if (clean.isBlank() || configureBusy) return
+        if (loading && !force) return
         val now = System.currentTimeMillis()
-        if (now - lastSearchRequestAt < 400L) return
+        if (!force && now - lastSearchRequestAt < 400L) return
         lastSearchRequestAt = now
 
         keyboard?.hide()
@@ -232,14 +238,30 @@ fun KirinSearchPage(
             return
         }
 
-        val searchSource = source
+        val searchSource = sourceOverride ?: source
+        val activeFilter =
+            if (searchSource == KirinSearchStore.SearchSource.YOUTUBE) {
+                filterOverride ?: resultFilter
+            } else {
+                SearchResultFilter.ALL
+            }
         val songsOnly =
-            searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC && musicSongsOnly
+            if (searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC) {
+                songsOnlyOverride ?: musicSongsOnly
+            } else {
+                false
+            }
+        val youtubeContent =
+            when (activeFilter) {
+                SearchResultFilter.ALL -> KirinSearchEngine.YoutubeContent.ALL
+                SearchResultFilter.VIDEO -> KirinSearchEngine.YoutubeContent.VIDEO
+                SearchResultFilter.MUSIC -> KirinSearchEngine.YoutubeContent.MUSIC
+            }
+
         requestSerial += 1
         val thisRequest = requestSerial
 
-        // Discovery should stay lightweight. Keep the old results on-screen while the next
-        // query is loading, then replace them only when the newest request completes.
+        // Keep the previous result list visible while a source/filter refresh is running.
         loading = true
         errorText = ""
         selectedUrls.clear()
@@ -249,6 +271,7 @@ fun KirinSearchPage(
                     query = clean,
                     source = searchSource,
                     songsOnly = songsOnly,
+                    youtubeContent = youtubeContent,
                 )
                 .onSuccess { items ->
                     if (thisRequest != requestSerial) return@onSuccess
@@ -259,7 +282,18 @@ fun KirinSearchPage(
                 }
                 .onFailure { throwable ->
                     if (thisRequest != requestSerial) return@onFailure
-                    errorText = throwable.message ?: "Search failed"
+                    val message = throwable.message.orEmpty()
+                    errorText =
+                        when {
+                            searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC &&
+                                songsOnly &&
+                                message.contains("search unavailable", ignoreCase = true) ->
+                                "Song search is temporarily unavailable. Retry or switch to All music."
+                            searchSource == KirinSearchStore.SearchSource.BILIBILI ->
+                                "Bilibili search failed. Retry in a moment."
+                            message.isNotBlank() -> message
+                            else -> "Search failed"
+                        }
                 }
             if (thisRequest == requestSerial) loading = false
         }
@@ -353,12 +387,25 @@ fun KirinSearchPage(
                                     KirinSearchEngine.cancelActiveSearch()
                                     loading = false
                                     source = searchSource
+                                    val nextFilter =
+                                        if (searchSource == KirinSearchStore.SearchSource.YOUTUBE) {
+                                            resultFilter
+                                        } else {
+                                            SearchResultFilter.ALL
+                                        }
                                     if (searchSource != KirinSearchStore.SearchSource.YOUTUBE) {
                                         resultFilter = SearchResultFilter.ALL
                                     }
                                     results = emptyList()
                                     errorText = ""
                                     selectedUrls.clear()
+                                    if (query.isNotBlank()) {
+                                        runSearch(
+                                            sourceOverride = searchSource,
+                                            filterOverride = nextFilter,
+                                            force = true,
+                                        )
+                                    }
                                 }
                             },
                             label = { Text(searchSource.label) },
@@ -385,6 +432,14 @@ fun KirinSearchPage(
                                         results = emptyList()
                                         errorText = ""
                                         selectedUrls.clear()
+                                        if (query.isNotBlank()) {
+                                            runSearch(
+                                                sourceOverride =
+                                                    KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
+                                                songsOnlyOverride = true,
+                                                force = true,
+                                            )
+                                        }
                                     }
                                 },
                                 label = { Text("Songs only") },
@@ -400,6 +455,14 @@ fun KirinSearchPage(
                                         results = emptyList()
                                         errorText = ""
                                         selectedUrls.clear()
+                                        if (query.isNotBlank()) {
+                                            runSearch(
+                                                sourceOverride =
+                                                    KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
+                                                songsOnlyOverride = false,
+                                                force = true,
+                                            )
+                                        }
                                     }
                                 },
                                 label = { Text("All music") },
@@ -428,7 +491,25 @@ fun KirinSearchPage(
                             SearchResultFilter.entries.forEach { filter ->
                                 FilterChip(
                                     selected = resultFilter == filter,
-                                    onClick = { resultFilter = filter },
+                                    onClick = {
+                                        if (resultFilter != filter) {
+                                            requestSerial += 1
+                                            KirinSearchEngine.cancelActiveSearch()
+                                            loading = false
+                                            resultFilter = filter
+                                            results = emptyList()
+                                            errorText = ""
+                                            selectedUrls.clear()
+                                            if (query.isNotBlank()) {
+                                                runSearch(
+                                                    sourceOverride =
+                                                        KirinSearchStore.SearchSource.YOUTUBE,
+                                                    filterOverride = filter,
+                                                    force = true,
+                                                )
+                                            }
+                                        }
+                                    },
                                     label = { Text(filter.label) },
                                 )
                             }

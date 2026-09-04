@@ -49,6 +49,7 @@ fun UpdateDialog(
     onDismissRequest: () -> Unit,
     release: UpdateUtil.Release,
     isUpdateAvailable: Boolean = true,
+    onBackgroundUpdate: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val currentVersion = App.packageInfo.versionName?.substringBefore("-") ?: "Unknown"
@@ -61,14 +62,20 @@ fun UpdateDialog(
         releaseVersion = releaseVersion,
         publishedDate = release.publishedAt?.take(10) ?: release.createdAt?.take(10),
         isUpdateAvailable = isUpdateAvailable,
+        backgroundUpdateMode = isUpdateAvailable && onBackgroundUpdate != null,
         onConfirmUpdate = {
-            val target = release.htmlUrl?.takeIf { it.startsWith("https://") } ?: KIRIN_RELEASES_URL
-            runCatching {
-                context.startActivity(
-                    Intent(Intent.ACTION_VIEW, Uri.parse(target)).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                )
+            if (isUpdateAvailable && onBackgroundUpdate != null) {
+                onBackgroundUpdate()
+            } else {
+                val target =
+                    release.htmlUrl?.takeIf { it.startsWith("https://") } ?: KIRIN_RELEASES_URL
+                runCatching {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(target)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                    )
+                }
             }
             onDismissRequest()
         },
@@ -85,6 +92,7 @@ fun UpdateDialogImpl(
     releaseVersion: String,
     publishedDate: String?,
     isUpdateAvailable: Boolean,
+    backgroundUpdateMode: Boolean = false,
     onConfirmUpdate: () -> Unit,
     releaseNote: String,
 ) {
@@ -94,7 +102,13 @@ fun UpdateDialogImpl(
         icon = { Icon(Icons.Outlined.NewReleases, null, tint = MaterialTheme.colorScheme.primary) },
         confirmButton = {
             Button(onClick = onConfirmUpdate) {
-                Text(if (isUpdateAvailable) "View update" else "Open release")
+                Text(
+                    when {
+                        backgroundUpdateMode -> "Update"
+                        isUpdateAvailable -> "View update"
+                        else -> "Open release"
+                    }
+                )
             }
         },
         dismissButton = {
@@ -127,6 +141,16 @@ fun UpdateDialogImpl(
                     Text(
                         text = "Published $it",
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                if (backgroundUpdateMode) {
+                    Text(
+                        text =
+                            "Tap Update to download the APK in the background. " +
+                                "Android keeps the download progress in your notification shade.",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -295,6 +319,7 @@ private fun Preview() {
         releaseVersion = "3.1.2",
         publishedDate = "2026-09-03",
         isUpdateAvailable = true,
+        backgroundUpdateMode = true,
         onConfirmUpdate = {},
         releaseNote = "## Highlights\n- Better updater\n- Cleaner settings",
     )

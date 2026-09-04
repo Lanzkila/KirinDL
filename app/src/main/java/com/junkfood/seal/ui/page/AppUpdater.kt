@@ -5,22 +5,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.UpdateUtil
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.junkfood.seal.util.makeToast
 
 /**
  * Lightweight update checker for KirinDL.
  *
  * The app intentionally does not request package-install permission and does not install APKs
- * itself. When an update is available, the user can open the official KirinDL GitHub release in
- * their browser and decide what to do there.
+ * itself. The automatic update popup can hand the official release APK to Android DownloadManager
+ * for a background download; installation remains a normal user-controlled Android action.
  */
 @Composable
 fun AppUpdater() {
+    val context = LocalContext.current
     var showUpdateDialog by rememberSaveable { mutableStateOf(false) }
     var release by remember { mutableStateOf(UpdateUtil.Release()) }
 
@@ -32,21 +33,36 @@ fun AppUpdater() {
             return@LaunchedEffect
         }
 
-        withContext(Dispatchers.IO) {
-            runCatching {
-                    UpdateUtil.checkForUpdate()?.let {
-                        release = it
-                        showUpdateDialog = true
-                    }
+        runCatching {
+                UpdateUtil.checkForUpdate()?.let {
+                    release = it
+                    showUpdateDialog = true
                 }
-                .onFailure { it.printStackTrace() }
-        }
+            }
+            .onFailure { it.printStackTrace() }
     }
 
     if (showUpdateDialog) {
         UpdateDialog(
             onDismissRequest = { showUpdateDialog = false },
             release = release,
+            onBackgroundUpdate =
+                if (UpdateUtil.hasBackgroundAppUpdate(release)) {
+                    {
+                        UpdateUtil.enqueueBackgroundAppUpdate(context, release)
+                            .onSuccess {
+                                context.makeToast(
+                                    "KirinDL update is downloading in the background"
+                                )
+                            }
+                            .onFailure { error ->
+                                error.printStackTrace()
+                                context.makeToast("Could not start the background update")
+                            }
+                    }
+                } else {
+                    null
+                },
         )
     }
 }

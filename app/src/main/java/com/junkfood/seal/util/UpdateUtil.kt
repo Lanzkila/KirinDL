@@ -1,8 +1,11 @@
 package com.junkfood.seal.util
 
+import android.app.DownloadManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import com.junkfood.seal.App
 import com.junkfood.seal.App.Companion.context
 import com.junkfood.seal.util.PreferenceUtil.getInt
@@ -124,6 +127,60 @@ object UpdateUtil {
      */
     suspend fun deleteOutdatedApk() = Unit
 
+    /**
+     * Starts the APK download through Android's DownloadManager. This is deliberately separate
+     * from the normal media downloader: Android owns the background transfer and its notification,
+     * while KirinDL keeps app installation manual.
+     */
+    fun enqueueBackgroundAppUpdate(
+        context: Context = App.context,
+        release: Release,
+    ): Result<Long> =
+        runCatching {
+            val asset = preferredApkAsset(release)
+                ?: throw IOException("No downloadable KirinDL APK was attached to this release")
+            val downloadUrl =
+                asset.browserDownloadUrl?.takeIf { it.startsWith("https://") }
+                    ?: throw IOException("The KirinDL APK download URL is unavailable")
+            val rawVersion = release.tagName ?: release.name ?: "update"
+            val safeVersion = rawVersion.removePrefix("v").replace(Regex("[^A-Za-z0-9._-]"), "-")
+            val fileName =
+                asset.name?.takeIf { it.endsWith(".apk", ignoreCase = true) }
+                    ?: "KirinDL-$safeVersion-universal.apk"
+
+            val request =
+                DownloadManager.Request(Uri.parse(downloadUrl))
+                    .setTitle("KirinDL $rawVersion")
+                    .setDescription("Downloading app update in background")
+                    .setMimeType("application/vnd.android.package-archive")
+                    .setAllowedOverRoaming(false)
+                    .setNotificationVisibility(
+                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                    )
+                    .setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS,
+                        "KirinDL/Updates/$fileName",
+                    )
+
+            val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            manager.enqueue(request)
+        }
+
+    fun hasBackgroundAppUpdate(release: Release): Boolean = preferredApkAsset(release) != null
+
+    private fun preferredApkAsset(release: Release): ReleaseAsset? =
+        release.assets
+            .asSequence()
+            .filter { asset ->
+                asset.name?.endsWith(".apk", ignoreCase = true) == true &&
+                    asset.name.orEmpty().contains("universal", ignoreCase = true) &&
+                    asset.browserDownloadUrl?.startsWith("https://") == true
+            }
+            .sortedByDescending {
+                it.name.orEmpty().contains("release", ignoreCase = true)
+            }
+            .firstOrNull()
+
     suspend fun checkForUpdateResult(context: Context = App.context): Result<Release?> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -168,6 +225,15 @@ object UpdateUtil {
         @SerialName("created_at") val createdAt: String? = null,
         @SerialName("published_at") val publishedAt: String? = null,
         val body: String? = null,
+        val assets: List<ReleaseAsset> = emptyList(),
+    )
+
+    @Serializable
+    data class ReleaseAsset(
+        val name: String? = null,
+        @SerialName("browser_download_url") val browserDownloadUrl: String? = null,
+        @SerialName("content_type") val contentType: String? = null,
+        val size: Long? = null,
     )
 
     private val pattern = Pattern.compile("""v?(\d+)\.(\d+)\.(\d+)(-(\w+)\.(\d+))?""")
