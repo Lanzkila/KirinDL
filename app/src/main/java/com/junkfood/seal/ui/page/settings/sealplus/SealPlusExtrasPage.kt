@@ -41,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -961,6 +962,7 @@ private fun BilibiliFragmentsDialog(
                     PreferenceSingleChoiceItem(
                         text = "$value fragment${if (value == 1) "" else "s"}",
                         selected = selected == value,
+                        containerColor = Color.Transparent,
                         onClick = { selected = value },
                     )
                 }
@@ -995,6 +997,7 @@ private fun HomeRecentLimitDialog(
                     PreferenceSingleChoiceItem(
                         text = "$value items",
                         selected = selected == value,
+                        containerColor = Color.Transparent,
                         onClick = { selected = value },
                     )
                 }
@@ -1031,18 +1034,21 @@ private fun NetworkTypeDialog(
                 PreferenceSingleChoiceItem(
                     text = stringResource(R.string.any_network),
                     selected = selectedType == NETWORK_ANY,
+                    containerColor = Color.Transparent,
                     onClick = { selectedType = NETWORK_ANY }
                 )
                 
                 PreferenceSingleChoiceItem(
                     text = stringResource(R.string.wifi_only),
                     selected = selectedType == NETWORK_WIFI_ONLY,
+                    containerColor = Color.Transparent,
                     onClick = { selectedType = NETWORK_WIFI_ONLY }
                 )
                 
                 PreferenceSingleChoiceItem(
                     text = stringResource(R.string.mobile_only),
                     selected = selectedType == NETWORK_MOBILE_ONLY,
+                    containerColor = Color.Transparent,
                     onClick = { selectedType = NETWORK_MOBILE_ONLY }
                 )
             }
@@ -1085,16 +1091,19 @@ private fun SponsorFrequencyDialog(
                 PreferenceSingleChoiceItem(
                     text = stringResource(R.string.sponsor_dialog_off),
                     selected = selected == SPONSOR_FREQ_OFF,
+                    containerColor = Color.Transparent,
                     onClick = { selected = SPONSOR_FREQ_OFF },
                 )
                 PreferenceSingleChoiceItem(
                     text = stringResource(R.string.sponsor_dialog_weekly),
                     selected = selected == SPONSOR_FREQ_WEEKLY,
+                    containerColor = Color.Transparent,
                     onClick = { selected = SPONSOR_FREQ_WEEKLY },
                 )
                 PreferenceSingleChoiceItem(
                     text = stringResource(R.string.sponsor_dialog_monthly),
                     selected = selected == SPONSOR_FREQ_MONTHLY,
+                    containerColor = Color.Transparent,
                     onClick = { selected = SPONSOR_FREQ_MONTHLY },
                 )
             }

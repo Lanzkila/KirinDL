@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.junkfood.seal.R
@@ -24,13 +25,14 @@ fun DownloadTypeCustomizationDialog(
         modifier = modifier,
         onDismissRequest = onDismissRequest,
         confirmButton = null,
-        title = { Text(text = stringResource(id = R.string.download_type)) },
+        title = { Text(text = "Default download type") },
         text = {
             LazyColumn(modifier = Modifier.padding()) {
                 item {
                     DialogSingleChoiceItem(
-                        text = stringResource(id = R.string.use_previous_selection),
+                        text = "Remember previous selection",
                         selected = selectedItem == USE_PREVIOUS_SELECTION,
+                        containerColor = Color.Transparent,
                     ) {
                         onSelect(USE_PREVIOUS_SELECTION)
                     }
@@ -38,8 +40,9 @@ fun DownloadTypeCustomizationDialog(
 
                 item {
                     DialogSingleChoiceItem(
-                        text = stringResource(id = R.string.none),
+                        text = "No default",
                         selected = selectedItem == NONE,
+                        containerColor = Color.Transparent,
                     ) {
                         onSelect(NONE)
                     }

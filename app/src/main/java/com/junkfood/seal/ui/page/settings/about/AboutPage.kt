@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +70,7 @@ import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.ConfirmButton
 import com.junkfood.seal.util.AUTO_UPDATE
 import com.junkfood.seal.util.PreferenceUtil
+import com.junkfood.seal.util.UpdateUtil
 
 private const val releaseURL = "https://github.com/Lanzkila/KirinDL/releases"
 private const val repoUrl = "https://github.com/Lanzkila/KirinDL/blob/main/README.md"
@@ -97,6 +99,28 @@ fun AboutPage(
         )
     val context = LocalContext.current
     var isAutoUpdateEnabled by remember { mutableStateOf(PreferenceUtil.isAutoUpdateEnabled()) }
+    var appUpdateStatus by remember {
+        mutableStateOf("v${packageInfo.versionName ?: "Unknown"} • Check updates & release notes")
+    }
+
+    LaunchedEffect(Unit) {
+        if (PreferenceUtil.isNetworkAvailableForDownload()) {
+            UpdateUtil.checkForUpdateResult(context)
+                .onSuccess { available ->
+                    appUpdateStatus =
+                        if (available != null) {
+                            val version = available.tagName ?: available.name ?: "New version"
+                            "NEW • $version available"
+                        } else {
+                            "v${packageInfo.versionName ?: "Unknown"} • Up to date"
+                        }
+                }
+                .onFailure {
+                    appUpdateStatus =
+                        "v${packageInfo.versionName ?: "Unknown"} • Tap to check manually"
+                }
+        }
+    }
 
     val uriHandler = LocalUriHandler.current
     fun openUrl(url: String) {
@@ -117,6 +141,48 @@ fun AboutPage(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                item {
+                    Card(
+                        onClick = onNavigateToUpdatePage,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                        ),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.NewReleases,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "App Update",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = appUpdateStatus,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
                 item {
                     Card(
                         shape = RoundedCornerShape(12.dp),

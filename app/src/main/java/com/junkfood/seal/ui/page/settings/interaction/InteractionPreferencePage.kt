@@ -52,12 +52,12 @@ fun InteractionPreferencePage(modifier: Modifier = Modifier, onBack: () -> Unit)
 
             item {
                 PreferenceItem(
-                    title = stringResource(id = R.string.download_type),
+                    title = "Default download type",
                     description =
                         when (initialType) {
                             USE_PREVIOUS_SELECTION ->
-                                stringResource(id = R.string.use_previous_selection)
-                            else -> stringResource(id = R.string.none)
+                                "Remember the previous Audio/Video selection"
+                            else -> "No remembered default; choose when configuring a download"
                         },
                 ) {
                     showDownloadTypeDialog = true

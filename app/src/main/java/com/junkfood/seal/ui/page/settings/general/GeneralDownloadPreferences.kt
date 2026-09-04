@@ -32,15 +32,12 @@ import androidx.compose.material.icons.outlined.PlaylistAddCheck
 import androidx.compose.material.icons.outlined.Print
 import androidx.compose.material.icons.outlined.PrintDisabled
 import androidx.compose.material.icons.outlined.RemoveDone
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -101,15 +98,7 @@ import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.SPONSORBLOCK
 import com.junkfood.seal.util.SUBTITLE
 import com.junkfood.seal.util.THUMBNAIL
-import com.junkfood.seal.util.UpdateUtil
-import com.junkfood.seal.util.YT_DLP_VERSION
-import com.junkfood.seal.util.YT_DLP_AUTO_UPDATE
-import com.junkfood.seal.util.YT_DLP_UPDATE_INTERVAL
-import com.junkfood.seal.util.YT_DLP_UPDATE_CHANNEL
-import com.junkfood.seal.util.YT_DLP_NIGHTLY
-import com.junkfood.seal.util.PreferenceStrings.getUpdateIntervalText
 import com.junkfood.seal.util.makeToast
-import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -122,11 +111,6 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
     val hapticFeedback = LocalHapticFeedback.current
 
     var showSponsorBlockDialog by remember { mutableStateOf(false) }
-    var showYtdlpDialog by remember { mutableStateOf(false) }
-    var isUpdating by remember { mutableStateOf(false) }
-    var ytdlpAutoUpdate by remember { mutableStateOf(YT_DLP_AUTO_UPDATE.getBoolean()) }
-    var ytdlpUpdateInterval by remember { mutableStateOf(YT_DLP_UPDATE_INTERVAL.getLong()) }
-    var ytdlpUpdateChannel by remember { mutableStateOf(YT_DLP_UPDATE_CHANNEL.getInt()) }
 
     val downloadSubtitle by SUBTITLE.booleanState
 
@@ -195,83 +179,6 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
                             text = stringResource(id = R.string.custom_command_enabled_hint)
                         )
                     }
-                item {
-                    PreferenceSwitchWithDivider(
-                        title = "Automatic yt-dlp updates",
-                        description =
-                            if (ytdlpAutoUpdate) {
-                                val channel = if (ytdlpUpdateChannel == YT_DLP_NIGHTLY) "Nightly" else "Stable"
-                                "$channel • ${getUpdateIntervalText(ytdlpUpdateInterval)} • recommended"
-                            } else {
-                                "Disabled • manual updates remain available below"
-                            },
-                        icon = Icons.Outlined.Update,
-                        isChecked = ytdlpAutoUpdate,
-                        onChecked = {
-                            ytdlpAutoUpdate = !ytdlpAutoUpdate
-                            YT_DLP_AUTO_UPDATE.updateBoolean(ytdlpAutoUpdate)
-                        },
-                        onClick = { showYtdlpDialog = true },
-                    )
-                }
-                item {
-                    var ytdlpVersion by remember {
-                        mutableStateOf(
-                            YoutubeDL.getInstance().version(context.applicationContext)
-                                ?: context.getString(R.string.ytdlp_update)
-                        )
-                    }
-                    PreferenceItem(
-                        title = "Manual yt-dlp update",
-                        description = ytdlpVersion,
-                        leadingIcon = {
-                            if (isUpdating) UpdateProgressIndicator()
-                            else {
-                                Icon(
-                                    imageVector = Icons.Outlined.Update,
-                                    contentDescription = null,
-                                    modifier =
-                                        Modifier.padding(start = 8.dp, end = 16.dp).size(24.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        },
-                        onClick = {
-                            scope.launch {
-                                runCatching {
-                                        isUpdating = true
-                                        UpdateUtil.updateYtDlp()
-                                        ytdlpVersion = YT_DLP_VERSION.getString()
-                                    }
-                                    .onFailure { th ->
-                                        th.printStackTrace()
-                                        App.applicationScope.launch(Dispatchers.Main) {
-                                            App.context.makeToast(R.string.yt_dlp_update_fail)
-                                        }
-                                    }
-                                    .onSuccess {
-                                        App.applicationScope.launch(Dispatchers.Main) {
-                                            context.makeToast(
-                                                context.getString(R.string.yt_dlp_up_to_date) +
-                                                    " (${YT_DLP_VERSION.getString()})"
-                                            )
-                                        }
-                                    }
-                                isUpdating = false
-                            }
-                        },
-                        onClickLabel = stringResource(id = R.string.update),
-                        trailingIcon = {
-                            IconButton(onClick = { showYtdlpDialog = true }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Settings,
-                                    contentDescription = stringResource(id = R.string.open_settings),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        },
-                    )
-                }
                 item {
                     PreferenceSwitch(
                         title = stringResource(id = R.string.download_notification),
@@ -437,16 +344,6 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
     )
     if (showSponsorBlockDialog) {
         SponsorBlockDialog { showSponsorBlockDialog = false }
-    }
-    if (showYtdlpDialog) {
-        YtdlpUpdateChannelDialog(
-            onDismissRequest = {
-                ytdlpAutoUpdate = YT_DLP_AUTO_UPDATE.getBoolean()
-                ytdlpUpdateInterval = YT_DLP_UPDATE_INTERVAL.getLong()
-                ytdlpUpdateChannel = YT_DLP_UPDATE_CHANNEL.getInt()
-                showYtdlpDialog = false
-            }
-        )
     }
     if (showClearArchiveDialog) {
         DownloadArchiveDialog(

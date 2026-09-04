@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,22 +42,25 @@ import com.junkfood.seal.R
 import com.junkfood.seal.ui.common.intState
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.PreferenceInfo
+import com.junkfood.seal.ui.component.PreferenceItem
 import com.junkfood.seal.ui.component.PreferenceSingleChoiceItem
 import com.junkfood.seal.ui.component.PreferenceSubtitle
 import com.junkfood.seal.ui.component.PreferenceSwitchWithContainer
 import com.junkfood.seal.ui.page.UpdateDialog
+import com.junkfood.seal.util.APP_UPDATE_CHECK_TIME
 import com.junkfood.seal.util.AUTO_UPDATE
 import com.junkfood.seal.util.PRE_RELEASE
 import com.junkfood.seal.util.PreferenceUtil
+import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateInt
 import com.junkfood.seal.util.STABLE
 import com.junkfood.seal.util.UPDATE_CHANNEL
 import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.makeToast
-import kotlinx.coroutines.Dispatchers
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,13 +76,19 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
 
     var release by remember { mutableStateOf(UpdateUtil.Release()) }
+    var currentRelease by remember { mutableStateOf(UpdateUtil.Release()) }
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var showCurrentReleaseDialog by remember { mutableStateOf(false) }
+    var isChecking by remember { mutableStateOf(false) }
+    var isLoadingCurrentNotes by remember { mutableStateOf(false) }
+    var statusText by remember { mutableStateOf("Ready to check") }
+    var lastChecked by remember { mutableStateOf(APP_UPDATE_CHECK_TIME.getLong()) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text(text = "Update checks") },
+                title = { Text(text = "App Update") },
                 navigationIcon = { BackButton { onNavigateBack() } },
                 scrollBehavior = scrollBehavior,
             )
@@ -85,14 +96,57 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
         content = { paddings ->
             LazyColumn(modifier = Modifier.padding(paddings)) {
                 item {
+                    PreferenceSubtitle(text = "KirinDL app")
+                }
+
+                item {
+                    PreferenceInfo(
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        text =
+                            "$statusText\nInstalled: v${App.packageInfo.versionName ?: "Unknown"}" +
+                                formatLastChecked(lastChecked),
+                    )
+                }
+
+                item {
                     PreferenceSwitchWithContainer(
-                        title = "Check for KirinDownloader updates automatically",
+                        title = "Check for KirinDL updates automatically",
                         icon = null,
                         isChecked = automaticChecks,
                     ) {
                         automaticChecks = !automaticChecks
                         AUTO_UPDATE.updateBoolean(automaticChecks)
                     }
+                }
+
+                item {
+                    var ignored by remember { mutableStateOf(false) }
+                    PreferenceItem(
+                        title = "What's New",
+                        description =
+                            if (isLoadingCurrentNotes) "Loading current release notes…"
+                            else "Read the release notes for the installed KirinDL version",
+                        icon = Icons.Outlined.NewReleases,
+                        enabled = !isLoadingCurrentNotes,
+                        onClick = {
+                            if (!ignored && !isLoadingCurrentNotes) {
+                                ignored = true
+                                isLoadingCurrentNotes = true
+                                scope.launch {
+                                    UpdateUtil.getCurrentReleaseResult(context)
+                                        .onSuccess {
+                                            currentRelease = it
+                                            showCurrentReleaseDialog = true
+                                        }
+                                        .onFailure {
+                                            context.makeToast("Could not load current release notes")
+                                        }
+                                    isLoadingCurrentNotes = false
+                                    ignored = false
+                                }
+                            }
+                        },
+                    )
                 }
 
                 item {
@@ -125,7 +179,6 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                 }
 
                 item {
-                    var isLoading by remember { mutableStateOf(false) }
                     Row(
                         horizontalArrangement = Arrangement.End,
                         modifier = Modifier.fillMaxWidth(),
@@ -135,34 +188,33 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                                 Modifier.padding(horizontal = 24.dp)
                                     .padding(top = 6.dp)
                                     .padding(bottom = 12.dp),
-                            text = stringResource(id = R.string.check_for_updates),
+                            text = if (isChecking) "Checking…" else stringResource(id = R.string.check_for_updates),
                             icon = Icons.Outlined.Update,
-                            isLoading = isLoading,
+                            isLoading = isChecking,
                         ) {
-                            if (!isLoading) {
+                            if (!isChecking) {
+                                isChecking = true
+                                statusText = "Checking for updates…"
                                 scope.launch {
-                                    runCatching {
-                                            isLoading = true
-                                            withContext(Dispatchers.IO) {
-                                                UpdateUtil.checkForUpdate()?.let {
-                                                    release = it
-                                                    showUpdateDialog = true
-                                                }
-                                                    ?: App.applicationScope.launch(
-                                                        Dispatchers.Main
-                                                    ) {
-                                                        context.makeToast(R.string.app_up_to_date)
-                                                    }
+                                    UpdateUtil.checkForUpdateResult(context)
+                                        .onSuccess { available ->
+                                            lastChecked = APP_UPDATE_CHECK_TIME.getLong()
+                                            if (available != null) {
+                                                release = available
+                                                val version = available.tagName ?: available.name ?: "new version"
+                                                statusText = "Update available • $version"
+                                                showUpdateDialog = true
+                                            } else {
+                                                statusText = "Up to date"
                                             }
-                                            isLoading = false
                                         }
-                                        .onFailure {
-                                            it.printStackTrace()
-                                            App.applicationScope.launch(Dispatchers.Main) {
-                                                context.makeToast(R.string.app_update_failed)
-                                            }
-                                            isLoading = false
+                                        .onFailure { throwable ->
+                                            lastChecked = APP_UPDATE_CHECK_TIME.getLong()
+                                            statusText = "Check failed"
+                                            throwable.printStackTrace()
+                                            context.makeToast(R.string.app_update_failed)
                                         }
+                                    isChecking = false
                                 }
                             }
                         }
@@ -174,9 +226,18 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                     PreferenceInfo(
                         modifier = Modifier.padding(horizontal = 4.dp),
                         text =
-                            "KirinDownloader checks its official GitHub releases for new versions. " +
-                                "The app does not request permission to install APK packages. " +
-                                "When an update is available, you can open the release page in your browser.",
+                            "KirinDL checks its official GitHub releases for new versions. " +
+                                "When an update is available, the popup includes the release notes. " +
+                                "The app opens the official release page in your browser and does not silently install APKs.",
+                    )
+                }
+
+                item {
+                    PreferenceItem(
+                        title = "Release history",
+                        description = "Use What's New for the installed version or open a detected update from this page",
+                        icon = Icons.Outlined.History,
+                        enabled = false,
                     )
                 }
             }
@@ -184,8 +245,26 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
     )
 
     if (showUpdateDialog) {
-        UpdateDialog(onDismissRequest = { showUpdateDialog = false }, release = release)
+        UpdateDialog(
+            onDismissRequest = { showUpdateDialog = false },
+            release = release,
+            isUpdateAvailable = true,
+        )
     }
+
+    if (showCurrentReleaseDialog) {
+        UpdateDialog(
+            onDismissRequest = { showCurrentReleaseDialog = false },
+            release = currentRelease,
+            isUpdateAvailable = false,
+        )
+    }
+}
+
+private fun formatLastChecked(timestamp: Long): String {
+    if (timestamp <= 0L) return "\nLast checked: Never"
+    val formatted = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(timestamp))
+    return "\nLast checked: $formatted"
 }
 
 @Composable
@@ -199,6 +278,7 @@ fun ProgressIndicatorButton(
     FilledTonalButton(
         modifier = modifier,
         onClick = onClick,
+        enabled = !isLoading,
         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
     ) {
         if (isLoading) {

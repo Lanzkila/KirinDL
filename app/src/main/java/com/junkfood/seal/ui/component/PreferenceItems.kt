@@ -230,9 +230,13 @@ fun PreferenceSingleChoiceItem(
     text: String,
     selected: Boolean,
     contentPadding: PaddingValues = PaddingValues(horizontal = 8.dp, vertical = 16.dp),
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     onClick: () -> Unit,
 ) {
-    Surface(modifier = Modifier.selectable(selected = selected, onClick = onClick)) {
+    Surface(
+        modifier = Modifier.selectable(selected = selected, onClick = onClick),
+        color = containerColor,
+    ) {
         Row(
             modifier = modifier.fillMaxWidth().padding(contentPadding),
             verticalAlignment = Alignment.CenterVertically,

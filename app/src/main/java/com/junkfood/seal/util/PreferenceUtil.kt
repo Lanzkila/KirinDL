@@ -191,6 +191,7 @@ const val YT_DLP_UPDATE_INTERVAL = "yt-dlp_update_interval"
 const val GALLERY_DL_AUTO_UPDATE = "gallery_dl_auto_update"
 const val GALLERY_DL_UPDATE_TIME = "gallery_dl_last_update"
 const val GALLERY_DL_UPDATE_INTERVAL = "gallery_dl_update_interval"
+const val APP_UPDATE_CHECK_TIME = "app_update_last_check"
 
 private const val INTERVAL_DAY = 86_400_000L
 private const val INTERVAL_WEEK = 86_400_000L * 7
@@ -407,6 +408,7 @@ private val LongPreferenceDefaults = mapOf(
     YT_DLP_UPDATE_INTERVAL to DEFAULT_INTERVAL,
     GALLERY_DL_UPDATE_INTERVAL to DEFAULT_INTERVAL,
     GALLERY_DL_UPDATE_TIME to 0L,
+    APP_UPDATE_CHECK_TIME to 0L,
     SPONSOR_DIALOG_LAST_SHOWN to 0L,
 )
 

@@ -96,7 +96,7 @@ object UpdateUtil {
             }
         }
 
-    private fun getLatestRelease(): Release =
+    private fun getReleaseList(): List<Release> =
         getClient().newCall(requestForReleases).execute().use { response ->
             if (!response.isSuccessful) {
                 throw IOException("KirinDL releases request failed (HTTP ${response.code})")
@@ -104,13 +104,19 @@ object UpdateUtil {
             val body =
                 response.body?.string()?.takeIf { it.isNotBlank() }
                     ?: throw IOException("Empty response body from releases API")
-            val releaseList = jsonFormat.decodeFromString<List<Release>>(body)
-            val stable = UPDATE_CHANNEL.getInt() == STABLE
-            releaseList
-                .filter { if (stable) it.name.toVersion() is Version.Stable else true }
-                .maxByOrNull { it.name.toVersion() }
-                ?: throw IOException("No valid KirinDL release found")
+            jsonFormat.decodeFromString<List<Release>>(body)
         }
+
+    private fun getLatestRelease(): Release {
+        val stable = UPDATE_CHANNEL.getInt() == STABLE
+        return getReleaseList()
+            .filter { release ->
+                val version = (release.tagName ?: release.name).toVersion()
+                if (stable) version is Version.Stable else version != EMPTY_VERSION
+            }
+            .maxByOrNull { (it.tagName ?: it.name).toVersion() }
+            ?: throw IOException("No valid KirinDL release found")
+    }
 
     /**
      * Compatibility no-op for the old startup cleanup hook. KirinDL no longer downloads,
@@ -118,15 +124,28 @@ object UpdateUtil {
      */
     suspend fun deleteOutdatedApk() = Unit
 
-    suspend fun checkForUpdate(context: Context = App.context): Release? =
+    suspend fun checkForUpdateResult(context: Context = App.context): Result<Release?> =
         withContext(Dispatchers.IO) {
             runCatching {
                     val currentVersion = context.getCurrentVersion()
                     val latestRelease = getLatestRelease()
-                    val latestVersion = latestRelease.name.toVersion()
+                    val latestVersion = (latestRelease.tagName ?: latestRelease.name).toVersion()
                     if (currentVersion < latestVersion) latestRelease else null
                 }
-                .getOrNull()
+                .also { APP_UPDATE_CHECK_TIME.updateLong(System.currentTimeMillis()) }
+        }
+
+    suspend fun checkForUpdate(context: Context = App.context): Release? =
+        checkForUpdateResult(context).getOrNull()
+
+    suspend fun getCurrentReleaseResult(context: Context = App.context): Result<Release> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val currentVersion = context.getCurrentVersion()
+                getReleaseList().firstOrNull { release ->
+                    (release.tagName ?: release.name).toVersion().compareTo(currentVersion) == 0
+                } ?: throw IOException("Current KirinDL release notes were not found")
+            }
         }
 
     private fun Context.getCurrentVersion(): Version =
