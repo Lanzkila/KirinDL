@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,6 +50,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +67,7 @@ import com.junkfood.seal.util.DatabaseUtil
 import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.GalleryDlStore
 import com.junkfood.seal.util.makeToast
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 private enum class CenterEngine(val label: String) {
@@ -120,12 +124,14 @@ fun UnifiedDownloadCenterPage(
 ) {
     val context = LocalContext.current
     val taskMap = downloader.getTaskStateMap()
+    val scope = rememberCoroutineScope()
     var refreshKey by remember { mutableIntStateOf(0) }
     var mediaHistory by remember { mutableStateOf(emptyList<DownloadedVideoInfo>()) }
-    var engine by remember { mutableStateOf(CenterEngine.All) }
-    var status by remember { mutableStateOf(CenterStatus.All) }
-    var sort by remember { mutableStateOf(CenterSort.ActiveFirst) }
-    var searchQuery by remember { mutableStateOf("") }
+    var engine by rememberSaveable { mutableStateOf(CenterEngine.All) }
+    var status by rememberSaveable { mutableStateOf(CenterStatus.All) }
+    var sort by rememberSaveable { mutableStateOf(CenterSort.ActiveFirst) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var showClearCompletedDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         DatabaseUtil.getVisibleDownloadHistoryFlow().collect { mediaHistory = it }
@@ -312,6 +318,45 @@ fun UnifiedDownloadCenterPage(
                 }
             }
 
+            if (failedCount > 0 || doneCount > 0) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (failedCount > 0) {
+                            OutlinedButton(
+                                onClick = {
+                                    val failedMedia =
+                                        taskMap
+                                            .filterValues { state ->
+                                                state.downloadState is Task.DownloadState.Error ||
+                                                    state.downloadState is Task.DownloadState.Canceled
+                                            }
+                                            .keys
+                                            .toList()
+                                    failedMedia.forEach(downloader::restart)
+                                    if (failedMedia.isEmpty()) {
+                                        context.makeToast("Gallery failures can be retried in Gallery DL")
+                                    } else {
+                                        context.makeToast("Retrying ${failedMedia.size} Media task${if (failedMedia.size == 1) "" else "s"}")
+                                    }
+                                },
+                            ) {
+                                Icon(Icons.Outlined.Replay, null, Modifier.size(18.dp))
+                                Text(" Retry Failed")
+                            }
+                        }
+                        if (doneCount > 0) {
+                            OutlinedButton(onClick = { showClearCompletedDialog = true }) {
+                                Icon(Icons.Outlined.Clear, null, Modifier.size(18.dp))
+                                Text(" Clear Completed")
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -422,6 +467,36 @@ fun UnifiedDownloadCenterPage(
 
             item { Spacer(Modifier.height(24.dp)) }
         }
+    }
+
+    if (showClearCompletedDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCompletedDialog = false },
+            title = { Text("Clear completed history?") },
+            text = {
+                Text(
+                    "This removes completed Media history and Gallery DL history from the Download Center. Downloaded files are kept.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearCompletedDialog = false
+                        scope.launch {
+                            DatabaseUtil.deleteInfoList(mediaHistory, deleteFile = false)
+                            GalleryDlStore.clearHistory(context)
+                            refreshKey += 1
+                            context.makeToast("Completed history cleared")
+                        }
+                    },
+                ) {
+                    Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCompletedDialog = false }) { Text("Cancel") }
+            },
+        )
     }
 }
 

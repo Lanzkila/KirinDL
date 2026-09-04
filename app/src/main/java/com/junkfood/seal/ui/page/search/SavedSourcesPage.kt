@@ -115,6 +115,7 @@ fun SavedSourcesPage(
     var browseTitle by remember { mutableStateOf("") }
     var browseCreator by remember { mutableStateOf("") }
     var browseFromCache by remember { mutableStateOf(false) }
+    var browseCacheStale by remember { mutableStateOf(false) }
     var refreshRevision by remember { mutableStateOf(0) }
     val selectedUrls = remember { mutableStateListOf<String>() }
 
@@ -167,6 +168,7 @@ fun SavedSourcesPage(
         browseTitle = source.displayTitle
         browseCreator = ""
         browseFromCache = false
+        browseCacheStale = false
         refreshRevision = 0
         selectedSourceId = source.id
     }
@@ -175,11 +177,16 @@ fun SavedSourcesPage(
         selectedSourceId = null
         browseItems = emptyList()
         browseError = ""
+        browseCacheStale = false
         selectedUrls.clear()
         sourceRevision += 1
     }
 
     BackHandler(enabled = selectedSourceId != null) { closeBrowser() }
+
+    LaunchedEffect(Unit) {
+        SavedSourceStore.cleanupCache(context)
+    }
 
     LaunchedEffect(selectedSourceId, refreshRevision) {
         val source = selectedSource ?: return@LaunchedEffect
@@ -196,12 +203,17 @@ fun SavedSourcesPage(
                 browseTitle = result.title.ifBlank { source.displayTitle }
                 browseCreator = result.creator
                 browseFromCache = result.fromCache
+                browseCacheStale = result.cacheStale
                 selectedUrls.clear()
                 sourceRevision += 1
-                if (result.items.isEmpty()) browseError = "No media found in this source"
+                browseError =
+                    when {
+                        result.items.isEmpty() -> "No media found in this source"
+                        result.cacheStale -> "Refresh failed — showing the last cached copy"
+                        else -> ""
+                    }
             }
             .onFailure { throwable ->
-                browseItems = emptyList()
                 browseError = throwable.message ?: "Could not open this source"
             }
         browseLoading = false
@@ -280,6 +292,7 @@ fun SavedSourcesPage(
                 title = browseTitle,
                 creator = browseCreator,
                 fromCache = browseFromCache,
+                cacheStale = browseCacheStale,
                 items = browseItems,
                 loading = browseLoading,
                 errorText = browseError,
@@ -313,11 +326,16 @@ fun SavedSourcesPage(
                 if (kind == null) {
                     SavedSourcesEngine.validationMessage(url)
                 } else {
-                    val source = SavedSourceStore.addSource(context, url, kind, nickname)
-                    sourceRevision += 1
-                    showAddDialog = false
-                    openSource(source)
-                    null
+                    val duplicate = SavedSourceStore.findDuplicate(context, url)
+                    if (duplicate != null) {
+                        "Already saved as ${duplicate.displayTitle}"
+                    } else {
+                        val source = SavedSourceStore.addSource(context, url, kind, nickname)
+                        sourceRevision += 1
+                        showAddDialog = false
+                        openSource(source)
+                        null
+                    }
                 }
             },
         )
@@ -446,20 +464,62 @@ private fun SavedSourcesList(
             }
         }
 
-        items(sources, key = { it.id }) { source ->
-            SavedSourceCard(
-                source = source,
-                onOpen = { onOpen(source) },
-                onRename = { onRename(source) },
-                onTogglePinned = { onTogglePinned(source) },
-                onMoveUp = { onMoveUp(source) },
-                onMoveDown = { onMoveDown(source) },
-                onDelete = { onDelete(source) },
-                onOpenExternal = { onOpenExternal(source) },
-            )
+        val pinnedSources = sources.filter { it.pinned }
+        val regularSources = sources.filterNot { it.pinned }
+
+        if (pinnedSources.isNotEmpty()) {
+            item { SourceSectionHeader("Pinned", pinnedSources.size) }
+            items(pinnedSources, key = { "pinned:${it.id}" }) { source ->
+                SavedSourceCard(
+                    source = source,
+                    onOpen = { onOpen(source) },
+                    onRename = { onRename(source) },
+                    onTogglePinned = { onTogglePinned(source) },
+                    onMoveUp = { onMoveUp(source) },
+                    onMoveDown = { onMoveDown(source) },
+                    onDelete = { onDelete(source) },
+                    onOpenExternal = { onOpenExternal(source) },
+                )
+            }
+        }
+
+        if (regularSources.isNotEmpty()) {
+            item { SourceSectionHeader("Sources", regularSources.size) }
+            items(regularSources, key = { "source:${it.id}" }) { source ->
+                SavedSourceCard(
+                    source = source,
+                    onOpen = { onOpen(source) },
+                    onRename = { onRename(source) },
+                    onTogglePinned = { onTogglePinned(source) },
+                    onMoveUp = { onMoveUp(source) },
+                    onMoveDown = { onMoveDown(source) },
+                    onDelete = { onDelete(source) },
+                    onOpenExternal = { onOpenExternal(source) },
+                )
+            }
         }
 
         item { Spacer(Modifier.height(20.dp)) }
+    }
+}
+
+@Composable
+private fun SourceSectionHeader(label: String, count: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -603,7 +663,7 @@ private fun SavedSourceCard(
                 )
                 if (source.lastFetchedAt > 0L) {
                     Text(
-                        "${source.itemCount} cached items • ${formatTimestamp(source.lastFetchedAt)}",
+                        "${source.itemCount} items • ${cacheFreshnessLabel(source)} • ${formatTimestamp(source.lastFetchedAt)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -696,6 +756,7 @@ private fun SavedSourceBrowser(
     title: String,
     creator: String,
     fromCache: Boolean,
+    cacheStale: Boolean,
     items: List<SavedSourceStore.SourceItem>,
     loading: Boolean,
     errorText: String,
@@ -720,6 +781,7 @@ private fun SavedSourceBrowser(
                 title = title,
                 creator = creator,
                 fromCache = fromCache,
+                cacheStale = cacheStale,
                 itemCount = items.size,
             )
         }
@@ -828,6 +890,7 @@ private fun BrowserHeaderCard(
     title: String,
     creator: String,
     fromCache: Boolean,
+    cacheStale: Boolean,
     itemCount: Int,
 ) {
     Card(
@@ -862,7 +925,7 @@ private fun BrowserHeaderCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "$itemCount items • ${if (fromCache) "Cached" else "Fresh"}",
+                    "$itemCount items • ${when { cacheStale -> "Stale cache"; fromCache -> "Cached"; else -> "Fresh" }}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -1067,6 +1130,15 @@ private fun RenameSourceDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+private fun cacheFreshnessLabel(source: SavedSourceStore.SavedSource): String {
+    val age = SavedSourceStore.cacheAgeMs(source) ?: return "Not cached"
+    return when {
+        age <= SavedSourceStore.CACHE_MAX_AGE_MS -> "Fresh cache"
+        age < 24L * 60L * 60L * 1000L -> "Cache expired"
+        else -> "Old cache"
+    }
 }
 
 private fun formatTimestamp(timestamp: Long): String =

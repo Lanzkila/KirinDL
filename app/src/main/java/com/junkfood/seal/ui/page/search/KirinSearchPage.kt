@@ -58,6 +58,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -73,12 +75,14 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.junkfood.seal.ui.common.HapticFeedback.slightHapticFeedback
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel.Action
@@ -86,7 +90,20 @@ import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.KirinSearchEngine
 import com.junkfood.seal.util.KirinSearchStore
 import com.junkfood.seal.util.makeToast
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private enum class SearchResultFilter(val label: String) {
+    ALL("All"),
+    VIDEO("Video"),
+    MUSIC("Music"),
+}
+
+private enum class SearchResultSort(val label: String) {
+    RELEVANCE("Relevance"),
+    LATEST("Latest"),
+    VIEWS("Views"),
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,21 +118,77 @@ fun KirinSearchPage(
     val clipboard = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
     val keyboard = LocalSoftwareKeyboardController.current
+    val view = LocalView.current
     val scope = rememberCoroutineScope()
+    val initialUiState = remember { KirinSearchStore.loadUiState(context) }
 
-    var query by remember { mutableStateOf("") }
-    var source by remember { mutableStateOf(KirinSearchStore.SearchSource.YOUTUBE) }
+    var query by remember { mutableStateOf(initialUiState.query) }
+    var source by remember { mutableStateOf(initialUiState.source) }
     var results by remember { mutableStateOf(emptyList<KirinSearchEngine.ResultItem>()) }
     var loading by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf("") }
     var searchRevision by remember { mutableStateOf(0) }
     var detailsTarget by remember { mutableStateOf<KirinSearchEngine.ResultItem?>(null) }
-    var musicSongsOnly by remember { mutableStateOf(true) }
+    var musicSongsOnly by remember { mutableStateOf(initialUiState.musicSongsOnly) }
+    var resultFilter by
+        remember {
+            mutableStateOf(
+                runCatching { SearchResultFilter.valueOf(initialUiState.contentFilter) }
+                    .getOrDefault(SearchResultFilter.ALL),
+            )
+        }
+    var resultSort by
+        remember {
+            mutableStateOf(
+                runCatching { SearchResultSort.valueOf(initialUiState.sort) }
+                    .getOrDefault(SearchResultSort.RELEVANCE),
+            )
+        }
     var requestSerial by remember { mutableIntStateOf(0) }
+    var lastSearchRequestAt by remember { mutableStateOf(0L) }
     var configureBusy by remember { mutableStateOf(false) }
     val selectedUrls = remember { mutableStateListOf<String>() }
 
     val searches = remember(searchRevision) { KirinSearchStore.loadSearches(context) }
+    val displayResults by
+        remember(results, source, resultFilter, resultSort) {
+            derivedStateOf {
+                val filtered =
+                    if (source == KirinSearchStore.SearchSource.YOUTUBE) {
+                        when (resultFilter) {
+                            SearchResultFilter.ALL -> results
+                            SearchResultFilter.VIDEO ->
+                                results.filterNot(KirinSearchEngine::isMusicResult)
+                            SearchResultFilter.MUSIC ->
+                                results.filter(KirinSearchEngine::isMusicResult)
+                        }
+                    } else {
+                        results
+                    }
+                when (resultSort) {
+                    SearchResultSort.RELEVANCE -> filtered
+                    SearchResultSort.LATEST ->
+                        filtered.sortedByDescending { it.uploadTimestamp ?: Long.MIN_VALUE }
+                    SearchResultSort.VIEWS ->
+                        filtered.sortedByDescending { it.viewCount ?: Long.MIN_VALUE }
+                }
+            }
+        }
+
+    LaunchedEffect(query, source, musicSongsOnly, resultFilter, resultSort) {
+        // Debounce tiny UI-state writes so typing stays smooth.
+        delay(350)
+        KirinSearchStore.saveUiState(
+            context,
+            KirinSearchStore.SearchUiState(
+                query = query,
+                source = source,
+                musicSongsOnly = musicSongsOnly,
+                contentFilter = resultFilter.name,
+                sort = resultSort.name,
+            ),
+        )
+    }
 
     DisposableEffect(Unit) {
         onDispose { KirinSearchEngine.cancelActiveSearch() }
@@ -125,6 +198,7 @@ fun KirinSearchPage(
         val clean = urls.distinct().filter { it.isNotBlank() }
         if (clean.isEmpty()) return
 
+        view.slightHapticFeedback()
         dialogViewModel.postAction(
             Action.DownloadWithPreset(
                 urlList = clean,
@@ -140,6 +214,7 @@ fun KirinSearchPage(
     fun downloadWithConfigure(url: String) {
         if (configureBusy || url.isBlank()) return
         configureBusy = true
+        view.slightHapticFeedback()
         keyboard?.hide()
         onConfigureUrl(url)
     }
@@ -147,6 +222,9 @@ fun KirinSearchPage(
     fun runSearch() {
         val clean = query.trim()
         if (clean.isBlank() || loading || configureBusy) return
+        val now = System.currentTimeMillis()
+        if (now - lastSearchRequestAt < 400L) return
+        lastSearchRequestAt = now
 
         keyboard?.hide()
         if (KirinSearchEngine.looksLikeDirectVideoUrl(clean)) {
@@ -271,6 +349,9 @@ fun KirinSearchPage(
                                     KirinSearchEngine.cancelActiveSearch()
                                     loading = false
                                     source = searchSource
+                                    if (searchSource != KirinSearchStore.SearchSource.YOUTUBE) {
+                                        resultFilter = SearchResultFilter.ALL
+                                    }
                                     results = emptyList()
                                     errorText = ""
                                     selectedUrls.clear()
@@ -333,6 +414,57 @@ fun KirinSearchPage(
                 }
             }
 
+            if (source == KirinSearchStore.SearchSource.YOUTUBE) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            SearchResultFilter.entries.forEach { filter ->
+                                FilterChip(
+                                    selected = resultFilter == filter,
+                                    onClick = { resultFilter = filter },
+                                    label = { Text(filter.label) },
+                                )
+                            }
+                            FilterChip(
+                                selected = false,
+                                onClick = onNavigateToSavedSources,
+                                label = { Text("Playlist") },
+                            )
+                            FilterChip(
+                                selected = false,
+                                onClick = onNavigateToSavedSources,
+                                label = { Text("Channel") },
+                            )
+                        }
+                        Text(
+                            "Playlist and Channel collections open in Saved Sources so Kirin Search stays video-first.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Sort", style = MaterialTheme.typography.labelLarge)
+                    SearchResultSort.entries.forEach { option ->
+                        FilterChip(
+                            selected = resultSort == option,
+                            onClick = { resultSort = option },
+                            label = { Text(option.label) },
+                        )
+                    }
+                }
+            }
+
             if (KirinSearchEngine.looksLikeDirectVideoUrl(query)) {
                 item {
                     DirectUrlCard(
@@ -362,7 +494,7 @@ fun KirinSearchPage(
                 item {
                     ResultsHeader(
                         source = source,
-                        count = results.size,
+                        count = displayResults.size,
                         selectedCount = selectedUrls.size,
                         onQueueSelected = { queueUrls(selectedUrls.toList()) },
                         onClearSelection = { selectedUrls.clear() },
@@ -370,7 +502,7 @@ fun KirinSearchPage(
                 }
 
                 items(
-                    items = results,
+                    items = displayResults,
                     key = { item -> "${item.source.name}:${item.id}:${item.url}" },
                 ) { item ->
                     SearchResultCard(
@@ -410,6 +542,9 @@ fun KirinSearchPage(
                         onRun = {
                             query = record.query
                             source = record.source
+                            if (record.source != KirinSearchStore.SearchSource.YOUTUBE) {
+                                resultFilter = SearchResultFilter.ALL
+                            }
                             runSearch()
                         },
                         onFavorite = {
@@ -690,7 +825,11 @@ private fun SearchResultCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = item.creator.ifBlank { item.extractor.ifBlank { item.source.label } },
+                    text =
+                        buildString {
+                            append(item.creator.ifBlank { item.extractor.ifBlank { item.source.label } })
+                            item.viewCount?.let { count -> append(" • ${formatViewCount(count)} views") }
+                        },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -918,6 +1057,14 @@ private fun DetailLine(label: String, value: String) {
         )
     }
 }
+
+private fun formatViewCount(value: Long): String =
+    when {
+        value >= 1_000_000_000L -> "%.1fB".format(value / 1_000_000_000.0)
+        value >= 1_000_000L -> "%.1fM".format(value / 1_000_000.0)
+        value >= 1_000L -> "%.1fK".format(value / 1_000.0)
+        else -> value.toString()
+    }
 
 private fun formatDuration(totalSeconds: Int): String {
     val safe = totalSeconds.coerceAtLeast(0)

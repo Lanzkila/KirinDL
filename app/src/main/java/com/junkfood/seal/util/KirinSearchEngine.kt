@@ -28,6 +28,8 @@ object KirinSearchEngine {
         val source: KirinSearchStore.SearchSource,
         val extractor: String,
         val musicSongHint: Boolean = false,
+        val viewCount: Long? = null,
+        val uploadTimestamp: Long? = null,
     )
 
     private data class CacheEntry(
@@ -201,6 +203,27 @@ object KirinSearchEngine {
 
         val extractor =
             entry.optString("extractor_key").ifBlank { entry.optString("extractor") }
+        val viewCount =
+            if (entry.has("view_count") && !entry.isNull("view_count")) {
+                entry.optLong("view_count").takeIf { it >= 0L }
+            } else {
+                null
+            }
+        val uploadTimestamp =
+            when {
+                entry.has("timestamp") && !entry.isNull("timestamp") ->
+                    entry.optLong("timestamp").takeIf { it > 0L }
+                entry.optString("upload_date").length == 8 ->
+                    runCatching {
+                            val date = entry.optString("upload_date")
+                            java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
+                                .parse(date)
+                                ?.time
+                                ?.div(1000L)
+                        }
+                        .getOrNull()
+                else -> null
+            }
 
         return ResultItem(
             id = id.ifBlank { url },
@@ -212,6 +235,8 @@ object KirinSearchEngine {
             source = source,
             extractor = extractor,
             musicSongHint = artist.isNotBlank() || track.isNotBlank() || album.isNotBlank(),
+            viewCount = viewCount,
+            uploadTimestamp = uploadTimestamp,
         )
     }
 
@@ -220,6 +245,17 @@ object KirinSearchEngine {
      * cover/music-video results are removed. Topic and original/official audio/song labels rank
      * highest, matching KirinDL's audio-first search preference.
      */
+    fun isMusicResult(item: ResultItem): Boolean {
+        val title = item.title.lowercase()
+        val creator = item.creator.lowercase()
+        return item.musicSongHint ||
+            creator.contains("topic") ||
+            title.contains("official audio") ||
+            title.contains("original audio") ||
+            title.contains("official song") ||
+            title.contains("original song")
+    }
+
     private fun isFocusedSong(item: ResultItem): Boolean {
         val title = item.title.lowercase()
         val creator = item.creator.lowercase()
@@ -328,6 +364,7 @@ object KirinSearchEngine {
 
     @Synchronized
     private fun getCached(key: String): List<ResultItem>? {
+        pruneCacheLocked()
         val entry = cache[key] ?: return null
         if (System.currentTimeMillis() - entry.createdAt > CACHE_TTL_MS) {
             cache.remove(key)
@@ -338,10 +375,17 @@ object KirinSearchEngine {
 
     @Synchronized
     private fun putCached(key: String, items: List<ResultItem>) {
+        pruneCacheLocked()
         cache[key] = CacheEntry(System.currentTimeMillis(), items)
         while (cache.size > MAX_CACHE_ENTRIES) {
             val oldestKey = cache.entries.firstOrNull()?.key ?: break
             cache.remove(oldestKey)
         }
+    }
+
+    private fun pruneCacheLocked(now: Long = System.currentTimeMillis()) {
+        val expired =
+            cache.filterValues { entry -> now - entry.createdAt > CACHE_TTL_MS }.keys.toList()
+        expired.forEach(cache::remove)
     }
 }

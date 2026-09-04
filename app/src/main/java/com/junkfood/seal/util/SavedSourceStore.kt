@@ -13,6 +13,7 @@ object SavedSourceStore {
     private const val LAST_OPENED_FILE = "last-opened-source.txt"
     private const val CACHE_DIR = "source-cache"
     const val CACHE_MAX_AGE_MS = 30L * 60L * 1000L
+    private const val CACHE_RETENTION_MS = 7L * 24L * 60L * 60L * 1000L
 
     enum class SourceKind(val label: String) {
         YOUTUBE_CHANNEL("YouTube Channel"),
@@ -98,6 +99,14 @@ object SavedSourceStore {
                     .thenBy { it.order }
                     .thenByDescending { it.createdAt }
             )
+
+    fun findDuplicate(context: Context, url: String): SavedSource? {
+        val comparable = normalizeComparableUrl(url)
+        if (comparable.isBlank()) return null
+        return loadSources(context).firstOrNull {
+            normalizeComparableUrl(it.url) == comparable
+        }
+    }
 
     fun addSource(
         context: Context,
@@ -206,6 +215,22 @@ object SavedSourceStore {
 
     fun getLastOpenedSourceId(context: Context): String? =
         lastOpenedFile(context).takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotBlank() }
+
+    fun cacheAgeMs(source: SavedSource, now: Long = System.currentTimeMillis()): Long? =
+        source.lastFetchedAt.takeIf { it > 0L }?.let { (now - it).coerceAtLeast(0L) }
+
+    fun isCacheFresh(source: SavedSource, now: Long = System.currentTimeMillis()): Boolean =
+        cacheAgeMs(source, now)?.let { it <= CACHE_MAX_AGE_MS } == true
+
+    fun cleanupCache(context: Context) {
+        val validSourceIds = loadSources(context).mapTo(mutableSetOf()) { it.id }
+        val now = System.currentTimeMillis()
+        cacheDir(context).listFiles()?.forEach { file ->
+            val sourceId = file.name.removeSuffix(".json")
+            val tooOld = now - file.lastModified() > CACHE_RETENTION_MS
+            if (sourceId !in validSourceIds || tooOld) file.delete()
+        }
+    }
 
     fun saveCache(context: Context, cache: CacheRecord) {
         val root =

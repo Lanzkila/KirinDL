@@ -23,6 +23,7 @@ object SavedSourcesEngine {
         val creator: String,
         val fetchedAt: Long,
         val fromCache: Boolean,
+        val cacheStale: Boolean = false,
         val items: List<SavedSourceStore.SourceItem>,
     )
 
@@ -30,44 +31,69 @@ object SavedSourcesEngine {
         context: Context,
         source: SavedSourceStore.SavedSource,
         forceRefresh: Boolean = false,
-        limit: Int = 50,
+        limit: Int = 40,
     ): Result<BrowseResult> =
         withContext(Dispatchers.IO) {
-            runCatching {
-                if (!forceRefresh) {
-                    SavedSourceStore.loadFreshCache(context, source.id)?.let { cache ->
-                        return@runCatching BrowseResult(
+            if (!forceRefresh) {
+                SavedSourceStore.loadFreshCache(context, source.id)?.let { cache ->
+                    return@withContext Result.success(
+                        BrowseResult(
                             title = cache.title.ifBlank { source.displayTitle },
                             thumbnail = cache.thumbnail,
                             creator = cache.creator,
                             fetchedAt = cache.fetchedAt,
                             fromCache = true,
+                            cacheStale = false,
                             items = cache.items,
-                        )
-                    }
+                        ),
+                    )
                 }
+            }
 
-                val result = executeBrowse(source, limit)
-                SavedSourceStore.saveCache(
-                    context,
-                    SavedSourceStore.CacheRecord(
-                        sourceId = source.id,
+            val networkAttempt =
+                runCatching {
+                    val result = executeBrowse(source, limit.coerceIn(10, 50))
+                    SavedSourceStore.saveCache(
+                        context,
+                        SavedSourceStore.CacheRecord(
+                            sourceId = source.id,
+                            title = result.title,
+                            thumbnail = result.thumbnail,
+                            creator = result.creator,
+                            fetchedAt = result.fetchedAt,
+                            items = result.items,
+                        ),
+                    )
+                    SavedSourceStore.updateMetadata(
+                        context = context,
+                        id = source.id,
                         title = result.title,
                         thumbnail = result.thumbnail,
-                        creator = result.creator,
+                        itemCount = result.items.size,
                         fetchedAt = result.fetchedAt,
-                        items = result.items,
+                    )
+                    result
+                }
+
+            if (networkAttempt.isSuccess) return@withContext networkAttempt
+
+            // A failed refresh must not blank a usable source. Fall back to any existing cache,
+            // even when it is older than the normal 30-minute fresh window.
+            val stale = SavedSourceStore.loadCache(context, source.id)
+            if (stale != null && stale.items.isNotEmpty()) {
+                Result.success(
+                    BrowseResult(
+                        title = stale.title.ifBlank { source.displayTitle },
+                        thumbnail = stale.thumbnail,
+                        creator = stale.creator,
+                        fetchedAt = stale.fetchedAt,
+                        fromCache = true,
+                        cacheStale = true,
+                        items = stale.items,
                     ),
                 )
-                SavedSourceStore.updateMetadata(
-                    context = context,
-                    id = source.id,
-                    title = result.title,
-                    thumbnail = result.thumbnail,
-                    itemCount = result.items.size,
-                    fetchedAt = result.fetchedAt,
-                )
-                result
+            } else {
+                networkAttempt
             }
         }
 
@@ -150,9 +176,9 @@ object SavedSourcesEngine {
         request.addOption("--playlist-end", limit)
         request.addOption("--ignore-errors")
         request.addOption("--no-warnings")
-        request.addOption("--socket-timeout", 15)
-        request.addOption("--retries", 3)
-        request.addOption("--extractor-retries", 3)
+        request.addOption("--socket-timeout", 10)
+        request.addOption("--retries", 1)
+        request.addOption("--extractor-retries", 1)
 
         val processId = "kirin-source-${UUID.randomUUID()}"
         val response = YoutubeDL.getInstance().execute(request, processId)

@@ -10,6 +10,7 @@ import org.json.JSONObject
 object KirinSearchStore {
     private const val ROOT_DIR = "kirin-search"
     private const val SEARCH_FILE = "searches.json"
+    private const val UI_STATE_FILE = "search-ui.json"
     private const val MAX_SEARCHES = 30
 
     enum class SearchSource(val label: String) {
@@ -26,10 +27,20 @@ object KirinSearchStore {
         val updatedAt: Long,
     )
 
+    data class SearchUiState(
+        val query: String = "",
+        val source: SearchSource = SearchSource.YOUTUBE,
+        val musicSongsOnly: Boolean = true,
+        val contentFilter: String = "ALL",
+        val sort: String = "RELEVANCE",
+    )
+
     private fun root(context: Context): File =
         File(context.filesDir, ROOT_DIR).apply { mkdirs() }
 
     private fun searchFile(context: Context): File = File(root(context), SEARCH_FILE)
+
+    private fun uiStateFile(context: Context): File = File(root(context), UI_STATE_FILE)
 
     fun loadSearches(context: Context): List<SearchRecord> =
         readArray(searchFile(context))
@@ -51,6 +62,36 @@ object KirinSearchStore {
                 compareByDescending<SearchRecord> { it.favorite }
                     .thenByDescending { it.updatedAt }
             )
+
+
+    fun loadUiState(context: Context): SearchUiState {
+        val file = uiStateFile(context)
+        if (!file.isFile || file.length() <= 0L) return SearchUiState()
+        return runCatching {
+                val json = JSONObject(file.readText())
+                SearchUiState(
+                    query = json.optString("query"),
+                    source =
+                        runCatching { SearchSource.valueOf(json.optString("source")) }
+                            .getOrDefault(SearchSource.YOUTUBE),
+                    musicSongsOnly = json.optBoolean("musicSongsOnly", true),
+                    contentFilter = json.optString("contentFilter").ifBlank { "ALL" },
+                    sort = json.optString("sort").ifBlank { "RELEVANCE" },
+                )
+            }
+            .getOrDefault(SearchUiState())
+    }
+
+    fun saveUiState(context: Context, state: SearchUiState) {
+        val json =
+            JSONObject()
+                .put("query", state.query.take(300))
+                .put("source", state.source.name)
+                .put("musicSongsOnly", state.musicSongsOnly)
+                .put("contentFilter", state.contentFilter)
+                .put("sort", state.sort)
+        writeTextAtomic(uiStateFile(context), json.toString())
+    }
 
     fun addSearch(context: Context, query: String, source: SearchSource) {
         val clean = query.trim()
@@ -144,8 +185,12 @@ object KirinSearchStore {
     }
 
     private fun writeArray(file: File, array: JSONArray) {
+        writeTextAtomic(file, array.toString())
+    }
+
+    private fun writeTextAtomic(file: File, text: String) {
         val temp = File(file.parentFile, "${file.name}.tmp")
-        temp.writeText(array.toString())
+        temp.writeText(text)
         if (file.exists()) file.delete()
         if (!temp.renameTo(file)) {
             temp.copyTo(file, overwrite = true)
