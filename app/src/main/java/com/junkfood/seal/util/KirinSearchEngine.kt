@@ -12,11 +12,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Discovery-only layer over the app's existing yt-dlp runtime.
+ * Lightweight discovery layer over KirinDL's existing yt-dlp runtime.
  *
- * This never downloads media itself. Search results are handed back to the normal KirinDL
- * configure/queue flow so downloader routing, Aria2, Bilibili fallback and format logic stay
- * untouched.
+ * Search never downloads media. Results are handed to the normal configure/queue flow, keeping
+ * downloader routing, Aria2, Bilibili fallback and format logic untouched.
  */
 object KirinSearchEngine {
     data class ResultItem(
@@ -28,30 +27,86 @@ object KirinSearchEngine {
         val durationSeconds: Int?,
         val source: KirinSearchStore.SearchSource,
         val extractor: String,
+        val musicSongHint: Boolean = false,
     )
+
+    private data class CacheEntry(
+        val createdAt: Long,
+        val items: List<ResultItem>,
+    )
+
+    private const val DEFAULT_LIMIT = 18
+    private const val CACHE_TTL_MS = 5 * 60 * 1000L
+    private const val MAX_CACHE_ENTRIES = 8
+    private val cache = LinkedHashMap<String, CacheEntry>(MAX_CACHE_ENTRIES, 0.75f, true)
+    private val processLock = Any()
+
+    @Volatile private var activeProcessId: String? = null
 
     suspend fun search(
         query: String,
         source: KirinSearchStore.SearchSource,
-        limit: Int = 24,
+        songsOnly: Boolean = true,
+        limit: Int = DEFAULT_LIMIT,
     ): Result<List<ResultItem>> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val clean = query.trim()
                 require(clean.isNotBlank()) { "Enter a search query" }
 
+                val boundedLimit = limit.coerceIn(8, 30)
+                val cacheKey =
+                    "${source.name}:${if (songsOnly) "songs" else "all"}:${clean.lowercase()}:$boundedLimit"
+                getCached(cacheKey)?.let { return@runCatching it }
+
+                // Song filtering needs a slightly wider lightweight result pool because obvious
+                // lyric/live/video entries are discarded after flat metadata parsing.
+                val discoveryLimit =
+                    if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC && songsOnly) {
+                        (boundedLimit * 2).coerceAtMost(36)
+                    } else {
+                        boundedLimit
+                    }
+
                 val target =
                     when (source) {
-                        KirinSearchStore.SearchSource.YOUTUBE -> "ytsearch$limit:$clean"
+                        KirinSearchStore.SearchSource.YOUTUBE -> "ytsearch$discoveryLimit:$clean"
                         KirinSearchStore.SearchSource.YOUTUBE_MUSIC ->
                             "https://music.youtube.com/search?q=" +
                                 URLEncoder.encode(clean, StandardCharsets.UTF_8.toString())
-                        KirinSearchStore.SearchSource.BILIBILI -> "bilisearch$limit:$clean"
+                        KirinSearchStore.SearchSource.BILIBILI -> "bilisearch$discoveryLimit:$clean"
                     }
 
-                executeDiscovery(target = target, source = source, limit = limit)
+                val discovered =
+                    executeDiscovery(
+                        target = target,
+                        source = source,
+                        limit = discoveryLimit,
+                    )
+                val finalItems =
+                    if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC && songsOnly) {
+                        discovered
+                            .filter(::isFocusedSong)
+                            .sortedByDescending(::musicPriority)
+                            .take(boundedLimit)
+                    } else {
+                        discovered.take(boundedLimit)
+                    }
+
+                putCached(cacheKey, finalItems)
+                finalItems
             }
         }
+
+    /** Stops only the currently running Kirin Search discovery process, never a download task. */
+    fun cancelActiveSearch() {
+        val processId = synchronized(processLock) {
+            val current = activeProcessId
+            activeProcessId = null
+            current
+        }
+        processId?.let { runCatching { YoutubeDL.destroyProcessById(it) } }
+    }
 
     private fun executeDiscovery(
         target: String,
@@ -64,12 +119,28 @@ object KirinSearchEngine {
         request.addOption("--playlist-end", limit)
         request.addOption("--ignore-errors")
         request.addOption("--no-warnings")
-        request.addOption("--socket-timeout", 15)
-        request.addOption("--retries", 3)
-        request.addOption("--extractor-retries", 3)
+        request.addOption("--socket-timeout", 10)
+        // Discovery should fail quickly instead of making the Search page feel frozen.
+        request.addOption("--retries", 1)
+        request.addOption("--extractor-retries", 1)
 
         val processId = "kirin-search-${UUID.randomUUID()}"
-        val response = YoutubeDL.getInstance().execute(request, processId)
+        val previousId = synchronized(processLock) {
+            val previous = activeProcessId
+            activeProcessId = processId
+            previous
+        }
+        previousId?.let { runCatching { YoutubeDL.destroyProcessById(it) } }
+
+        val response =
+            try {
+                YoutubeDL.getInstance().execute(request, processId)
+            } finally {
+                synchronized(processLock) {
+                    if (activeProcessId == processId) activeProcessId = null
+                }
+            }
+
         val raw = response.out.trim()
         if (raw.isBlank()) return emptyList()
 
@@ -97,9 +168,12 @@ object KirinSearchEngine {
             }
         val url = normalizeUrl(rawUrl, id, source) ?: return null
 
+        val artist = entry.optString("artist")
+        val track = entry.optString("track")
+        val album = entry.optString("album")
         val creator =
             sequenceOf(
-                    entry.optString("artist"),
+                    artist,
                     entry.optString("channel"),
                     entry.optString("uploader"),
                     entry.optString("uploader_id"),
@@ -137,7 +211,56 @@ object KirinSearchEngine {
             durationSeconds = duration,
             source = source,
             extractor = extractor,
+            musicSongHint = artist.isNotBlank() || track.isNotBlank() || album.isNotBlank(),
         )
+    }
+
+    /**
+     * Strict YT Music song focus. Strong music metadata is accepted, while obvious lyric/live/
+     * cover/music-video results are removed. Topic and original/official audio/song labels rank
+     * highest, matching KirinDL's audio-first search preference.
+     */
+    private fun isFocusedSong(item: ResultItem): Boolean {
+        val title = item.title.lowercase()
+        val creator = item.creator.lowercase()
+        val strongLabel =
+            creator.contains("topic") ||
+                title.contains("official audio") ||
+                title.contains("original audio") ||
+                title.contains("official song") ||
+                title.contains("original song")
+        if (strongLabel) return true
+
+        val blockers =
+            listOf(
+                "lyrics",
+                "lyric video",
+                "official video",
+                "music video",
+                " live",
+                "live ",
+                "cover",
+                "reaction",
+                "tutorial",
+                "karaoke",
+                "shorts",
+            )
+        if (blockers.any { token -> title.contains(token) }) return false
+
+        return item.musicSongHint &&
+            (item.durationSeconds == null || item.durationSeconds in 30..1200)
+    }
+
+    private fun musicPriority(item: ResultItem): Int {
+        val title = item.title.lowercase()
+        val creator = item.creator.lowercase()
+        var score = 0
+        if (creator.contains("topic")) score += 100
+        if (title.contains("official audio") || title.contains("original audio")) score += 90
+        if (title.contains("official song") || title.contains("original song")) score += 80
+        if (item.musicSongHint) score += 50
+        if (item.durationSeconds != null) score += 5
+        return score
     }
 
     private fun youtubeThumbnailFallback(
@@ -161,8 +284,6 @@ object KirinSearchEngine {
     ): String? {
         if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
             if (looksLikeDirectVideoUrl(rawUrl)) return rawUrl
-            // Search pages can expose channels/playlists alongside media. Part 2 is intentionally
-            // video/song-first, so non-video navigation entries are discarded here.
             if (
                 (source == KirinSearchStore.SearchSource.YOUTUBE ||
                     source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC) &&
@@ -202,6 +323,25 @@ object KirinSearchEngine {
                 true
             host.endsWith("bilibili.com") && path.startsWith("/video/") -> true
             else -> false
+        }
+    }
+
+    @Synchronized
+    private fun getCached(key: String): List<ResultItem>? {
+        val entry = cache[key] ?: return null
+        if (System.currentTimeMillis() - entry.createdAt > CACHE_TTL_MS) {
+            cache.remove(key)
+            return null
+        }
+        return entry.items
+    }
+
+    @Synchronized
+    private fun putCached(key: String, items: List<ResultItem>) {
+        cache[key] = CacheEntry(System.currentTimeMillis(), items)
+        while (cache.size > MAX_CACHE_ENTRIES) {
+            val oldestKey = cache.entries.firstOrNull()?.key ?: break
+            cache.remove(oldestKey)
         }
     }
 }

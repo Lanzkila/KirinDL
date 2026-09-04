@@ -83,6 +83,7 @@ import com.junkfood.seal.ui.page.tools.ThumbnailDownloadPage
 import com.junkfood.seal.ui.page.tools.VideoInfoDetailPage
 import com.junkfood.seal.ui.page.tools.VideoInfoDownloadPage
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import org.koin.androidx.compose.koinViewModel
 
 private const val TAG = "HomeEntry"
@@ -212,6 +213,30 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                         },
                         onNavigateToSavedSources = {
                             navController.navigate(Route.SAVED_SOURCES) { launchSingleTop = true }
+                        },
+                        onConfigureUrl = { url ->
+                            // Configure is hosted by Home. Return there first and only then
+                            // expand the shared configure sheet. This avoids the navigation/sheet
+                            // race that could make Kirin Search feel stuck or jumpy.
+                            scope.launch {
+                                val returnedHome =
+                                    navController.popBackStack(
+                                        route = Route.HOME,
+                                        inclusive = false,
+                                    )
+                                if (!returnedHome && navController.currentDestination?.route != Route.HOME) {
+                                    navController.navigate(Route.HOME) {
+                                        launchSingleTop = true
+                                        popUpTo(Route.HOME) { inclusive = false }
+                                    }
+                                }
+                                navController.currentBackStackEntryFlow.first { entry ->
+                                    entry.destination.route == Route.HOME
+                                }
+                                dialogViewModel.postAction(
+                                    DownloadDialogViewModel.Action.ShowSheet(listOf(url)),
+                                )
+                            }
                         },
                     )
                 }

@@ -57,7 +57,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,6 +95,7 @@ fun KirinSearchPage(
     onNavigateBack: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToSavedSources: () -> Unit,
+    onConfigureUrl: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -107,9 +110,16 @@ fun KirinSearchPage(
     var errorText by remember { mutableStateOf("") }
     var searchRevision by remember { mutableStateOf(0) }
     var detailsTarget by remember { mutableStateOf<KirinSearchEngine.ResultItem?>(null) }
+    var musicSongsOnly by remember { mutableStateOf(true) }
+    var requestSerial by remember { mutableIntStateOf(0) }
+    var configureBusy by remember { mutableStateOf(false) }
     val selectedUrls = remember { mutableStateListOf<String>() }
 
     val searches = remember(searchRevision) { KirinSearchStore.loadSearches(context) }
+
+    DisposableEffect(Unit) {
+        onDispose { KirinSearchEngine.cancelActiveSearch() }
+    }
 
     fun queueUrls(urls: List<String>) {
         val clean = urls.distinct().filter { it.isNotBlank() }
@@ -128,12 +138,15 @@ fun KirinSearchPage(
     }
 
     fun downloadWithConfigure(url: String) {
-        dialogViewModel.postAction(Action.ShowSheet(listOf(url)))
+        if (configureBusy || url.isBlank()) return
+        configureBusy = true
+        keyboard?.hide()
+        onConfigureUrl(url)
     }
 
     fun runSearch() {
         val clean = query.trim()
-        if (clean.isBlank() || loading) return
+        if (clean.isBlank() || loading || configureBusy) return
 
         keyboard?.hide()
         if (KirinSearchEngine.looksLikeDirectVideoUrl(clean)) {
@@ -141,24 +154,36 @@ fun KirinSearchPage(
             return
         }
 
+        val searchSource = source
+        val songsOnly =
+            searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC && musicSongsOnly
+        requestSerial += 1
+        val thisRequest = requestSerial
+
+        // Discovery should stay lightweight. Keep the old results on-screen while the next
+        // query is loading, then replace them only when the newest request completes.
         loading = true
         errorText = ""
-        results = emptyList()
         selectedUrls.clear()
 
         scope.launch {
-            KirinSearchEngine.search(clean, source)
+            KirinSearchEngine.search(
+                    query = clean,
+                    source = searchSource,
+                    songsOnly = songsOnly,
+                )
                 .onSuccess { items ->
+                    if (thisRequest != requestSerial) return@onSuccess
                     results = items
-                    KirinSearchStore.addSearch(context, clean, source)
+                    KirinSearchStore.addSearch(context, clean, searchSource)
                     searchRevision += 1
-                    if (items.isEmpty()) errorText = "No results found"
+                    errorText = if (items.isEmpty()) "No results found" else ""
                 }
                 .onFailure { throwable ->
-                    results = emptyList()
+                    if (thisRequest != requestSerial) return@onFailure
                     errorText = throwable.message ?: "Search failed"
                 }
-            loading = false
+            if (thisRequest == requestSerial) loading = false
         }
     }
 
@@ -242,6 +267,9 @@ fun KirinSearchPage(
                             selected = source == searchSource,
                             onClick = {
                                 if (source != searchSource) {
+                                    requestSerial += 1
+                                    KirinSearchEngine.cancelActiveSearch()
+                                    loading = false
                                     source = searchSource
                                     results = emptyList()
                                     errorText = ""
@@ -254,10 +282,62 @@ fun KirinSearchPage(
                 }
             }
 
+            if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            FilterChip(
+                                selected = musicSongsOnly,
+                                onClick = {
+                                    if (!musicSongsOnly) {
+                                        requestSerial += 1
+                                        KirinSearchEngine.cancelActiveSearch()
+                                        loading = false
+                                        musicSongsOnly = true
+                                        results = emptyList()
+                                        errorText = ""
+                                        selectedUrls.clear()
+                                    }
+                                },
+                                label = { Text("Songs only") },
+                            )
+                            FilterChip(
+                                selected = !musicSongsOnly,
+                                onClick = {
+                                    if (musicSongsOnly) {
+                                        requestSerial += 1
+                                        KirinSearchEngine.cancelActiveSearch()
+                                        loading = false
+                                        musicSongsOnly = false
+                                        results = emptyList()
+                                        errorText = ""
+                                        selectedUrls.clear()
+                                    }
+                                },
+                                label = { Text("All music") },
+                            )
+                        }
+                        Text(
+                            text =
+                                if (musicSongsOnly)
+                                    "Prioritizes Topic, original/official audio and song metadata; lyrics, live, covers and obvious music videos are filtered out."
+                                else
+                                    "Shows the wider YouTube Music search result set.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
             if (KirinSearchEngine.looksLikeDirectVideoUrl(query)) {
                 item {
                     DirectUrlCard(
                         url = query.trim(),
+                        configureEnabled = !configureBusy,
                         onConfigure = { downloadWithConfigure(query.trim()) },
                     )
                 }
@@ -303,6 +383,7 @@ fun KirinSearchPage(
                                 selectedUrls.remove(item.url)
                             }
                         },
+                        configureEnabled = !configureBusy,
                         onDownload = { downloadWithConfigure(item.url) },
                         onQueue = { queueUrls(listOf(item.url)) },
                         onOpen = { uriHandler.openUri(item.url) },
@@ -382,7 +463,7 @@ private fun SearchIntroCard() {
             )
             Text(
                 text =
-                    "Discovery stays separate from the downloader. Choose YouTube, YT Music or Bilibili, then send any result into KirinDL's normal configure or queue flow.",
+                    "Discovery stays separate from the downloader. YouTube and Bilibili stay video-first; YT Music defaults to a song-focused filter before results enter KirinDL's normal configure or queue flow.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -393,6 +474,7 @@ private fun SearchIntroCard() {
 @Composable
 private fun DirectUrlCard(
     url: String,
+    configureEnabled: Boolean,
     onConfigure: () -> Unit,
 ) {
     Card(
@@ -421,7 +503,7 @@ private fun DirectUrlCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            TextButton(onClick = onConfigure) { Text("Configure") }
+            TextButton(onClick = onConfigure, enabled = configureEnabled) { Text("Configure") }
         }
     }
 }
@@ -442,7 +524,7 @@ private fun LoadingSearchCard(source: KirinSearchStore.SearchSource) {
             Column {
                 Text("Searching ${source.label}…", fontWeight = FontWeight.SemiBold)
                 Text(
-                    text = "yt-dlp is fetching lightweight discovery metadata.",
+                    text = "Fetching lightweight discovery metadata with the active search filter.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -527,6 +609,7 @@ private fun SearchResultCard(
     item: KirinSearchEngine.ResultItem,
     selected: Boolean,
     onSelectedChange: (Boolean) -> Unit,
+    configureEnabled: Boolean,
     onDownload: () -> Unit,
     onQueue: () -> Unit,
     onOpen: () -> Unit,
@@ -619,7 +702,7 @@ private fun SearchResultCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(onClick = onDownload) {
+                    Button(onClick = onDownload, enabled = configureEnabled) {
                         Icon(
                             imageVector = Icons.Outlined.FileDownload,
                             contentDescription = null,
@@ -780,7 +863,7 @@ private fun EmptySearchCard() {
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "YouTube is the default. Switch to YT Music or Bilibili when needed.",
+                text = "YouTube is the default. YT Music starts in Songs only mode; switch to Bilibili when needed.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
