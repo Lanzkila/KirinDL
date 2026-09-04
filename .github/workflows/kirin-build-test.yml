@@ -2,9 +2,15 @@ name: Kirin Build Test
 
 on:
   workflow_dispatch:
+    inputs:
+      dev_tag:
+        description: "Dev release tag (example: v3.1.3-devpatch1)"
+        required: true
+        default: "v3.1.3-devpatch1"
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: kirindl-build-test
@@ -100,6 +106,15 @@ jobs:
           "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose --print-certs \
             artifacts/release/KirinDL-Universal-Release.apk
 
+      - name: Generate Universal Release SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd artifacts/release
+            sha256sum KirinDL-Universal-Release.apk > KirinDL-Universal-Release.apk.sha256
+          )
+
       - name: Upload Universal Debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -112,9 +127,62 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KirinDL-Universal-Release-${{ github.run_number }}
-          path: artifacts/release/KirinDL-Universal-Release.apk
+          path: |
+            artifacts/release/KirinDL-Universal-Release.apk
+            artifacts/release/KirinDL-Universal-Release.apk.sha256
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish DevPatch prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEV_TAG: ${{ inputs.dev_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$DEV_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-devpatch[0-9]+$ ]]; then
+            echo "::error::Invalid dev tag '$DEV_TAG'. Expected format: v3.1.3-devpatch1"
+            exit 1
+          fi
+
+          RELEASE_TITLE="KirinDL ${DEV_TAG#v}"
+          NOTES_FILE="$RUNNER_TEMP/kirindl-dev-release-notes.md"
+
+          cat > "$NOTES_FILE" <<EOF
+          ## Kirin Build Test
+
+          Development prerelease generated automatically after a successful Kirin Build Test.
+
+          - Tag: \`$DEV_TAG\`
+          - Commit: \`$GITHUB_SHA\`
+          - Workflow run: \`#$GITHUB_RUN_NUMBER\`
+          - Signed Universal Release APK verified with Android apksigner.
+          - Debug APK is included for testing only.
+
+          > Development build. This is not the stable KirinDL release.
+          EOF
+
+          if gh release view "$DEV_TAG" >/dev/null 2>&1; then
+            echo "Updating existing prerelease $DEV_TAG"
+            gh release edit "$DEV_TAG" \
+              --title "$RELEASE_TITLE" \
+              --notes-file "$NOTES_FILE" \
+              --prerelease
+          else
+            echo "Creating prerelease $DEV_TAG"
+            gh release create "$DEV_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TITLE" \
+              --notes-file "$NOTES_FILE" \
+              --prerelease
+          fi
+
+          gh release upload "$DEV_TAG" \
+            artifacts/release/KirinDL-Universal-Release.apk \
+            artifacts/release/KirinDL-Universal-Release.apk.sha256 \
+            artifacts/debug/KirinDL-Universal-Debug.apk \
+            --clobber
 
       - name: Remove signing material
         if: always()
