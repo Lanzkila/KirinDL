@@ -14,7 +14,8 @@ import com.junkfood.seal.util.makeToast
 
 
 private const val UPDATE_POPUP_PREFS = "kirindl_update_popup"
-private const val LAST_AUTO_POPUP_RELEASE = "last_auto_popup_release"
+private const val LAST_AUTO_POPUP_RELEASE_STABLE = "last_auto_popup_release_stable"
+private const val LAST_AUTO_POPUP_RELEASE_PRERELEASE = "last_auto_popup_release_prerelease"
 
 private fun UpdateUtil.Release.autoPopupKey(): String =
     listOfNotNull(tagName, name, publishedAt, htmlUrl)
@@ -48,9 +49,12 @@ fun AppUpdater() {
                     val popupKey = candidate.autoPopupKey()
                     val popupPrefs =
                         context.getSharedPreferences(UPDATE_POPUP_PREFS, android.content.Context.MODE_PRIVATE)
+                    val storageKey =
+                        if (candidate.preRelease == true) LAST_AUTO_POPUP_RELEASE_PRERELEASE
+                        else LAST_AUTO_POPUP_RELEASE_STABLE
                     val alreadyShown =
                         popupKey.isNotBlank() &&
-                            popupPrefs.getString(LAST_AUTO_POPUP_RELEASE, null) == popupKey
+                            popupPrefs.getString(storageKey, null) == popupKey
 
                     if (!alreadyShown) {
                         release = candidate
@@ -60,7 +64,7 @@ fun AppUpdater() {
                         // reopening the app, or using the same pre-release tag will not spam the
                         // same dialog again. A different release/tag gets one fresh popup.
                         if (popupKey.isNotBlank()) {
-                            popupPrefs.edit().putString(LAST_AUTO_POPUP_RELEASE, popupKey).apply()
+                            popupPrefs.edit().putString(storageKey, popupKey).apply()
                         }
                     }
                 }

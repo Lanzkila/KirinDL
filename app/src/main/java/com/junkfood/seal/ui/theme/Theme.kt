@@ -18,8 +18,6 @@ import androidx.compose.ui.text.style.TextDirection
 import com.google.android.material.color.MaterialColors
 import com.junkfood.seal.ui.common.LocalFixedColorRoles
 import com.junkfood.seal.ui.common.LocalGradientDarkMode
-import com.junkfood.seal.ui.common.LocalBodyColorPreset
-import com.junkfood.seal.ui.common.LocalButtonColorPreset
 import com.kyant.monet.LocalTonalPalettes
 import com.kyant.monet.dynamicColorScheme
 
@@ -62,7 +60,7 @@ fun SealTheme(
         }
     }
 
-    val baseColorScheme =
+    val colorScheme =
         dynamicColorScheme(!darkTheme).run {
             when {
                 // Gradient Dark mode overrides all other themes
@@ -102,50 +100,22 @@ fun SealTheme(
                     surfaceContainerHigh = surfaceContainerLow,
                     surfaceContainerHighest = surfaceContainer,
                 )
+                !darkTheme -> {
+                    val base = this
+                    val primaryTint = lerp(base.primary, Color.White, 0.78f)
+                    copy(
+                        background = lerp(base.background, primaryTint, 0.18f),
+                        surface = lerp(base.surface, primaryTint, 0.12f),
+                        surfaceContainerLowest = lerp(base.surfaceContainerLowest, primaryTint, 0.08f),
+                        surfaceContainerLow = lerp(base.surfaceContainerLow, primaryTint, 0.10f),
+                        surfaceContainer = lerp(base.surfaceContainer, primaryTint, 0.12f),
+                        surfaceContainerHigh = lerp(base.surfaceContainerHigh, primaryTint, 0.16f),
+                        surfaceContainerHighest = lerp(base.surfaceContainerHighest, primaryTint, 0.20f),
+                        outlineVariant = lerp(base.outlineVariant, base.primary, 0.12f),
+                    )
+                }
                 else -> this
             }
-        }
-
-    val customBody = kirinBodyColor(LocalBodyColorPreset.current, darkTheme)
-    val customButton = kirinButtonColor(LocalButtonColorPreset.current, darkTheme)
-    val colorScheme =
-        baseColorScheme.run {
-            var result = this
-            customBody?.let { body ->
-                val onBody = readableOnColor(body)
-                val subtle = lerp(body, if (darkTheme) Color.White else Color.Black, 0.06f)
-                val elevated = lerp(body, if (darkTheme) Color.White else Color.Black, 0.11f)
-                result =
-                    result.copy(
-                        background = body,
-                        onBackground = onBody,
-                        surface = body,
-                        onSurface = onBody,
-                        surfaceVariant = subtle,
-                        onSurfaceVariant = onBody.copy(alpha = 0.78f),
-                        surfaceContainerLowest = body,
-                        surfaceContainerLow = subtle,
-                        surfaceContainer = subtle,
-                        surfaceContainerHigh = elevated,
-                        surfaceContainerHighest = elevated,
-                    )
-            }
-            customButton?.let { button ->
-                val onButton = readableOnColor(button)
-                val container = lerp(button, if (darkTheme) Color.Black else Color.White, 0.28f)
-                result =
-                    result.copy(
-                        primary = button,
-                        onPrimary = onButton,
-                        primaryContainer = container,
-                        onPrimaryContainer = readableOnColor(container),
-                        secondary = button,
-                        onSecondary = onButton,
-                        tertiary = button,
-                        onTertiary = onButton,
-                    )
-            }
-            result
         }
 
     val textStyle =

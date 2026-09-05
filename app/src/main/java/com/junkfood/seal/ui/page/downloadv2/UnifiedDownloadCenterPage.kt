@@ -4,7 +4,9 @@ import android.net.Uri
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,11 +35,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.junkfood.seal.database.objects.DownloadedVideoInfo
 import com.junkfood.seal.download.DownloaderV2
 import com.junkfood.seal.download.Task
@@ -114,7 +120,7 @@ private data class CenterRecord(
     val galleryFileCount: Int = 0,
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun UnifiedDownloadCenterPage(
     onNavigateBack: () -> Unit,
@@ -281,7 +287,7 @@ fun UnifiedDownloadCenterPage(
                         Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             )
         }
     ) { padding ->
@@ -359,70 +365,16 @@ fun UnifiedDownloadCenterPage(
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CenterEngine.entries.filter { it != CenterEngine.Gallery }.forEach { tab ->
-                        FilterChip(
-                            selected = engine == tab,
-                            onClick = { engine = tab },
-                            label = { Text(tab.label) },
-                        )
-                    }
-                }
-            }
-
-            item {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
-                    trailingIcon =
-                        if (searchQuery.isNotBlank()) {
-                            {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Outlined.Clear, contentDescription = "Clear search")
-                                }
-                            }
-                        } else null,
-                    placeholder = { Text("Search title, site, creator or URL") },
-                    shape = MaterialTheme.shapes.large,
+                CenterFilterPanel(
+                    engine = engine,
+                    onEngineChange = { engine = it },
+                    status = status,
+                    onStatusChange = { status = it },
+                    sort = sort,
+                    onSortChange = { sort = it },
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
                 )
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CenterStatus.entries.forEach { filter ->
-                        FilterChip(
-                            selected = status == filter,
-                            onClick = { status = filter },
-                            label = { Text(filter.label) },
-                        )
-                    }
-                }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Sort", style = MaterialTheme.typography.labelLarge)
-                    CenterSort.entries.forEach { option ->
-                        FilterChip(
-                            selected = sort == option,
-                            onClick = { sort = option },
-                            label = { Text(option.label) },
-                        )
-                    }
-                }
             }
 
             if (filteredRecords.isEmpty()) {
@@ -511,41 +463,184 @@ fun UnifiedDownloadCenterPage(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CenterMetrics(active: Int, queued: Int, failed: Int, done: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CenterMetric("Active", active, Modifier.weight(1f))
-        CenterMetric("Queue", queued, Modifier.weight(1f))
-        CenterMetric("Failed", failed, Modifier.weight(1f))
-        CenterMetric("Done", done, Modifier.weight(1f))
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val compact = maxWidth < 600.dp
+        val cardWidth = if (compact) (maxWidth - 8.dp) / 2 else (maxWidth - 24.dp) / 4
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            maxItemsInEachRow = if (compact) 2 else 4,
+        ) {
+            CenterMetric(
+                label = "Active",
+                value = active,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.widthIn(min = cardWidth, max = cardWidth),
+            )
+            CenterMetric(
+                label = "Queue",
+                value = queued,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.widthIn(min = cardWidth, max = cardWidth),
+            )
+            CenterMetric(
+                label = "Failed",
+                value = failed,
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.widthIn(min = cardWidth, max = cardWidth),
+            )
+            CenterMetric(
+                label = "Done",
+                value = done,
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.widthIn(min = cardWidth, max = cardWidth),
+            )
+        }
     }
 }
 
 @Composable
-private fun CenterMetric(label: String, value: Int, modifier: Modifier = Modifier) {
+private fun CenterMetric(
+    label: String,
+    value: Int,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = containerColor,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 value.toString(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
+                color = contentColor,
             )
             Text(
                 label,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = contentColor.copy(alpha = 0.85f),
                 maxLines = 1,
             )
+        }
+    }
+}
+
+@Composable
+private fun CenterFilterPanel(
+    engine: CenterEngine,
+    onEngineChange: (CenterEngine) -> Unit,
+    status: CenterStatus,
+    onStatusChange: (CenterStatus) -> Unit,
+    sort: CenterSort,
+    onSortChange: (CenterSort) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+) {
+    val selectedChipColors =
+        FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+        )
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = "Options",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CenterEngine.entries.filter { it != CenterEngine.Gallery }.forEach { tab ->
+                    FilterChip(
+                        selected = engine == tab,
+                        onClick = { onEngineChange(tab) },
+                        label = { Text(tab.label) },
+                        colors = selectedChipColors,
+                    )
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Outlined.Search, null, tint = MaterialTheme.colorScheme.primary) },
+                trailingIcon =
+                    if (searchQuery.isNotBlank()) {
+                        {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(Icons.Outlined.Clear, contentDescription = "Clear search")
+                            }
+                        }
+                    } else null,
+                placeholder = { Text("Search title, site, creator or URL") },
+                shape = MaterialTheme.shapes.large,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CenterStatus.entries.forEach { filter ->
+                    FilterChip(
+                        selected = status == filter,
+                        onClick = { onStatusChange(filter) },
+                        label = { Text(filter.label) },
+                        colors = selectedChipColors,
+                    )
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Sort", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CenterSort.entries.forEach { option ->
+                        FilterChip(
+                            selected = sort == option,
+                            onClick = { onSortChange(option) },
+                            label = { Text(option.label) },
+                            colors = selectedChipColors,
+                        )
+                    }
+                }
+            }
         }
     }
 }

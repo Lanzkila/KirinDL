@@ -677,7 +677,7 @@ private fun SearchIntroCard() {
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = "Search → Configure → Download",
+                text = "Search → Download → Continue",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -723,7 +723,7 @@ private fun DirectUrlCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            TextButton(onClick = onConfigure, enabled = configureEnabled) { Text("Configure") }
+            TextButton(onClick = onConfigure, enabled = configureEnabled) { Text("Download") }
         }
     }
 }
@@ -818,7 +818,7 @@ private fun ResultsHeader(
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                     )
-                    Text(" Configure $selectedCount")
+                    Text(" Download $selectedCount")
                 }
                 FilledTonalButton(onClick = onQueueSelected) {
                     Icon(
@@ -946,7 +946,7 @@ private fun SearchResultCard(
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                         )
-                        Text(" Configure")
+                        Text(" Download")
                     }
                     OutlinedButton(onClick = onQueue) {
                         Icon(
@@ -1129,7 +1129,7 @@ private fun SearchDetailsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDownload) { Text("Configure") }
+            TextButton(onClick = onDownload) { Text("Download") }
         },
         dismissButton = {
             Row {
