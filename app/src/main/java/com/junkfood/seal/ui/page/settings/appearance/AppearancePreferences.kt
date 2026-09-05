@@ -71,7 +71,6 @@ import com.junkfood.seal.ui.component.PreferenceItem
 import com.junkfood.seal.ui.component.PreferenceSubtitle
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.component.PreferenceSwitchWithDivider
-import com.junkfood.seal.ui.component.PreferenceSingleChoiceItem
 import com.junkfood.seal.ui.page.downloadv2.ActionButton
 import com.junkfood.seal.ui.page.downloadv2.CardStateIndicator
 import com.junkfood.seal.ui.page.downloadv2.VideoCardV2
@@ -324,6 +323,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
         KirinColorPresetDialog(
             title = "App body color",
             selected = appSettings.bodyColorPreset,
+            bodyMode = true,
             onDismiss = { showBodyColorDialog = false },
             onSelect = {
                 PreferenceUtil.modifyBodyColorPreset(it)
@@ -335,6 +335,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
         KirinColorPresetDialog(
             title = "Buttons & accent color",
             selected = appSettings.buttonColorPreset,
+            bodyMode = false,
             onDismiss = { showButtonColorDialog = false },
             onSelect = {
                 PreferenceUtil.modifyButtonColorPreset(it)
@@ -391,26 +392,118 @@ private fun KirinColorPairPreview(
 private fun KirinColorPresetDialog(
     title: String,
     selected: Int,
+    bodyMode: Boolean,
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
+    val darkTheme = LocalDarkTheme.current.isDarkTheme()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        shape = RoundedCornerShape(28.dp),
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title)
+                Text(
+                    text =
+                        if (bodyMode) "Choose the main app background color"
+                        else "Choose the color used by buttons and accents",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                KirinColorPresets.forEachIndexed { index, preset ->
-                    PreferenceSingleChoiceItem(
-                        text = preset.title,
-                        selected = selected == index,
-                        onClick = { onSelect(index) },
-                    )
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                KirinColorPresets.indices.chunked(2).forEach { indices ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        indices.forEach { index ->
+                            KirinColorPresetTile(
+                                index = index,
+                                selected = selected == index,
+                                bodyMode = bodyMode,
+                                darkTheme = darkTheme,
+                                onSelect = onSelect,
+                            )
+                        }
+                        if (indices.size == 1) {
+                            Box(modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         },
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+@Composable
+private fun RowScope.KirinColorPresetTile(
+    index: Int,
+    selected: Boolean,
+    bodyMode: Boolean,
+    darkTheme: Boolean,
+    onSelect: (Int) -> Unit,
+) {
+    val preset = KirinColorPresets[index]
+    val previewColor =
+        if (index == 0) {
+            if (bodyMode) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary
+        } else if (bodyMode) {
+            if (darkTheme) preset.bodyDark else preset.bodyLight
+        } else {
+            if (darkTheme) preset.buttonDark else preset.buttonLight
+        }
+
+    Surface(
+        modifier = Modifier.weight(1f),
+        shape = RoundedCornerShape(18.dp),
+        color =
+            if (selected) MaterialTheme.colorScheme.secondaryContainer
+            else MaterialTheme.colorScheme.surfaceContainerHigh,
+        onClick = { onSelect(index) },
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .sizeIn(minHeight = 46.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(previewColor),
+            ) {
+                if (selected) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = null,
+                            modifier = Modifier.padding(4.dp).size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+            Text(
+                text = preset.title,
+                style = MaterialTheme.typography.labelLarge,
+                color =
+                    if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
 }
 
 @Composable

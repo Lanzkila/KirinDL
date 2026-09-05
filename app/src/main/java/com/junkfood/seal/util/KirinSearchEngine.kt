@@ -171,19 +171,32 @@ object KirinSearchEngine {
      * search endpoint. Topic / official / original audio results are then ranked locally.
      */
     private fun searchFocusedYouTubeMusicSongs(query: String, limit: Int): List<ResultItem> {
-        val poolLimit = (limit + 10).coerceAtMost(28)
+        val poolLimit = (limit + 12).coerceAtMost(30)
+        val focusedQueries =
+            listOf(
+                "$query official audio",
+                "$query original audio",
+                "$query topic",
+            )
+
         val focused =
-            runCatching {
-                    executeDiscovery(
-                        target = "ytsearch$poolLimit:$query official audio",
-                        source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
-                        limit = poolLimit,
-                    )
+            focusedQueries
+                .flatMap { focusedQuery ->
+                    runCatching {
+                            executeDiscovery(
+                                target = "ytsearch$poolLimit:$focusedQuery",
+                                source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
+                                limit = poolLimit,
+                            )
+                        }
+                        .getOrDefault(emptyList())
                 }
-                .getOrDefault(emptyList())
-        val primarySongs = focused.filter(::isFocusedSong)
-        if (primarySongs.size >= minOf(5, limit)) {
-            return primarySongs.sortedByDescending(::musicPriority).take(limit)
+                .distinctBy { it.url }
+                .filter(::isFocusedSong)
+                .sortedByDescending(::musicPriority)
+
+        if (focused.size >= minOf(5, limit)) {
+            return focused.take(limit)
         }
 
         val fallback =
@@ -195,7 +208,9 @@ object KirinSearchEngine {
                     )
                 }
                 .getOrDefault(emptyList())
-        return (primarySongs + fallback.filter(::isFocusedSong))
+                .filter(::isFocusedSong)
+
+        return (focused + fallback)
             .distinctBy { it.url }
             .sortedByDescending(::musicPriority)
             .take(limit)
@@ -502,14 +517,6 @@ object KirinSearchEngine {
     private fun isFocusedSong(item: ResultItem): Boolean {
         val title = item.title.lowercase()
         val creator = item.creator.lowercase()
-        val strongLabel =
-            creator.contains("topic") ||
-                title.contains("official audio") ||
-                title.contains("original audio") ||
-                title.contains("official song") ||
-                title.contains("original song")
-        if (strongLabel) return true
-
         val blockers =
             listOf(
                 "lyrics",
@@ -523,21 +530,38 @@ object KirinSearchEngine {
                 "tutorial",
                 "karaoke",
                 "shorts",
+                "performance",
+                "visualizer",
+                "teaser",
+                "trailer",
             )
         if (blockers.any { token -> title.contains(token) }) return false
 
-        return item.musicSongHint &&
-            (item.durationSeconds == null || item.durationSeconds in 30..1200)
+        val topicChannel =
+            creator == "topic" ||
+                creator.endsWith(" - topic") ||
+                creator.endsWith(" topic")
+        val audioOrSongLabel =
+            title.contains("official audio") ||
+                title.contains("original audio") ||
+                title.contains("official song") ||
+                title.contains("original song")
+
+        // Songs-only is intentionally strict: generic music metadata alone is not enough,
+        // because YouTube music-video entries frequently expose artist/track metadata too.
+        return topicChannel || audioOrSongLabel
     }
 
     private fun musicPriority(item: ResultItem): Int {
         val title = item.title.lowercase()
         val creator = item.creator.lowercase()
         var score = 0
-        if (creator.contains("topic")) score += 100
-        if (title.contains("official audio") || title.contains("original audio")) score += 90
-        if (title.contains("official song") || title.contains("original song")) score += 80
-        if (item.musicSongHint) score += 50
+        if (creator == "topic" || creator.endsWith(" - topic") || creator.endsWith(" topic")) {
+            score += 120
+        }
+        if (title.contains("official audio") || title.contains("original audio")) score += 100
+        if (title.contains("official song") || title.contains("original song")) score += 90
+        if (item.musicSongHint) score += 20
         if (item.durationSeconds != null) score += 5
         return score
     }

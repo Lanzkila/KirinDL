@@ -12,6 +12,15 @@ import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.makeToast
 
+
+private const val UPDATE_POPUP_PREFS = "kirindl_update_popup"
+private const val LAST_AUTO_POPUP_RELEASE = "last_auto_popup_release"
+
+private fun UpdateUtil.Release.autoPopupKey(): String =
+    listOfNotNull(tagName, name, publishedAt, htmlUrl)
+        .firstOrNull { it.isNotBlank() }
+        .orEmpty()
+
 /**
  * Lightweight update checker for KirinDL.
  *
@@ -35,9 +44,25 @@ fun AppUpdater() {
         }
 
         runCatching {
-                UpdateUtil.checkForUpdate()?.let {
-                    release = it
-                    showUpdateDialog = true
+                UpdateUtil.checkForUpdate()?.let { candidate ->
+                    val popupKey = candidate.autoPopupKey()
+                    val popupPrefs =
+                        context.getSharedPreferences(UPDATE_POPUP_PREFS, android.content.Context.MODE_PRIVATE)
+                    val alreadyShown =
+                        popupKey.isNotBlank() &&
+                            popupPrefs.getString(LAST_AUTO_POPUP_RELEASE, null) == popupKey
+
+                    if (!alreadyShown) {
+                        release = candidate
+                        showUpdateDialog = true
+
+                        // Persist as soon as the automatic popup is presented. Re-entering Home,
+                        // reopening the app, or using the same pre-release tag will not spam the
+                        // same dialog again. A different release/tag gets one fresh popup.
+                        if (popupKey.isNotBlank()) {
+                            popupPrefs.edit().putString(LAST_AUTO_POPUP_RELEASE, popupKey).apply()
+                        }
+                    }
                 }
             }
             .onFailure { it.printStackTrace() }

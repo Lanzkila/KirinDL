@@ -569,8 +569,8 @@ class GalleryDlViewModel : ViewModel() {
                                 },
                             errorMessage =
                                 when {
-                                    !info.supported -> "No gallery-dl extractor matched this URL"
                                     info.preflightError.isNotBlank() -> info.preflightError
+                                    !info.supported -> "No active gallery-dl extractor matched this URL"
                                     else -> null
                                 },
                         )

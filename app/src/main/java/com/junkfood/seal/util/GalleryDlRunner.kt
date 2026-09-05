@@ -114,29 +114,51 @@ object GalleryDlRunner {
                         )
                     }
 
-                    ExtractorInfo(
-                        supported = result.optBoolean("supported", false),
-                        baseCategory = result.optString("base_category"),
-                        category = result.optString("category"),
-                        subcategory = result.optString("subcategory"),
-                        className = result.optString("class_name"),
-                        title = result.optString("title"),
-                        author = result.optString("author"),
-                        thumbnailUrl = result.optString("thumbnail"),
-                        mediaType = result.optString("media_type"),
-                        estimatedItemCount =
-                            if (result.has("estimated_count") && !result.isNull("estimated_count")) {
-                                result.optInt("estimated_count")
-                            } else {
-                                null
-                            },
-                        itemCountExact = result.optBoolean("count_exact", false),
-                        scannedItemCount = result.optInt("scanned_count", 0),
-                        largeGallery = result.optBoolean("large_gallery", false),
-                        cookiesLoaded = result.optBoolean("cookies_loaded", false),
-                        preflightStatus = result.optString("preflight_status").ifBlank { "ready" },
-                        preflightError = result.optString("preflight_error"),
-                    )
+                    val info =
+                        ExtractorInfo(
+                            supported = result.optBoolean("supported", false),
+                            baseCategory = result.optString("base_category"),
+                            category = result.optString("category"),
+                            subcategory = result.optString("subcategory"),
+                            className = result.optString("class_name"),
+                            title = result.optString("title"),
+                            author = result.optString("author"),
+                            thumbnailUrl = result.optString("thumbnail"),
+                            mediaType = result.optString("media_type"),
+                            estimatedItemCount =
+                                if (result.has("estimated_count") && !result.isNull("estimated_count")) {
+                                    result.optInt("estimated_count")
+                                } else {
+                                    null
+                                },
+                            itemCountExact = result.optBoolean("count_exact", false),
+                            scannedItemCount = result.optInt("scanned_count", 0),
+                            largeGallery = result.optBoolean("large_gallery", false),
+                            cookiesLoaded = result.optBoolean("cookies_loaded", false),
+                            preflightStatus = result.optString("preflight_status").ifBlank { "ready" },
+                            preflightError = result.optString("preflight_error"),
+                        )
+
+                    if (info.supported) {
+                        ExtractorHealthUtil.remember(
+                            context,
+                            ExtractorHealthUtil.Engine.GALLERY_DL,
+                            trimmedUrl,
+                            info.className.ifBlank { info.label },
+                        )
+                        info
+                    } else {
+                        info.copy(
+                            preflightStatus = "extractor-unavailable",
+                            preflightError =
+                                ExtractorHealthUtil.unavailableMessage(
+                                    context,
+                                    ExtractorHealthUtil.Engine.GALLERY_DL,
+                                    trimmedUrl,
+                                    result.optString("error"),
+                                ),
+                        )
+                    }
                 }
             }
         }
@@ -192,16 +214,24 @@ object GalleryDlRunner {
                             ?: throw IllegalStateException("Install the gallery-dl engine first")
 
                     val compatibility = GalleryDlConfig.prepare(context)
-                    val cookiesPath =
-                        compatibility.cookiesFile
-                            .takeIf { it.isFile && it.length() > 0L }
-                            ?.absolutePath
-                            .orEmpty()
-
                     val jobDir = File(context.cacheDir, "gallery-dl-jobs/${UUID.randomUUID()}")
                     val outputDir = File(jobDir, "output").apply { mkdirs() }
 
                     try {
+                        val cookiesPath =
+                            compatibility.cookiesFile
+                                .takeIf { it.isFile && it.length() > 0L }
+                                ?.let { source ->
+                                    // Never hand the engine the persistent cookie file directly.
+                                    // Each Gallery job gets its own private copy and the job sandbox
+                                    // is deleted in finally on success, failure, or cancellation.
+                                    File(jobDir, "cookies.txt").also { temp ->
+                                        source.copyTo(temp, overwrite = true)
+                                    }
+                                }
+                                ?.absolutePath
+                                .orEmpty()
+
                         val bridge = getBridge(context)
                         val raw =
                             bridge.callAttr(
@@ -222,9 +252,20 @@ object GalleryDlRunner {
                                 result.optString("error").ifBlank {
                                     "gallery-dl could not download this URL"
                                 }
-                            throw IOException(
+                            val rawMessage =
                                 if (extractor.isBlank()) error else "$extractor: $error"
-                            )
+                            val message =
+                                if (ExtractorHealthUtil.looksUnavailable(rawMessage)) {
+                                    ExtractorHealthUtil.unavailableMessage(
+                                        context,
+                                        ExtractorHealthUtil.Engine.GALLERY_DL,
+                                        trimmedUrl,
+                                        rawMessage,
+                                    )
+                                } else {
+                                    rawMessage
+                                }
+                            throw IOException(message)
                         }
 
                         val files = mutableListOf<File>()
@@ -276,11 +317,19 @@ object GalleryDlRunner {
                             )
                         }
 
+                        val extractorLabel = result.optString("extractor")
+                        ExtractorHealthUtil.remember(
+                            context,
+                            ExtractorHealthUtil.Engine.GALLERY_DL,
+                            trimmedUrl,
+                            extractorLabel,
+                        )
+
                         DownloadResult(
                             version = result.optString("version").ifBlank { installedVersion },
                             savedFiles = saved,
                             destinationDirectory = destination.absolutePath,
-                            extractorLabel = result.optString("extractor"),
+                            extractorLabel = extractorLabel,
                             configLoaded = result.optBoolean("config_loaded", false),
                             cookiesLoaded = result.optBoolean("cookies_loaded", false),
                         )

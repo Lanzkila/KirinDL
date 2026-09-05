@@ -435,7 +435,28 @@ object DownloadUtil {
                     addOption("-R", "3")
                     addOption("--socket-timeout", "15")
                 }
-            return getVideoInfo(request, taskKey)
+            val result = getVideoInfo(request, taskKey)
+            return result.fold(
+                onSuccess = { info ->
+                    ExtractorHealthUtil.remember(
+                        context,
+                        ExtractorHealthUtil.Engine.YT_DLP,
+                        url,
+                        info.extractorKey.ifBlank { info.extractor.orEmpty() },
+                    )
+                    Result.success(info)
+                },
+                onFailure = { error ->
+                    Result.failure(
+                        ExtractorHealthUtil.decorateFailure(
+                            context,
+                            ExtractorHealthUtil.Engine.YT_DLP,
+                            url,
+                            error,
+                        )
+                    )
+                },
+            )
         }
     }
 
@@ -661,12 +682,48 @@ object DownloadUtil {
         }
     }
 
-    private fun YoutubeDLRequest.enableCookies(userAgentString: String): YoutubeDLRequest {
-        refreshCookiesFile()
-        return this.addOption("--cookies", context.getCookiesFile().absolutePath).apply {
+    private fun YoutubeDLRequest.enableCookies(
+        userAgentString: String,
+        cookiesFile: File? = null,
+    ): YoutubeDLRequest {
+        val effectiveCookies =
+            cookiesFile ?: run {
+                refreshCookiesFile()
+                context.getCookiesFile()
+            }
+        return this.addOption("--cookies", effectiveCookies.absolutePath).apply {
             if (userAgentString.isNotEmpty()) {
                 addOption("--add-header", "User-Agent:$userAgentString")
             }
+        }
+    }
+
+    /**
+     * Creates a per-task cookies.txt copy for yt-dlp download execution.
+     *
+     * The persistent cookie store remains the source of truth, but the engine only sees this
+     * private cache copy. Callers delete it in a finally block after success/failure/cancel.
+     */
+    private fun createTemporaryCookiesFile(taskId: String): File? {
+        refreshCookiesFile()
+        val source = context.getCookiesFile().takeIf { it.isFile && it.length() > 0L } ?: return null
+        val safeId = taskId.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80)
+        val tempDir = File(context.cacheDir, "kirindl-temp-cookies").apply { mkdirs() }
+        return runCatching {
+                File(tempDir, "cookies-$safeId-${System.nanoTime()}.txt").also { target ->
+                    source.copyTo(target, overwrite = true)
+                }
+            }
+            .getOrNull()
+    }
+
+    private fun deleteTemporaryCookies(file: File?) {
+        if (file == null) return
+        runCatching { file.delete() }
+        runCatching {
+            file.parentFile
+                ?.takeIf { it.isDirectory && it.listFiles().isNullOrEmpty() }
+                ?.delete()
         }
     }
 
@@ -1350,6 +1407,7 @@ object DownloadUtil {
             val outputBuilder = StringBuilder()
             // Index 0 = start time ms, index 1 = end time ms
             val downloadTiming = LongArray(2)
+            var temporaryCookies: File? = null
 
             request
                 .apply {
@@ -1357,9 +1415,8 @@ object DownloadUtil {
                     addOption("--continue")
                     enableRetryOptions()
                     //                addOption("-v")
-                    if (cookies) {
-                        enableCookies(userAgentString)
-                    }
+                    // Cookies are attached from a per-task temporary copy immediately before
+                    // execution, after all early validation/return paths have completed.
                     if (restrictFilenames) {
                         addOption("--restrict-filenames")
                     }
@@ -1495,12 +1552,25 @@ object DownloadUtil {
                     addOption("-o", outputBuilder.append(output).toString())
 
                     for (s in request.buildCommand()) Log.d(TAG, s)
+
+                    if (cookies) {
+                        temporaryCookies = createTemporaryCookiesFile(taskId)
+                        temporaryCookies?.let { enableCookies(userAgentString, it) }
+                    }
                 }
                 .runCatching {
-                    val dlStartTime = System.currentTimeMillis()
-                    YoutubeDL.getInstance()
-                        .execute(request = this, processId = taskId, callback = progressCallback)
-                        .also { downloadTiming[0] = dlStartTime; downloadTiming[1] = System.currentTimeMillis() }
+                    try {
+                        val dlStartTime = System.currentTimeMillis()
+                        YoutubeDL.getInstance()
+                            .execute(request = this, processId = taskId, callback = progressCallback)
+                            .also {
+                                downloadTiming[0] = dlStartTime
+                                downloadTiming[1] = System.currentTimeMillis()
+                            }
+                    } finally {
+                        deleteTemporaryCookies(temporaryCookies)
+                        temporaryCookies = null
+                    }
                 }
                 .onFailure { th ->
                     return if (
@@ -1517,7 +1587,16 @@ object DownloadUtil {
                             downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
                             averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
                         )
-                    } else Result.failure(th)
+                    } else {
+                        Result.failure(
+                            ExtractorHealthUtil.decorateFailure(
+                                context,
+                                ExtractorHealthUtil.Engine.YT_DLP,
+                                url,
+                                th,
+                            )
+                        )
+                    }
                 }
             return onFinishDownloading(
                 preferences = this,
@@ -1605,6 +1684,7 @@ object DownloadUtil {
         progressCallback: ((Float, Long, String) -> Unit),
     ): Result<YoutubeDLResponse> {
         val urlList = urlString.split(Regex("[\n ]")).filter { it.isNotBlank() }
+        var temporaryCookies: File? = null
 
         val request =
             with(preferences) {
@@ -1626,7 +1706,8 @@ object DownloadUtil {
                             .absolutePath,
                     )
                     if (cookies) {
-                        enableCookies(userAgentString)
+                        temporaryCookies = createTemporaryCookiesFile(taskId)
+                        temporaryCookies?.let { enableCookies(userAgentString, it) }
                     }
                     if (noCheckCertificate) {
                         addOption("--no-check-certificate")
@@ -1635,8 +1716,19 @@ object DownloadUtil {
             }
 
         return runCatching {
-            YoutubeDL.getInstance()
-                .execute(request = request, processId = taskId, callback = progressCallback)
+            try {
+                YoutubeDL.getInstance()
+                    .execute(request = request, processId = taskId, callback = progressCallback)
+            } finally {
+                deleteTemporaryCookies(temporaryCookies)
+            }
+        }.recoverCatching { error ->
+            throw ExtractorHealthUtil.decorateFailure(
+                context,
+                ExtractorHealthUtil.Engine.YT_DLP,
+                urlList.firstOrNull().orEmpty(),
+                error,
+            )
         }
     }
 
@@ -1649,6 +1741,7 @@ object DownloadUtil {
             val taskId = Downloader.makeKey(url = url, templateName = template.name)
             val notificationId = taskId.toNotificationId()
             val urlList = url.split(Regex("[\n ]")).filter { it.isNotBlank() }
+            var temporaryCookies: File? = null
 
             App.applicationScope.launch(Dispatchers.Main) {
                 context.makeToast(R.string.start_execute)
@@ -1672,7 +1765,8 @@ object DownloadUtil {
                             .absolutePath,
                     )
                     if (cookies) {
-                        enableCookies(userAgentString)
+                        temporaryCookies = createTemporaryCookiesFile(taskId)
+                        temporaryCookies?.let { enableCookies(userAgentString, it) }
                     }
                     if (noCheckCertificate) {
                         addOption("--no-check-certificate")
@@ -1682,8 +1776,9 @@ object DownloadUtil {
             onProcessStarted()
             withContext(Dispatchers.Main) { onTaskStarted(template, url) }
             runCatching {
-                    val response =
-                        YoutubeDL.getInstance().execute(request = request, processId = taskId) {
+                    try {
+                        val response =
+                            YoutubeDL.getInstance().execute(request = request, processId = taskId) {
                             progress,
                             _,
                             text ->
@@ -1701,8 +1796,11 @@ object DownloadUtil {
                                 line = text,
                                 progress = progress,
                             )
-                        }
-                    onTaskEnded(template, url, response.out + "\n" + response.err)
+                            }
+                        onTaskEnded(template, url, response.out + "\n" + response.err)
+                    } finally {
+                        deleteTemporaryCookies(temporaryCookies)
+                    }
                 }
                 .onFailure {
                     it.printStackTrace()

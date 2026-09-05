@@ -231,7 +231,7 @@ fun UnifiedDownloadCenterPage(
             }
         }
 
-    val allRecords = liveRecords + completedMedia + galleryQueueRecords + galleryHistoryRecords
+    val allRecords = liveRecords + completedMedia
     val filteredRecords =
         remember(allRecords, engine, status, sort, searchQuery) {
             val q = searchQuery.trim()
@@ -316,10 +316,6 @@ fun UnifiedDownloadCenterPage(
                         Icon(Icons.Outlined.History, null, Modifier.size(18.dp))
                         Text(" Media History")
                     }
-                    OutlinedButton(onClick = onOpenGallery) {
-                        Icon(Icons.Outlined.Folder, null, Modifier.size(18.dp))
-                        Text(" Gallery DL")
-                    }
                 }
             }
 
@@ -342,7 +338,7 @@ fun UnifiedDownloadCenterPage(
                                             .toList()
                                     failedMedia.forEach(downloader::restart)
                                     if (failedMedia.isEmpty()) {
-                                        context.makeToast("Gallery failures can be retried in Gallery DL")
+                                        context.makeToast("No failed Media tasks to retry")
                                     } else {
                                         context.makeToast("Retrying ${failedMedia.size} Media task${if (failedMedia.size == 1) "" else "s"}")
                                     }
@@ -367,7 +363,7 @@ fun UnifiedDownloadCenterPage(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    CenterEngine.entries.forEach { tab ->
+                    CenterEngine.entries.filter { it != CenterEngine.Gallery }.forEach { tab ->
                         FilterChip(
                             selected = engine == tab,
                             onClick = { engine = tab },
@@ -447,7 +443,7 @@ fun UnifiedDownloadCenterPage(
                                 if (searchQuery.isNotBlank() || status != CenterStatus.All || engine != CenterEngine.All)
                                     "Try clearing Search or changing the current filters."
                                 else
-                                    "New Media and Gallery DL activity will appear here.",
+                                    "New Media activity will appear here.",
                                 modifier = Modifier.padding(top = 6.dp),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -518,28 +514,38 @@ fun UnifiedDownloadCenterPage(
 @Composable
 private fun CenterMetrics(active: Int, queued: Int, failed: Int, done: Int) {
     Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        CenterMetric("Active", active)
-        CenterMetric("Queue", queued)
-        CenterMetric("Failed", failed)
-        CenterMetric("Done", done)
+        CenterMetric("Active", active, Modifier.weight(1f))
+        CenterMetric("Queue", queued, Modifier.weight(1f))
+        CenterMetric("Failed", failed, Modifier.weight(1f))
+        CenterMetric("Done", done, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun CenterMetric(label: String, value: Int) {
+private fun CenterMetric(label: String, value: Int, modifier: Modifier = Modifier) {
     Surface(
+        modifier = modifier,
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(value.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                value.toString(),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
         }
     }
 }

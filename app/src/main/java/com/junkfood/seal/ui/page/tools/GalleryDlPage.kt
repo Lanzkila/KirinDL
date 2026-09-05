@@ -110,6 +110,12 @@ private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
             GalleryDlThemeStyle.OCEAN -> Color(0xFF4B8DFF)
             GalleryDlThemeStyle.EMERALD -> Color(0xFF2DBF85)
             GalleryDlThemeStyle.VIOLET -> Color(0xFF8B7CFF)
+            GalleryDlThemeStyle.SAKURA -> Color(0xFFFF78A8)
+            GalleryDlThemeStyle.CRIMSON -> Color(0xFFE5485D)
+            GalleryDlThemeStyle.AMBER -> Color(0xFFFFB52E)
+            GalleryDlThemeStyle.TEAL -> Color(0xFF20B7A6)
+            GalleryDlThemeStyle.INDIGO -> Color(0xFF6674E8)
+            GalleryDlThemeStyle.LIME -> Color(0xFF91C94B)
         }
 
     val onAccent =
@@ -443,7 +449,7 @@ private fun DownloadTab(
             fontWeight = FontWeight.Black,
         )
         Text(
-            "Paste one URL, analyze its extractor, or add several URLs into the queue.",
+            "Paste one URL, check its extractor, or add several URLs into the queue.",
             color = colors.muted,
             fontSize = 13.sp,
         )
@@ -525,7 +531,7 @@ private fun DownloadTab(
                             Icon(Icons.Outlined.Check, contentDescription = null)
                         }
                         Spacer(Modifier.width(6.dp))
-                        Text("Analyze")
+                        Text("Download")
                     }
                 }
             }

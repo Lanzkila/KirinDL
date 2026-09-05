@@ -348,38 +348,21 @@ fun KirinSearchPage(
             }
 
             item {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
+                Box(
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                    trailingIcon = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (query.isNotBlank()) {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Clear,
-                                        contentDescription = "Clear search",
-                                    )
-                                }
-                            }
-                            IconButton(
-                                onClick = { runSearch() },
-                                enabled = query.isNotBlank() && !loading,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Search,
-                                    contentDescription = "Search",
-                                )
-                            }
-                        }
-                    },
-                    placeholder = { Text("Search video, song or Bilibili media") },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { runSearch() }),
-                    shape = MaterialTheme.shapes.large,
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("Search") },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { runSearch() }),
+                        shape = MaterialTheme.shapes.large,
+                    )
+                }
             }
 
             item {

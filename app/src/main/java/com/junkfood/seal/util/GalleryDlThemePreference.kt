@@ -33,6 +33,36 @@ enum class GalleryDlThemeStyle(
         key = "violet",
         title = "Violet",
         description = "Violet accent with the current app light/dark surfaces.",
+    ),
+    SAKURA(
+        key = "sakura",
+        title = "Sakura Pink",
+        description = "Soft pink accent while keeping the active app surfaces.",
+    ),
+    CRIMSON(
+        key = "crimson",
+        title = "Crimson",
+        description = "Deep red accent with the current app light/dark surfaces.",
+    ),
+    AMBER(
+        key = "amber",
+        title = "Amber Gold",
+        description = "Warm gold accent with the current app light/dark surfaces.",
+    ),
+    TEAL(
+        key = "teal",
+        title = "Teal",
+        description = "Balanced teal accent with the current app light/dark surfaces.",
+    ),
+    INDIGO(
+        key = "indigo",
+        title = "Indigo",
+        description = "Deep indigo accent with the current app light/dark surfaces.",
+    ),
+    LIME(
+        key = "lime",
+        title = "Lime",
+        description = "Bright lime accent with the current app light/dark surfaces.",
     );
 
     companion object {
