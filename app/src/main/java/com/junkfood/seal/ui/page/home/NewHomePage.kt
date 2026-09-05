@@ -38,10 +38,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Delete
@@ -61,6 +63,7 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -79,6 +82,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -147,6 +151,17 @@ import com.junkfood.seal.ui.theme.GradientDarkColors
 import com.junkfood.seal.util.DatabaseUtil
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
+import com.junkfood.seal.util.GalleryDlBehaviorPreference
+import com.junkfood.seal.util.GalleryDlStore
+import com.junkfood.seal.util.HOME_RECENT_LIMIT
+import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
+import com.junkfood.seal.util.HOME_INPUT_ANIMATION
+import com.junkfood.seal.util.HOME_QUICK_TOOLS
+import com.junkfood.seal.util.HOME_SHOW_ACTIVITY
+import com.junkfood.seal.util.HOME_COMPACT_ACTIVITY
+import com.junkfood.seal.util.SMART_DOWNLOAD_PROFILE
+import com.junkfood.seal.util.SmartDownloadProfiles
+import com.junkfood.seal.util.SiteProfileManager
 import java.io.File
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
@@ -158,6 +173,7 @@ import com.junkfood.seal.util.SPONSOR_FREQ_OFF
 import com.junkfood.seal.util.SPONSOR_FREQ_WEEKLY
 import com.junkfood.seal.util.BatteryUtil
 import com.junkfood.seal.util.PreferenceUtil.getInt
+import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.updateLong
 import androidx.compose.animation.core.LinearEasing
@@ -194,12 +210,14 @@ import org.koin.compose.koinInject
 fun NewHomePage(
     modifier: Modifier = Modifier,
     onMenuOpen: () -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
     onNavigateToDownloads: () -> Unit = {},
     onNavigateToSupport: () -> Unit = {},
     onNavigateToBatchUrlImport: () -> Unit = {},
     onNavigateToVideoInfoDownload: () -> Unit = {},
     onNavigateToThumbnailDownload: () -> Unit = {},
     onNavigateToCommentDownload: () -> Unit = {},
+    onNavigateToGalleryDl: () -> Unit = {},
     dialogViewModel: DownloadDialogViewModel,
     downloader: DownloaderV2 = koinInject(),
 ) {
@@ -212,6 +230,7 @@ fun NewHomePage(
     
     var showExitDialog by remember { mutableStateOf(false) }
     var urlText by remember { mutableStateOf("") }
+    var galleryUrlText by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     // Pre-fill URL from share intent
@@ -386,11 +405,37 @@ fun NewHomePage(
         localHiddenIds = localHiddenIds.intersect(currentIds)
     }
     
-    // Get recent 5 downloads (remove duplicates by video URL and path to prevent duplicate cards)
-    val recentFiveDownloads = remember(recentDownloads) {
+    // KirinDL Extras controls how many completed items Home keeps visible.
+    val homeRecentLimit = HOME_RECENT_LIMIT.getInt().coerceIn(3, 10)
+    val showTransferDetails = HOME_TRANSFER_DETAILS.getBoolean()
+    val animateUrlHints = HOME_INPUT_ANIMATION.getBoolean()
+    val showQuickTools = HOME_QUICK_TOOLS.getBoolean()
+    val showHomeActivity = HOME_SHOW_ACTIVITY.getBoolean()
+    val compactHomeActivity = HOME_COMPACT_ACTIVITY.getBoolean()
+    var smartProfile by remember { mutableStateOf(SMART_DOWNLOAD_PROFILE.getInt()) }
+    var smartProfileRevision by remember { mutableStateOf(0) }
+    var siteProfileRevision by remember { mutableStateOf(0) }
+    val activeSite =
+        remember(urlText, siteProfileRevision) { SiteProfileManager.detect(urlText) }
+    val rememberedSiteProfile =
+        remember(urlText, siteProfileRevision) {
+            SiteProfileManager.rememberedProfile(activeSite)
+        }
+    LaunchedEffect(activeSite.key, rememberedSiteProfile) {
+        val remembered = rememberedSiteProfile ?: return@LaunchedEffect
+        if (
+            urlText.isNotBlank() &&
+                remembered != smartProfile &&
+                SmartDownloadProfiles.apply(remembered)
+        ) {
+            smartProfile = remembered
+            smartProfileRevision++
+        }
+    }
+    val recentFiveDownloads = remember(recentDownloads, homeRecentLimit) {
         recentDownloads
-            .distinctBy { it.videoUrl + it.videoPath } // Use both URL and path to ensure uniqueness
-            .takeLast(5)
+            .distinctBy { it.videoUrl + it.videoPath }
+            .takeLast(homeRecentLimit)
             .reversed()
     }
     
@@ -469,6 +514,46 @@ fun NewHomePage(
     val recentFiveDownloadsFiltered = remember(recentFiveDownloads, activeTaskUrls, localHiddenIds) {
         recentFiveDownloads.filter { it.videoUrl !in activeTaskUrls && it.id !in localHiddenIds }
     }
+
+    // Phase 8: compact Home activity overview. These are UI-only counts derived from the
+    // existing DownloaderV2 state map; no queue/download behavior is changed here.
+    val runningDownloadCount by remember {
+        derivedStateOf {
+            activeDownloads.count { (_, state) ->
+                state.downloadState is Task.DownloadState.Running ||
+                    state.downloadState is Task.DownloadState.FetchingInfo
+            }
+        }
+    }
+    val queuedDownloadCount by remember {
+        derivedStateOf {
+            activeDownloads.count { (_, state) ->
+                state.downloadState == Task.DownloadState.Idle ||
+                    state.downloadState == Task.DownloadState.ReadyWithInfo
+            }
+        }
+    }
+    val pausedDownloadCount by remember {
+        derivedStateOf {
+            activeDownloads.count { (_, state) -> state.downloadState is Task.DownloadState.Paused }
+        }
+    }
+    val queuedTaskIds =
+        activeDownloads
+            .filter { (_, state) ->
+                state.downloadState == Task.DownloadState.Idle ||
+                    state.downloadState == Task.DownloadState.ReadyWithInfo
+            }
+            .map { (task, _) -> task.id }
+
+    // Gallery DL uses its own persistent queue/history. Refresh these light-weight counters when
+    // Home resumes so the Gallery input gets the same compact dashboard treatment as yt-dlp.
+    val galleryQueue = remember(lifecycleRefreshTrigger) { GalleryDlStore.loadQueue(context) }
+    val galleryHistory = remember(lifecycleRefreshTrigger) { GalleryDlStore.loadHistory(context) }
+    val galleryPendingCount = galleryQueue.count { it.state == "pending" }
+    val galleryFailedCount = galleryQueue.count { it.state == "failed" }
+    val galleryDoneCount = galleryHistory.count { it.success }
+    val galleryFileCount = galleryHistory.filter { it.success }.sumOf { it.fileCount }
 
     // Prune Completed tasks from the in-memory taskStateMap as soon as their DB row is confirmed
     // present. taskStateMap lives inside the process-scoped DownloaderV2 singleton, so a
@@ -720,6 +805,13 @@ fun NewHomePage(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToSearch) {
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = "Kirin Search",
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
                     IconButton(onClick = onNavigateToSupport) {
                         Icon(
                             imageVector = Icons.Outlined.AttachMoney,
@@ -727,12 +819,31 @@ fun NewHomePage(
                             tint = MaterialTheme.colorScheme.secondary
                         )
                     }
-                    IconButton(onClick = onNavigateToDownloads) {
-                        Icon(
-                            imageVector = Icons.Outlined.FileDownload,
-                            contentDescription = stringResource(R.string.downloads_history),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                    val downloadCenterBadgeCount =
+                        runningDownloadCount + queuedDownloadCount + pausedDownloadCount + galleryPendingCount
+                    Box {
+                        IconButton(onClick = onNavigateToDownloads) {
+                            Icon(
+                                imageVector = Icons.Outlined.FileDownload,
+                                contentDescription = "Download Center",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        if (downloadCenterBadgeCount > 0) {
+                            Surface(
+                                modifier = Modifier.align(Alignment.TopEnd).size(18.dp),
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.error,
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = if (downloadCenterBadgeCount > 99) "99+" else downloadCenterBadgeCount.toString(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onError,
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -765,19 +876,54 @@ fun NewHomePage(
                 }
             }
 
-            // Quick-access row for the 4 More Tools — icon-only, no labels/section header per
+            // Quick-access row for the 5 More Tools — icon-only, no labels/section header per
             // design intent, so it reads as a native strip of shortcuts rather than a separate
             // "section" bolted onto the home screen.
+            if (showQuickTools) {
+                item {
+                    QuickToolsRow(
+                        onThumbnailDownload = onNavigateToThumbnailDownload,
+                        onVideoInfoDownload = onNavigateToVideoInfoDownload,
+                        onCommentDownload = onNavigateToCommentDownload,
+                        onBatchUrlImport = onNavigateToBatchUrlImport,
+                        onGalleryDl = onNavigateToGalleryDl,
+                    )
+                }
+            }
+
+            // Keep Quick Profile above the media divider so profile choice happens before
+            // entering the yt-dlp URL. The divider now cleanly starts the Media input block.
             item {
-                QuickToolsRow(
-                    onThumbnailDownload = onNavigateToThumbnailDownload,
-                    onVideoInfoDownload = onNavigateToVideoInfoDownload,
-                    onCommentDownload = onNavigateToCommentDownload,
-                    onBatchUrlImport = onNavigateToBatchUrlImport,
+                SmartProfileQuickPicker(
+                    selected = smartProfile,
+                    onSelect = { selected ->
+                        if (SmartDownloadProfiles.apply(selected)) {
+                            smartProfile = selected
+                            smartProfileRevision++
+                        }
+                    },
                 )
             }
-            
-            // URL Input Field with Download Button
+            item {
+                HomeInputDivider("Media / yt-dlp")
+            }
+            if (urlText.isNotBlank() && activeSite != SiteProfileManager.generic) {
+                item {
+                    SiteProfileMemoryRow(
+                        site = activeSite,
+                        selectedProfile = smartProfile,
+                        rememberedProfile = rememberedSiteProfile,
+                        onSave = {
+                            SiteProfileManager.remember(urlText, smartProfile)
+                            siteProfileRevision++
+                        },
+                        onClear = {
+                            SiteProfileManager.clear(urlText)
+                            siteProfileRevision++
+                        },
+                    )
+                }
+            }
             item {
                 URLInputField(
                     value = urlText,
@@ -800,215 +946,47 @@ fun NewHomePage(
                                 context.makeToast(R.string.paste_msg)
                             } ?: context.makeToast(R.string.paste_fail_msg)
                         }
-                    }
+                    },
+                    onClearClick = { urlText = "" },
+                    animatePlaceholder = animateUrlHints,
                 )
             }
-            
-            // Recent Downloads Section - combines both active and completed.
-            // Use activeDownloads (not taskStateMap) so the header hides correctly when all
-            // tasks are Completed and already present in the DB-backed section.
-            if (activeDownloads.isNotEmpty() || recentFiveDownloadsFiltered.isNotEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.recent_downloads),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+            item {
+                HomeInputDivider("Gallery DL")
             }
-            
-            // Show active downloads first
-            if (activeDownloads.isNotEmpty()) {
-                items(
-                    items = activeDownloads,
-                    key = { (task, _) -> task.id }
-                ) { (task, state) ->
-                    var showDetailsDialog by remember { mutableStateOf(false) }
-                    var detailsTask by remember { mutableStateOf<Task?>(null) }
-                    var detailsState by remember { mutableStateOf<Task.State?>(null) }
-                    var showActiveDeleteDialog by remember { mutableStateOf(false) }
-                    
-                    ActiveDownloadCard(
-                        task = task,
-                        state = state,
-                        onAction = { action ->
-                            view.slightHapticFeedback()
-                            when (action) {
-                                UiAction.Pause -> downloader.pause(task)
-                                UiAction.Cancel -> downloader.cancel(task)
-                                UiAction.Delete -> showActiveDeleteDialog = true
-                                UiAction.Resume -> downloader.resume(task)
-                                UiAction.Retry -> downloader.restart(task)
-                                is UiAction.CopyErrorReport -> {
-                                    clipboardManager.setText(
-                                        AnnotatedString(getErrorReport(action.throwable, task.url))
-                                    )
-                                    context.makeToast(R.string.error_copied)
-                                }
-                                is UiAction.CopyVideoURL -> {
-                                    clipboardManager.setText(AnnotatedString(task.url))
-                                    context.makeToast(R.string.link_copied)
-                                }
-                                UiAction.ShowDetails -> {
-                                    detailsTask = task
-                                    detailsState = state
-                                    showDetailsDialog = true
-                                }
-                                is UiAction.OpenFile -> {
-                                    action.filePath?.let {
-                                        FileUtil.openFile(path = it) { 
-                                            context.makeToast(R.string.file_unavailable) 
-                                        }
-                                    }
-                                }
-                                is UiAction.OpenThumbnailURL -> {
-                                    uriHandler.openUri(action.url)
-                                }
-                                is UiAction.OpenVideoURL -> {
-                                    uriHandler.openUri(action.url)
-                                }
-                                is UiAction.ShareFile -> {
-                                    val shareTitle = context.getString(R.string.share)
-                                    FileUtil.createIntentForSharingFile(action.filePath)?.let {
-                                        context.startActivity(Intent.createChooser(it, shareTitle))
-                                    }
-                                }
-                            }
-                        }
-                    )
-                    
-                    if (showDetailsDialog && detailsTask != null && detailsState != null) {
-                        DownloadDetailsDialog(
-                            task = detailsTask!!,
-                            state = detailsState!!,
-                            onDismiss = { showDetailsDialog = false }
-                        )
-                    }
 
-                    if (showActiveDeleteDialog) {
-                        val deleteTitle = state.viewState.title.ifBlank { task.url }
-                        SealDialog(
-                            onDismissRequest = { showActiveDeleteDialog = false },
-                            title = { Text(text = stringResource(R.string.delete_info)) },
-                            icon = {
-                                Icon(
-                                    Icons.Outlined.Delete,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.tertiary
-                                )
-                            },
-                            text = {
-                                Text(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                                    text = stringResource(R.string.delete_info_msg).format(deleteTitle),
-                                )
-                            },
-                            confirmButton = {
-                                ConfirmButton {
-                                    showActiveDeleteDialog = false
-                                    scope.launch(Dispatchers.IO) {
-                                        val videoId = state.videoInfo?.id
-                                        val baseName =
-                                            state.videoInfo?.title?.ifBlank { deleteTitle }
-                                                ?: deleteTitle
-                                        FileUtil.deleteTempFilesForTask(baseName, videoId)
-                                        downloader.remove(task)
-                                    }
-                                }
-                            },
-                            dismissButton = { DismissButton { showActiveDeleteDialog = false } },
-                        )
-                    }
-                }
-            }
-            
-            // Show recent completed downloads
-            if (recentFiveDownloadsFiltered.isNotEmpty()) {
-                items(
-                    items = recentFiveDownloadsFiltered,
-                    key = { it.id }
-                ) { downloadInfo ->
-                    var showRecentDeleteDialog by remember { mutableStateOf(false) }
-                    
-                    RecentDownloadCard(
-                        downloadInfo = downloadInfo,
-                        refreshKey = lifecycleRefreshTrigger,
-                        onClick = {
-                            FileUtil.openFile(downloadInfo.videoPath) {
-                                context.makeToast(R.string.file_unavailable)
-                            }
-                        },
-                        onShare = {
+            item {
+                URLInputField(
+                    value = galleryUrlText,
+                    onValueChange = { galleryUrlText = it },
+                    placeholderText = "Enter Gallery DL URL",
+                    onDownloadClick = {
+                        if (galleryUrlText.isNotBlank()) {
                             view.slightHapticFeedback()
-                            val shareTitle = context.getString(R.string.share)
-                            FileUtil.createIntentForSharingFile(downloadInfo.videoPath)?.let {
-                                context.startActivity(Intent.createChooser(it, shareTitle))
-                            }
-                        },
-                        onCopyLink = {
-                            view.slightHapticFeedback()
-                            clipboardManager.setText(AnnotatedString(downloadInfo.videoUrl))
-                            context.makeToast(R.string.link_copied)
-                        },
-                        onShowDetails = {
-                            view.slightHapticFeedback()
-                            val idx = recentFiveDownloadsFiltered.indexOfFirst { it.id == downloadInfo.id }
-                            detailsDialogIndex = if (idx >= 0) idx else 0
-                        },
-                        onDelete = {
-                            view.slightHapticFeedback()
-                            showRecentDeleteDialog = true
-                        },
-                        onHide = {
-                            view.slightHapticFeedback()
-                            // Optimistically remove from UI immediately, then persist to DB
-                            localHiddenIds = localHiddenIds + downloadInfo.id
-                            scope.launch(Dispatchers.IO) {
-                                DatabaseUtil.hideItem(downloadInfo)
-                            }
+                            GalleryDlBehaviorPreference.setPendingHomeUrl(galleryUrlText)
+                            galleryUrlText = ""
+                            keyboardController?.hide()
+                            onNavigateToGalleryDl()
+                        } else {
+                            context.makeToast(R.string.url_empty)
                         }
-                    )
-                    
-                    if (showRecentDeleteDialog) {
-                        SealDialog(
-                            onDismissRequest = { showRecentDeleteDialog = false },
-                            title = { Text(text = stringResource(R.string.delete_info)) },
-                            icon = {
-                                Icon(
-                                    Icons.Outlined.Delete,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.tertiary
-                                )
-                            },
-                            text = {
-                                Text(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                                    text = stringResource(R.string.delete_info_msg).format(downloadInfo.videoTitle),
-                                )
-                            },
-                            confirmButton = {
-                                ConfirmButton {
-                                    showRecentDeleteDialog = false
-                                    localHiddenIds = localHiddenIds + downloadInfo.id
-                                    scope.launch(Dispatchers.IO) {
-                                        val baseName =
-                                            File(downloadInfo.videoPath)
-                                                .nameWithoutExtension
-                                                .ifEmpty { downloadInfo.videoTitle }
-                                        FileUtil.deleteTempFilesForTask(baseName, downloadInfo.videoId)
-                                        DatabaseUtil.deleteInfoList(
-                                            infoList = listOf(downloadInfo),
-                                            deleteFile = false
-                                        )
-                                    }
-                                }
-                            },
-                            dismissButton = { DismissButton { showRecentDeleteDialog = false } },
-                        )
-                    }
-                }
+                    },
+                    onPasteClick = {
+                        val clipText = clipboardManager.getText()?.text?.trim()
+                        if (!clipText.isNullOrBlank()) {
+                            context.matchUrlFromClipboard(clipText)?.let { url ->
+                                galleryUrlText = url
+                                context.makeToast(R.string.paste_msg)
+                            } ?: context.makeToast(R.string.paste_fail_msg)
+                        }
+                    },
+                    onClearClick = { galleryUrlText = "" },
+                    animatePlaceholder = animateUrlHints,
+                )
             }
-            
+            // Download activity is intentionally kept out of Home.
+            // Media + Gallery jobs now live in the unified Download Center.
+
             // Bottom spacing
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1016,28 +994,12 @@ fun NewHomePage(
         }
     }
 
-    // Spotify-style swipeable details sheet for recent downloads. A single sheet instance is
-    // shared across all cards; detailsDialogIndex tracks which item (by position in
-    // recentFiveDownloadsFiltered) is currently shown, so left/right swipes just move the index.
-    detailsDialogIndex?.let { index ->
-        // The underlying list is a live Flow and can shrink while the sheet is open (e.g. the
-        // user deletes/hides the item they're viewing). Clamp to the last valid index, or close
-        // the sheet entirely if nothing is left to show.
-        if (recentFiveDownloadsFiltered.isEmpty()) {
-            detailsDialogIndex = null
-        } else {
-            val safeIndex = index.coerceIn(0, recentFiveDownloadsFiltered.lastIndex)
-            RecentDownloadDetailsDialog(
-                downloadInfoList = recentFiveDownloadsFiltered,
-                initialIndex = safeIndex,
-                onDismiss = { detailsDialogIndex = null }
-            )
-        }
-    }
-    
     // Download Dialog
     var preferences by remember {
         mutableStateOf(DownloadUtil.DownloadPreferences.createFromPreferences())
+    }
+    LaunchedEffect(smartProfileRevision) {
+        preferences = DownloadUtil.DownloadPreferences.createFromPreferences()
     }
     val sheetValue by dialogViewModel.sheetValueFlow.collectAsStateWithLifecycle()
     val dialogState by dialogViewModel.sheetStateFlow.collectAsStateWithLifecycle()
@@ -1084,21 +1046,263 @@ fun NewHomePage(
 }
 
 @Composable
+private fun HomeInputLabel(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+@Composable
+private fun SmartProfileQuickPicker(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Quick profile",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        SmartDownloadProfiles.label(selected),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Text(
+                    "Change",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SmartDownloadProfiles.builtIns.forEach { profile ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(profile.title, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                profile.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(profile.id)
+                    },
+                )
+            }
+            listOf(
+                SmartDownloadProfiles.CUSTOM_1 to "Custom Slot 1",
+                SmartDownloadProfiles.CUSTOM_2 to "Custom Slot 2",
+                SmartDownloadProfiles.CUSTOM_3 to "Custom Slot 3",
+            ).forEach { (id, label) ->
+                if (SmartDownloadProfiles.customSlotSaved(id)) {
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            expanded = false
+                            onSelect(id)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SiteProfileMemoryRow(
+    site: SiteProfileManager.Site,
+    selectedProfile: Int,
+    rememberedProfile: Int?,
+    onSave: () -> Unit,
+    onClear: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f),
+    ) {
+        Row(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    site.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    rememberedProfile?.let {
+                        "Remembered • ${SmartDownloadProfiles.label(it)}"
+                    } ?: "No site profile saved",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                if (rememberedProfile != selectedProfile) {
+                    TextButton(onClick = onSave) { Text("Remember") }
+                } else {
+                    Text(
+                        "Active",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+                if (rememberedProfile != null) {
+                    TextButton(onClick = onClear) { Text("Clear") }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeInputDivider(title: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f))
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun GalleryActivityStrip(
+    pendingCount: Int,
+    failedCount: Int,
+    completedCount: Int,
+    fileCount: Int,
+    compact: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ActivityMetric("Pending", pendingCount, Modifier.weight(1f))
+            ActivityMetric("Failed", failedCount, Modifier.weight(1f))
+            ActivityMetric("Done", completedCount, Modifier.weight(1f))
+            ActivityMetric("Files", fileCount, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun DownloadActivityStrip(
+    activeCount: Int,
+    queuedCount: Int,
+    pausedCount: Int,
+    completedCount: Int,
+    compact: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = if (compact) 8.dp else 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ActivityMetric("Active", activeCount, Modifier.weight(1f))
+            ActivityMetric("Queue", queuedCount, Modifier.weight(1f))
+            ActivityMetric("Paused", pausedCount, Modifier.weight(1f))
+            ActivityMetric("Done", completedCount, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun ActivityMetric(label: String, count: Int, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
 fun URLInputField(
     value: String,
     onValueChange: (String) -> Unit,
     onDownloadClick: () -> Unit,
     onPasteClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    placeholderText: String? = null,
+    onClearClick: (() -> Unit)? = null,
+    animatePlaceholder: Boolean = true,
 ) {
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
     val isGradientDark = LocalGradientDarkMode.current
-    val fullPlaceholder = stringResource(R.string.enter_url_to_download)
+    val defaultPlaceholder = stringResource(R.string.enter_url_to_download)
+    val fullPlaceholder = placeholderText ?: defaultPlaceholder
 
-    // Typewriter animation: reveal characters one by one
-    var displayedLength by remember { mutableStateOf(0) }
-    
-    LaunchedEffect(Unit) {
+    // Optional typewriter + gradient hint. KirinDL Extras can disable it for a quieter Home.
+    var displayedLength by remember(fullPlaceholder, animatePlaceholder) {
+        mutableStateOf(if (animatePlaceholder) 0 else fullPlaceholder.length)
+    }
+
+    LaunchedEffect(fullPlaceholder, animatePlaceholder) {
+        if (!animatePlaceholder) {
+            displayedLength = fullPlaceholder.length
+            return@LaunchedEffect
+        }
         displayedLength = 0
         for (i in 1..fullPlaceholder.length) {
             delay(50L)
@@ -1106,17 +1310,22 @@ fun URLInputField(
         }
     }
 
-    // Gradient animation for the placeholder text
-    val infiniteTransition = rememberInfiniteTransition(label = "placeholderGradient")
-    val gradientShift by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "placeholderShift"
-    )
+    val gradientShift =
+        if (animatePlaceholder) {
+            val infiniteTransition = rememberInfiniteTransition(label = "placeholderGradient")
+            val shift by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1000f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 3000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "placeholderShift"
+            )
+            shift
+        } else {
+            0f
+        }
 
     val gradientColors = listOf(
         MaterialTheme.colorScheme.primary,
@@ -1140,12 +1349,18 @@ fun URLInputField(
             .fillMaxWidth()
             .height(64.dp),
         placeholder = {
-            Text(
-                text = fullPlaceholder.take(displayedLength),
-                style = MaterialTheme.typography.bodyLarge.merge(
-                    TextStyle(brush = gradientBrush)
+            if (animatePlaceholder) {
+                Text(
+                    text = fullPlaceholder.take(displayedLength),
+                    style = MaterialTheme.typography.bodyLarge.merge(TextStyle(brush = gradientBrush)),
                 )
-            )
+            } else {
+                Text(
+                    text = fullPlaceholder,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
         singleLine = true,
         shape = RoundedCornerShape(32.dp),
@@ -1162,6 +1377,14 @@ fun URLInputField(
                             imageVector = Icons.Outlined.ContentPaste,
                             contentDescription = "Paste",
                             tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else if (onClearClick != null) {
+                    IconButton(onClick = onClearClick) {
+                        Icon(
+                            imageVector = Icons.Outlined.Clear,
+                            contentDescription = "Clear URL",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -1395,8 +1618,10 @@ fun RecentDownloadCard(
 fun ActiveDownloadCard(
     task: Task,
     state: Task.State,
+    showTransferDetails: Boolean = true,
     onAction: (UiAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    queuePosition: Int? = null,
 ) {
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
     val isGradientDark = LocalGradientDarkMode.current
@@ -1410,105 +1635,41 @@ fun ActiveDownloadCard(
         else -> 0f
     }
     
-    // Parse progress text to determine download phase
-    val progressText = if (downloadState is Task.DownloadState.Running) downloadState.progressText else ""
-    val context = androidx.compose.ui.platform.LocalContext.current
-    
-    // Track download state: format info -> video download -> audio download -> merging
-    var hasSeenFormatInfo by remember { mutableStateOf(false) }
-    var hasSeenVideoComplete by remember { mutableStateOf(false) }
-    var currentPhase by remember { mutableStateOf("downloading") }
-    
-    // Determine phase based on progressText patterns
-    // NOTE: DownloaderV2 strips the "[download] " prefix before storing progressText,
-    // so download progress lines look like "45.3% of 10.00MiB at 2.50MiB/s ETA 00:03"
-    // or "100% of 10.00MiB in 00:04". We detect them by looking for the % sign with digits.
-    val downloadPhase = when {
-        // Merging phase — [Merger] prefix is NOT stripped
-        progressText.contains("[Merger]", ignoreCase = true) ||
-        progressText.contains("Merging formats", ignoreCase = true) -> {
-            currentPhase = "merging"
-            hasSeenVideoComplete = false
-            hasSeenFormatInfo = false
-            "merging"
-        }
-        // Format info line — [info] prefix is NOT stripped
-        progressText.contains("[info]", ignoreCase = true) && progressText.contains("format", ignoreCase = true) -> {
-            hasSeenFormatInfo = true
-            hasSeenVideoComplete = false
-            currentPhase = "downloading"
-            "downloading"
-        }
-        // Download progress lines — "[download]" prefix stripped; match % pattern instead
-        progressText.matches(Regex("""^\d+(\.\d+)?%.*""")) || progressText.contains("% of ") -> {
-            when {
-                // 100% completion — video stream done, audio stream is next
-                (progressText.startsWith("100%") || progressText.contains("100% of ")) && !hasSeenVideoComplete -> {
-                    hasSeenVideoComplete = true
-                    currentPhase = "video"
-                    "video"
-                }
-                // After video complete, any download progress is the audio stream
-                hasSeenVideoComplete -> {
-                    currentPhase = "audio"
-                    "audio"
-                }
-                // Before any 100% seen, first stream is always video
-                hasSeenFormatInfo -> {
-                    currentPhase = "video"
-                    "video"
-                }
-                else -> {
-                    currentPhase = "downloading"
-                    "downloading"
-                }
-            }
-        }
-        // Post-download file operations — maintain current phase
-        progressText.contains("Deleting original file", ignoreCase = true) ||
-        progressText.contains("[Metadata]", ignoreCase = true) ||
-        progressText.contains("[MoveFiles]", ignoreCase = true) -> {
-            currentPhase
-        }
-        // yt-dlp re-outputs [youtube] / "Downloading webpage" lines between streams.
-        // In Running state we are always downloading (FetchingInfo state handles the fetch phase).
-        progressText.contains("[youtube]", ignoreCase = true) ||
-        progressText.contains("Downloading webpage", ignoreCase = true) ||
-        progressText.contains("Downloading player", ignoreCase = true) -> {
-            if (hasSeenVideoComplete) {
-                // yt-dlp is initializing the second (audio) stream
-                currentPhase = "audio"
-                "audio"
-            } else {
-                currentPhase  // Maintain current phase — never show "fetching" while running
-            }
-        }
-        else -> currentPhase
-    }
-    
+    // DownloaderV2 now exposes a stable phase while keeping raw yt-dlp output in
+    // progressText for speed/ETA parsing below. This avoids each UI surface guessing
+    // video/audio/fragment/merge state independently.
+    val progressText =
+        if (downloadState is Task.DownloadState.Running) downloadState.progressText else ""
+
     val statusText = when (downloadState) {
         is Task.DownloadState.Running -> {
             val pct = if (progress >= 0) " ${(progress * 100).toInt()}%" else ""
-            when (downloadPhase) {
-                "merging" -> stringResource(R.string.status_merging)
-                "video"   -> "Downloading video...$pct"
-                "audio"   -> "Downloading audio...$pct"
-                "fetching" -> stringResource(R.string.fetching_info)
-                else -> if (progress >= 0) "Downloading... ${(progress * 100).toInt()}%"
-                        else stringResource(R.string.status_downloading)
+            when (downloadState.phase) {
+                Task.TransferPhase.Preparing -> "Preparing download..."
+                Task.TransferPhase.Video -> "Downloading video...$pct"
+                Task.TransferPhase.Audio -> "Downloading audio...$pct"
+                Task.TransferPhase.Fragments -> "Downloading fragments...$pct"
+                Task.TransferPhase.Merging -> stringResource(R.string.status_merging)
+                Task.TransferPhase.RetryingNative -> "Retrying with native yt-dlp..."
+                Task.TransferPhase.Downloading ->
+                    if (progress >= 0) "Downloading... ${(progress * 100).toInt()}%"
+                    else stringResource(R.string.status_downloading)
             }
         }
-        is Task.DownloadState.Paused -> if (progress >= 0) stringResource(R.string.status_paused) + " ${(progress * 100).toInt()}%" else stringResource(R.string.status_paused)
+        is Task.DownloadState.Paused ->
+            if (progress >= 0)
+                stringResource(R.string.status_paused) + " ${(progress * 100).toInt()}%"
+            else stringResource(R.string.status_paused)
         is Task.DownloadState.Canceled -> stringResource(R.string.status_canceled)
         is Task.DownloadState.Error -> stringResource(R.string.download_error)
         is Task.DownloadState.Completed -> stringResource(R.string.completed) + " 100%"
         is Task.DownloadState.FetchingInfo -> stringResource(R.string.fetching_info)
-        // Idle = waiting for a download slot to open; ReadyWithInfo = info fetched, waiting to start
+        // Idle = waiting for a download slot; ReadyWithInfo = metadata ready, waiting to start.
         Task.DownloadState.Idle,
         Task.DownloadState.ReadyWithInfo -> stringResource(R.string.queue_status)
         else -> ""
     }
-    
+
     val statusColor = when (downloadState) {
         is Task.DownloadState.Running -> if (isGradientDark && isDarkTheme) {
             GradientDarkColors.GradientPrimaryStart
@@ -1617,8 +1778,9 @@ fun ActiveDownloadCard(
                                     MaterialTheme.colorScheme.secondaryContainer
                                 }
                             ) {
+                                val queueLabel = stringResource(R.string.queue_status)
                                 Text(
-                                    text = stringResource(R.string.queue_status),
+                                    text = queuePosition?.let { "$queueLabel #$it" } ?: queueLabel,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (isGradientDark && isDarkTheme) {
                                         GradientDarkColors.GradientSecondaryEnd
@@ -1633,7 +1795,7 @@ fun ActiveDownloadCard(
                     }
 
                     // Speed + ETA line — only shown during active download
-                    if (speedEtaText != null) {
+                    if (showTransferDetails && speedEtaText != null) {
                         Text(
                             text = speedEtaText,
                             style = MaterialTheme.typography.labelSmall,
@@ -1642,6 +1804,7 @@ fun ActiveDownloadCard(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+
                 }
                 
                 // Pause/Resume action button
@@ -2669,8 +2832,8 @@ fun AnimatedGlowingPlus() {
 }
 
 /**
- * Quick-access row for the 4 More Tools (Batch URL Import, Thumbnail Download, Video Info
- * Download, Comment Download), placed between the KirinDownloader branding and the URL input field.
+ * Quick-access row for the 5 More Tools (Batch URL Import, Thumbnail Download, Video Info
+ * Download, Comment Download, Gallery DL), placed between the KirinDownloader branding and the URL input field.
  *
  * Icon-only by design — no labels/section header — so it reads as a native strip of shortcuts
  * baked into the home screen rather than a bolted-on section. Colors reuse the same
@@ -2692,6 +2855,7 @@ private fun QuickToolsRow(
     onVideoInfoDownload: () -> Unit,
     onCommentDownload: () -> Unit,
     onBatchUrlImport: () -> Unit,
+    onGalleryDl: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tools = remember(
@@ -2699,6 +2863,7 @@ private fun QuickToolsRow(
         onThumbnailDownload,
         onVideoInfoDownload,
         onCommentDownload,
+        onGalleryDl,
     ) {
         listOf(
             QuickTool(
@@ -2728,6 +2893,13 @@ private fun QuickToolsRow(
                 container = { MaterialTheme.colorScheme.primaryContainer },
                 tint = { MaterialTheme.colorScheme.onPrimaryContainer },
                 onClick = onCommentDownload,
+            ),
+            QuickTool(
+                icon = Icons.Outlined.AutoAwesome,
+                labelRes = R.string.gallery_dl,
+                container = { MaterialTheme.colorScheme.secondaryContainer },
+                tint = { MaterialTheme.colorScheme.onSecondaryContainer },
+                onClick = onGalleryDl,
             ),
         )
     }
