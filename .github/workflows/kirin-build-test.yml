@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       dev_tag:
-        description: "Dev release tag (example: v3.1.3-devpatch1)"
+        description: "Dev release tag (example: v3.1.3-devpatch7)"
         required: true
-        default: "v3.1.3-devpatch1"
+        default: "v3.1.3-devpatch7"
         type: string
 
 permissions:
@@ -142,14 +142,14 @@ jobs:
           set -euo pipefail
 
           if [[ ! "$DEV_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-devpatch[0-9]+$ ]]; then
-            echo "::error::Invalid dev tag '$DEV_TAG'. Expected format: v3.1.3-devpatch1"
+            echo "::error::Invalid dev tag '$DEV_TAG'. Expected format: v3.1.3-devpatch7"
             exit 1
           fi
 
           RELEASE_TITLE="KirinDL ${DEV_TAG#v}"
           NOTES_FILE="$RUNNER_TEMP/kirindl-dev-release-notes.md"
 
-          cat > "$NOTES_FILE" <<EOF
+          cat > "$NOTES_FILE" <<EOF_NOTES
           ## Kirin Build Test
 
           Development prerelease generated automatically after a successful Kirin Build Test.
@@ -161,7 +161,7 @@ jobs:
           - Debug APK is included for testing only.
 
           > Development build. This is not the stable KirinDL release.
-          EOF
+          EOF_NOTES
 
           if gh release view "$DEV_TAG" >/dev/null 2>&1; then
             echo "Updating existing prerelease $DEV_TAG"
