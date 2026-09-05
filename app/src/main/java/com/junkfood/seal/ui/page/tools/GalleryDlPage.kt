@@ -41,6 +41,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -569,6 +570,61 @@ private fun DownloadTab(
             GalleryPreflightDiagnostic(state, colors)
         }
 
+        if (state.isDownloading) {
+            val total = state.downloadTotalCount
+            val completed = state.downloadCompletedCount
+            val progress =
+                if (total != null && total > 0) {
+                    (completed.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    null
+                }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        state.downloadStage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        buildString {
+                            append(completed)
+                            append(" / ")
+                            append(total?.toString() ?: "?")
+                            if (progress != null) {
+                                append(" • ")
+                                append((progress * 100).toInt())
+                                append('%')
+                            }
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.muted,
+                    )
+                }
+                if (progress != null) {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth().height(7.dp),
+                        color = colors.accent,
+                        trackColor = colors.panelAlt,
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(7.dp),
+                        color = colors.accent,
+                        trackColor = colors.panelAlt,
+                    )
+                }
+            }
+        }
+
         Button(
             onClick = onDownload,
             enabled = state.canDownload,
@@ -587,7 +643,12 @@ private fun DownloadTab(
                     color = colors.onAccent,
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Downloading")
+                Text(
+                    if (state.downloadTotalCount != null)
+                        "${state.downloadCompletedCount}/${state.downloadTotalCount}"
+                    else
+                        "${state.downloadCompletedCount}/?"
+                )
             } else {
                 Icon(Icons.Outlined.Download, contentDescription = null)
                 Spacer(Modifier.width(8.dp))

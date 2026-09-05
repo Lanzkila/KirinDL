@@ -35,6 +35,9 @@ class GalleryDlViewModel : ViewModel() {
         val isQueueRunning: Boolean = false,
         val isInstalling: Boolean = false,
         val isDownloading: Boolean = false,
+        val downloadCompletedCount: Int = 0,
+        val downloadTotalCount: Int? = null,
+        val downloadStage: String = "Idle",
         val isSavingConfig: Boolean = false,
         val isImportingCookies: Boolean = false,
         val isCheckingExtractor: Boolean = false,
@@ -109,6 +112,9 @@ class GalleryDlViewModel : ViewModel() {
                 statusMessage = null,
                 savedFiles = emptyList(),
                 destinationDirectory = null,
+                downloadCompletedCount = 0,
+                downloadTotalCount = null,
+                downloadStage = "Idle",
             )
         }
     }
@@ -660,17 +666,34 @@ class GalleryDlViewModel : ViewModel() {
                 statusMessage = null,
                 savedFiles = emptyList(),
                 destinationDirectory = null,
+                downloadCompletedCount = 0,
+                downloadTotalCount = current.preflightInfo?.estimatedItemCount?.takeIf { it > 0 },
+                downloadStage = "Preparing",
             )
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            GalleryDlRunner.download(App.context, current.url)
-                .onSuccess { result ->
+            GalleryDlRunner.download(
+                App.context,
+                current.url,
+                current.preflightInfo?.estimatedItemCount?.takeIf { it > 0 },
+            ) { completed, total, stage ->
+                mutableState.update { state ->
+                    state.copy(
+                        downloadCompletedCount = completed,
+                        downloadTotalCount = total ?: state.downloadTotalCount,
+                        downloadStage = stage,
+                    )
+                }
+            }.onSuccess { result ->
                     addHistory(current.url, result, true, "")
                     val snapshot = GalleryDlConfig.snapshot(App.context)
                     mutableState.update {
                         it.copy(
                             isDownloading = false,
+                            downloadCompletedCount = result.savedFiles.size,
+                            downloadTotalCount = result.savedFiles.size,
+                            downloadStage = "Done",
                             installedVersion = result.version,
                             savedFiles = result.savedFiles,
                             destinationDirectory = result.destinationDirectory,
@@ -691,7 +714,12 @@ class GalleryDlViewModel : ViewModel() {
                     addHistory(current.url, null, false, message)
                     val snapshot = GalleryDlConfig.snapshot(App.context)
                     mutableState.update {
-                        it.copy(isDownloading = false, cacheSize = snapshot.cacheSize, errorMessage = message)
+                        it.copy(
+                            isDownloading = false,
+                            downloadStage = "Failed",
+                            cacheSize = snapshot.cacheSize,
+                            errorMessage = message,
+                        )
                     }
                 }
         }

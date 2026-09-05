@@ -1118,9 +1118,17 @@ private fun SearchDetailsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        modifier = Modifier.fillMaxWidth(0.94f),
+        title = {
+            Text(
+                normalizeInfoText(item.title),
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 DetailLine("Source", item.source.label)
                 if (item.creator.isNotBlank()) DetailLine("Creator", item.creator)
                 item.durationSeconds?.let { DetailLine("Duration", formatDuration(it)) }
@@ -1129,12 +1137,18 @@ private fun SearchDetailsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDownload) { Text("Download") }
+            TextButton(onClick = onDownload) {
+                Text("Download", style = MaterialTheme.typography.labelLarge)
+            }
         },
         dismissButton = {
             Row {
-                TextButton(onClick = onOpen) { Text("Open") }
-                TextButton(onClick = onDismiss) { Text("Close") }
+                TextButton(onClick = onOpen) {
+                    Text("Open", style = MaterialTheme.typography.labelLarge)
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Close", style = MaterialTheme.typography.labelLarge)
+                }
             }
         },
     )
@@ -1145,17 +1159,24 @@ private fun DetailLine(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
         )
         Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
+            text = normalizeInfoText(value),
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
+
+private fun normalizeInfoText(value: String): String =
+    value
+        .replace("\\n", "\n")
+        .replace("'n", "\n")
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
 
 private fun resultKindLabel(item: KirinSearchEngine.ResultItem): String? {
     if (item.source != KirinSearchStore.SearchSource.YOUTUBE_MUSIC) return null

@@ -10,6 +10,9 @@ import java.io.File
 import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -199,7 +202,12 @@ object GalleryDlRunner {
             }
         }
 
-    suspend fun download(context: Context, url: String): Result<DownloadResult> =
+    suspend fun download(
+        context: Context,
+        url: String,
+        estimatedTotal: Int? = null,
+        onProgress: (suspend (completed: Int, total: Int?, stage: String) -> Unit)? = null,
+    ): Result<DownloadResult> =
         runMutex.withLock {
             withContext(Dispatchers.IO) {
                 runCatching {
@@ -232,18 +240,41 @@ object GalleryDlRunner {
                                 ?.absolutePath
                                 .orEmpty()
 
+                        onProgress?.invoke(0, estimatedTotal, "Preparing")
                         val bridge = getBridge(context)
-                        val raw =
-                            bridge.callAttr(
-                                    "download",
-                                    trimmedUrl,
-                                    outputDir.absolutePath,
-                                    engineDir.absolutePath,
-                                    compatibility.configFile.absolutePath,
-                                    cookiesPath,
-                                    compatibility.cacheFile.absolutePath,
-                                )
-                                .toString()
+                        val raw = coroutineScope {
+                            val watcher =
+                                launch(Dispatchers.IO) {
+                                    var lastCount = -1
+                                    while (true) {
+                                        val count =
+                                            outputDir.walkTopDown().count { file ->
+                                                file.isFile &&
+                                                    !file.name.endsWith(".part") &&
+                                                    !file.name.endsWith(".tmp")
+                                            }
+                                        if (count != lastCount) {
+                                            lastCount = count
+                                            onProgress?.invoke(count, estimatedTotal, "Downloading")
+                                        }
+                                        delay(400L)
+                                    }
+                                }
+                            try {
+                                bridge.callAttr(
+                                        "download",
+                                        trimmedUrl,
+                                        outputDir.absolutePath,
+                                        engineDir.absolutePath,
+                                        compatibility.configFile.absolutePath,
+                                        cookiesPath,
+                                        compatibility.cacheFile.absolutePath,
+                                    )
+                                    .toString()
+                            } finally {
+                                watcher.cancel()
+                            }
+                        }
                         val result = JSONObject(raw)
 
                         if (!result.optBoolean("ok", false)) {
@@ -306,7 +337,9 @@ object GalleryDlRunner {
                         // flattened into the app-created [Site]/[Gallery] folder using a sanitized
                         // filename. Files are still accepted only when their canonical source path
                         // is inside the private temporary job sandbox.
+                        onProgress?.invoke(exportFiles.size, exportFiles.size, "Saving")
                         val saved = exportFiles.map { source -> exportFileSafely(source, destination) }
+                        onProgress?.invoke(saved.size, saved.size, "Done")
 
                         runCatching {
                             MediaScannerConnection.scanFile(
