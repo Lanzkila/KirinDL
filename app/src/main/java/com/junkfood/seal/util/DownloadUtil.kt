@@ -34,8 +34,10 @@ import com.junkfood.seal.util.FileUtil.moveFilesToSdcard
 import com.junkfood.seal.util.PreferenceUtil.COOKIE_HEADER
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getInt
+import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
+import com.junkfood.seal.util.PreferenceUtil.updateLong
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -1651,7 +1653,7 @@ object DownloadUtil {
                 }
             val averageSpeed = computeAvgSpeed(videoInfo, downloadTiming)
             if (isBilibili && averageSpeed > 0L) {
-                PreferenceUtil.updateValue(BILIBILI_LAST_AVG_SPEED, averageSpeed)
+                BILIBILI_LAST_AVG_SPEED.updateLong(averageSpeed)
             }
             return onFinishDownloading(
                 preferences = this,
