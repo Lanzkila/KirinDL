@@ -1,6 +1,7 @@
 package com.junkfood.seal.ui.page
 
 import android.webkit.CookieManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -391,6 +392,12 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
             AppUpdater()
             YtdlpUpdater()
             GalleryDlUpdater()
+        }
+
+        // KirinDL: Android system Back closes the hamburger drawer before Home handles exit.
+        // This is composed after the NavHost so it has priority while the drawer is open.
+        BackHandler(enabled = drawerState.isOpen) {
+            scope.launch { drawerState.close() }
         }
     }
 }

@@ -108,6 +108,9 @@ import com.junkfood.seal.util.VIDEO_CONTAINER_AUTO
 import com.junkfood.seal.util.VIDEO_CONTAINER_MP4
 import com.junkfood.seal.util.VIDEO_CONTAINER_WEBM
 import com.junkfood.seal.util.VIDEO_CONTAINER_MKV
+import com.junkfood.seal.util.VIDEO_CONTAINER_MOV
+import com.junkfood.seal.util.VIDEO_CONTAINER_AVI
+import com.junkfood.seal.util.VIDEO_CONTAINER_FLV
 import com.junkfood.seal.util.VIDEO_QUALITY
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -598,6 +601,9 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                 VIDEO_CONTAINER_MP4 to "MP4",
                 VIDEO_CONTAINER_WEBM to "WebM",
                 VIDEO_CONTAINER_MKV to "MKV",
+                VIDEO_CONTAINER_MOV to "MOV",
+                VIDEO_CONTAINER_AVI to "AVI",
+                VIDEO_CONTAINER_FLV to "FLV",
             ),
             onDismiss = { showVideoContainerDialog = false },
             onSelect = { videoContainer = it; VIDEO_CONTAINER.updateInt(it); showVideoContainerDialog = false },

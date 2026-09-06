@@ -84,6 +84,10 @@ import com.junkfood.seal.util.CUSTOM_COMMAND
 import com.junkfood.seal.util.DEBUG
 import com.junkfood.seal.util.DISABLE_PREVIEW
 import com.junkfood.seal.util.DOWNLOAD_ARCHIVE
+import com.junkfood.seal.util.EXTRACTOR_ARGS
+import com.junkfood.seal.util.LIVE_FROM_START
+import com.junkfood.seal.util.HLS_SPLIT_DISCONTINUITY
+import com.junkfood.seal.util.WRITE_ALL_THUMBNAILS
 import com.junkfood.seal.util.FileUtil.getArchiveFile
 import com.junkfood.seal.util.NOTIFICATION
 import com.junkfood.seal.util.NotificationUtil
@@ -95,6 +99,7 @@ import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
+import com.junkfood.seal.util.PreferenceUtil.updateString
 import com.junkfood.seal.util.SPONSORBLOCK
 import com.junkfood.seal.util.SUBTITLE
 import com.junkfood.seal.util.THUMBNAIL
@@ -122,6 +127,10 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
     var isPrivateModeEnabled by remember { mutableStateOf(PRIVATE_MODE.getBoolean()) }
 
     var isPreviewDisabled by remember { mutableStateOf(DISABLE_PREVIEW.getBoolean()) }
+    var liveFromStart by remember { mutableStateOf(LIVE_FROM_START.getBoolean()) }
+    var hlsSplitDiscontinuity by remember { mutableStateOf(HLS_SPLIT_DISCONTINUITY.getBoolean()) }
+    var writeAllThumbnails by remember { mutableStateOf(WRITE_ALL_THUMBNAILS.getBoolean()) }
+    var extractorArgs by remember { mutableStateOf(EXTRACTOR_ARGS.getString()) }
     var isNotificationPermissionGranted by remember {
         mutableStateOf(NotificationUtil.areNotificationsEnabled())
     }
@@ -317,6 +326,60 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
                             DOWNLOAD_ARCHIVE.updateBoolean(useDownloadArchive)
                         },
                         enabled = isPermissionGranted,
+                    )
+                }
+
+                item {
+                    PreferenceSwitch(
+                        title = "Live from start",
+                        description = "Ask yt-dlp to download supported live streams from the beginning.",
+                        icon = Icons.Outlined.PlaylistAddCheck,
+                        isChecked = liveFromStart,
+                        onClick = {
+                            liveFromStart = !liveFromStart
+                            LIVE_FROM_START.updateBoolean(liveFromStart)
+                        },
+                    )
+                }
+
+                item {
+                    PreferenceSwitch(
+                        title = "Split HLS discontinuities",
+                        description = "Split HLS output at discontinuity markers when the extractor supports it.",
+                        icon = Icons.Outlined.PlaylistAddCheck,
+                        isChecked = hlsSplitDiscontinuity,
+                        onClick = {
+                            hlsSplitDiscontinuity = !hlsSplitDiscontinuity
+                            HLS_SPLIT_DISCONTINUITY.updateBoolean(hlsSplitDiscontinuity)
+                        },
+                    )
+                }
+
+                item {
+                    PreferenceSwitch(
+                        title = "Write all thumbnails",
+                        description = "Save every thumbnail variant exposed by yt-dlp for the current media.",
+                        icon = Icons.Outlined.Image,
+                        isChecked = writeAllThumbnails,
+                        onClick = {
+                            writeAllThumbnails = !writeAllThumbnails
+                            WRITE_ALL_THUMBNAILS.updateBoolean(writeAllThumbnails)
+                        },
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = extractorArgs,
+                        onValueChange = { value ->
+                            extractorArgs = value
+                            EXTRACTOR_ARGS.updateString(value)
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                        label = { Text("Extractor args") },
+                        supportingText = { Text("Example: youtube:player_client=android") },
+                        singleLine = false,
+                        maxLines = 3,
                     )
                 }
 

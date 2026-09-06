@@ -43,6 +43,8 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
@@ -178,6 +180,13 @@ enum class Filter {
     }
 }
 
+
+private enum class QueueSortMode(val label: String) {
+    Newest("Newest"),
+    Oldest("Oldest"),
+    Name("Name"),
+    Status("Status"),
+}
 
 sealed interface UiAction {
     data class OpenFile(val filePath: String?) : UiAction
@@ -425,6 +434,8 @@ fun DownloadPageImplV2(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     var selectedTask by remember { mutableStateOf<Task?>(null) }
     var showClearCompletedDialog by remember { mutableStateOf(false) }
+    var queueMenuExpanded by remember { mutableStateOf(false) }
+    var queueSortMode by rememberSaveable { mutableStateOf(QueueSortMode.Newest) }
     val view = LocalView.current
 
     fun showActionSheet(task: Task) {
@@ -448,6 +459,26 @@ fun DownloadPageImplV2(
             .keys
             .toList()
             .forEach { onActionPost(it, UiAction.Delete) }
+    }
+
+    fun clearQueue() {
+        taskDownloadStateMap
+            .filterValues { state ->
+                state.downloadState !is Running && state.downloadState !is FetchingInfo
+            }
+            .keys
+            .toList()
+            .forEach { onActionPost(it, UiAction.Delete) }
+    }
+
+    fun sortedQueueItems(): List<Pair<Task, Task.State>> {
+        val items = filteredMap.toList()
+        return when (queueSortMode) {
+            QueueSortMode.Newest -> items.sortedByDescending { (task, _) -> task.timeCreated }
+            QueueSortMode.Oldest -> items.sortedBy { (task, _) -> task.timeCreated }
+            QueueSortMode.Name -> items.sortedBy { (_, state) -> state.viewState.title.lowercase() }
+            QueueSortMode.Status -> items.sortedBy { (_, state) -> state.downloadState::class.simpleName.orEmpty() }
+        }
     }
 
     Scaffold(
@@ -616,18 +647,72 @@ fun DownloadPageImplV2(
                                 audioCount = filteredMap.size - videoCount,
                                 isGridView = isGridView,
                                 onToggleView = { isGridView = !isGridView },
-                                onShowMenu = { context.makeToast(R.string.not_implemented_yet) },
+                                onShowMenu = { queueMenuExpanded = true },
                             )
+                            Box {
+                                DropdownMenu(
+                                    expanded = queueMenuExpanded,
+                                    onDismissRequest = { queueMenuExpanded = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Pause All") },
+                                        enabled = activeCount > 0,
+                                        onClick = {
+                                            queueMenuExpanded = false
+                                            taskDownloadStateMap
+                                                .filterValues { it.downloadState is Running }
+                                                .keys.toList()
+                                                .forEach { onActionPost(it, UiAction.Pause) }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Resume All") },
+                                        enabled = pausedCount > 0,
+                                        onClick = {
+                                            queueMenuExpanded = false
+                                            taskDownloadStateMap
+                                                .filterValues { it.downloadState is Task.DownloadState.Paused }
+                                                .keys.toList()
+                                                .forEach { onActionPost(it, UiAction.Resume) }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Retry Failed") },
+                                        enabled = failedCount > 0,
+                                        onClick = {
+                                            queueMenuExpanded = false
+                                            taskDownloadStateMap
+                                                .filterValues { it.downloadState is Error || it.downloadState is Task.DownloadState.Canceled }
+                                                .keys.toList()
+                                                .forEach { onActionPost(it, UiAction.Retry) }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Clear Completed") },
+                                        enabled = completedCount > 0,
+                                        onClick = { queueMenuExpanded = false; clearCompleted() },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Clear Queue") },
+                                        enabled = taskDownloadStateMap.any { (_, state) -> state.downloadState !is Running && state.downloadState !is FetchingInfo },
+                                        onClick = { queueMenuExpanded = false; clearQueue() },
+                                    )
+                                    HorizontalDivider()
+                                    QueueSortMode.entries.forEach { mode ->
+                                        DropdownMenuItem(
+                                            text = { Text("Sort: ${mode.label}${if (queueSortMode == mode) " ✓" else ""}") },
+                                            onClick = { queueSortMode = mode; queueMenuExpanded = false },
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 
                     if (isGridView) {
                         items(
                             items =
-                                filteredMap.toList().sortedWith(
-                                    compareBy<Pair<Task, Task.State>> { (_, state) -> state.downloadState }
-                                        .thenByDescending { (task, _) -> task.timeCreated }
-                                ),
+                                sortedQueueItems(),
                             key = { (task, _) -> task.id },
                         ) { (task, state) ->
                             with(state.viewState) {
@@ -655,10 +740,7 @@ fun DownloadPageImplV2(
                     } else {
                         items(
                             items =
-                                filteredMap.toList().sortedWith(
-                                    compareBy<Pair<Task, Task.State>> { (_, state) -> state.downloadState }
-                                        .thenByDescending { (task, _) -> task.timeCreated }
-                                ),
+                                sortedQueueItems(),
                             key = { (task, _) -> task.id },
                             span = { GridItemSpan(maxLineSpan) },
                         ) { (task, state) ->

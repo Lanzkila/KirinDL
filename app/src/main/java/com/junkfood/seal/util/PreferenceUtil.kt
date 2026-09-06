@@ -127,6 +127,10 @@ const val FORCE_IPV4 = "force_ipv4"
 const val NO_CHECK_CERTIFICATE = "no_check_certificate"
 const val MERGE_OUTPUT_MKV = "merge_to_mkv"
 const val USE_CUSTOM_AUDIO_PRESET = "custom_audio_preset"
+const val EXTRACTOR_ARGS = "yt_dlp_extractor_args"
+const val LIVE_FROM_START = "yt_dlp_live_from_start"
+const val HLS_SPLIT_DISCONTINUITY = "yt_dlp_hls_split_discontinuity"
+const val WRITE_ALL_THUMBNAILS = "yt_dlp_write_all_thumbnails"
 
 const val MERGE_MULTI_AUDIO_STREAM = "multi_audio_stream"
 
@@ -292,6 +296,9 @@ const val VIDEO_CONTAINER_AUTO = 0
 const val VIDEO_CONTAINER_MP4 = 1
 const val VIDEO_CONTAINER_WEBM = 2
 const val VIDEO_CONTAINER_MKV = 3
+const val VIDEO_CONTAINER_MOV = 4
+const val VIDEO_CONTAINER_AVI = 5
+const val VIDEO_CONTAINER_FLV = 6
 
 const val RES_HIGHEST = 0
 const val RES_2160P = 1
@@ -336,6 +343,7 @@ private val StringPreferenceDefaults =
         SUBTITLE_LANGUAGE to "en.*,.*-orig",
         OUTPUT_TEMPLATE to DownloadUtil.OUTPUT_TEMPLATE_ID,
         CUSTOM_OUTPUT_TEMPLATE to DownloadUtil.OUTPUT_TEMPLATE_ID,
+        EXTRACTOR_ARGS to "",
     )
 
 private val BooleanPreferenceDefaults =
@@ -364,6 +372,9 @@ private val BooleanPreferenceDefaults =
         QUEUE_BULK_CONFIRM to true,
         FORMAT_MP4_ONLY to true,
         DOWNLOAD_DOCS to false,
+        LIVE_FROM_START to false,
+        HLS_SPLIT_DISCONTINUITY to false,
+        WRITE_ALL_THUMBNAILS to false,
         USER_AGENT to true,
     )
 
@@ -835,6 +846,9 @@ object PreferenceStrings {
             VIDEO_CONTAINER_MP4 -> "MP4"
             VIDEO_CONTAINER_WEBM -> "WebM"
             VIDEO_CONTAINER_MKV -> "MKV"
+            VIDEO_CONTAINER_MOV -> "MOV"
+            VIDEO_CONTAINER_AVI -> "AVI"
+            VIDEO_CONTAINER_FLV -> "FLV"
             else -> "Auto / source best"
         }
 

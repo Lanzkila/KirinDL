@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
@@ -60,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.state.ToggleableState
@@ -138,6 +140,16 @@ private fun InputUrlPageImpl(
     var url by remember { mutableStateOf("") }
     var showPasteDialog by remember { mutableStateOf(false) }
     var showSavedUrlDialog by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+    val haptics = LocalHapticFeedback.current
+
+    fun pasteClipboardIntoInput() {
+        val clipboardText = clipboardManager.getText()?.text.orEmpty().trim()
+        if (clipboardText.isBlank()) return
+        val urls = findURLsFromString(clipboardText)
+        url = urls.firstOrNull() ?: clipboardText
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
 
     Column(modifier = modifier) {
         Header(
@@ -147,7 +159,13 @@ private fun InputUrlPageImpl(
         OutlinedTextField(
             value = url,
             onValueChange = { url = it },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).padding(horizontal = 32.dp),
+            modifier =
+                Modifier.fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .padding(horizontal = 32.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onLongPress = { pasteClipboardIntoInput() })
+                    },
             label = { Text(stringResource(R.string.video_url)) },
             maxLines = 3,
             trailingIcon = {

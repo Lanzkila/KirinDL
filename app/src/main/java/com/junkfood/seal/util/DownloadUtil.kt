@@ -557,6 +557,10 @@ object DownloadUtil {
         val audioCoverFormat: Int = AUDIO_COVER_FORMAT_AUTO,
         val videoCodec: Int = VIDEO_CODEC_AUTO,
         val videoContainer: Int = VIDEO_CONTAINER_AUTO,
+        val extractorArgs: String = "",
+        val liveFromStart: Boolean = false,
+        val hlsSplitDiscontinuity: Boolean = false,
+        val writeAllThumbnails: Boolean = false,
     ) {
         companion object {
             val EMPTY =
@@ -677,6 +681,10 @@ object DownloadUtil {
                     audioCoverFormat = AUDIO_COVER_FORMAT.getInt(),
                     videoCodec = VIDEO_CODEC.getInt(),
                     videoContainer = VIDEO_CONTAINER.getInt(),
+                    extractorArgs = EXTRACTOR_ARGS.getString(),
+                    liveFromStart = LIVE_FROM_START.getBoolean(),
+                    hlsSplitDiscontinuity = HLS_SPLIT_DISCONTINUITY.getBoolean(),
+                    writeAllThumbnails = WRITE_ALL_THUMBNAILS.getBoolean(),
                 )
             }
         }
@@ -1033,6 +1041,18 @@ object DownloadUtil {
                         addOption("--remux-video", "mkv")
                         addOption("--merge-output-format", "mkv")
                     }
+                    VIDEO_CONTAINER_MOV -> {
+                        addOption("--remux-video", "mov")
+                        addOption("--merge-output-format", "mov")
+                    }
+                    VIDEO_CONTAINER_AVI -> {
+                        addOption("--remux-video", "avi")
+                        addOption("--merge-output-format", "avi")
+                    }
+                    VIDEO_CONTAINER_FLV -> {
+                        addOption("--remux-video", "flv")
+                        addOption("--merge-output-format", "flv")
+                    }
                     else -> if (mergeToMkv) {
                         addOption("--remux-video", "mkv")
                         addOption("--merge-output-format", "mkv")
@@ -1110,6 +1130,9 @@ object DownloadUtil {
                 when (videoContainer) {
                     VIDEO_CONTAINER_MP4 -> "ext:mp4"
                     VIDEO_CONTAINER_WEBM -> "ext:webm"
+                    VIDEO_CONTAINER_MOV -> "ext:mov"
+                    VIDEO_CONTAINER_AVI -> "ext:avi"
+                    VIDEO_CONTAINER_FLV -> "ext:flv"
                     else -> ""
                 }
             val res =
@@ -1428,6 +1451,18 @@ object DownloadUtil {
                     }
                     if (debug) {
                         addOption("-v")
+                    }
+                    if (extractorArgs.isNotBlank()) {
+                        addOption("--extractor-args", extractorArgs.trim())
+                    }
+                    if (liveFromStart) {
+                        addOption("--live-from-start")
+                    }
+                    if (hlsSplitDiscontinuity) {
+                        addOption("--hls-split-discontinuity")
+                    }
+                    if (writeAllThumbnails) {
+                        addOption("--write-all-thumbnails")
                     }
                     if (useDownloadArchive) {
                         val archiveFile = context.getArchiveFile()
