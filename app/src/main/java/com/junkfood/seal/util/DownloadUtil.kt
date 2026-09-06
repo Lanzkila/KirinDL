@@ -243,7 +243,7 @@ object DownloadUtil {
     // Bilibili commonly exposes DASH streams, so KirinDL keeps a dedicated transfer
     // profile for Bilibili/b23.tv. Other extractors continue using the normal global
     // concurrent-fragment and Aria2 preferences without any profile override.
-    private const val BILIBILI_AUTO_CONCURRENT_FRAGMENTS = 8
+    private const val BILIBILI_AUTO_CONCURRENT_FRAGMENTS = 12
     private const val BILIBILI_BALANCED_CONCURRENT_FRAGMENTS = 4
     private const val BILIBILI_FAST_CONCURRENT_FRAGMENTS = 12
 
@@ -259,6 +259,17 @@ object DownloadUtil {
     ): BilibiliSpeedProfile {
         val safeCustomFragments =
             customFragments.takeIf { it == 1 || it == 4 || it == 8 || it == 12 || it == 16 } ?: 8
+        val lastAverageSpeed = BILIBILI_LAST_AVG_SPEED.getLong()
+        // Auto learns from the previous successful Bilibili transfer. Slow routes get
+        // more parallel DASH/HLS fragments, while already-fast routes use fewer
+        // connections to avoid needless CDN pressure and throttling.
+        val adaptiveFragments =
+            when {
+                lastAverageSpeed <= 0L -> BILIBILI_AUTO_CONCURRENT_FRAGMENTS
+                lastAverageSpeed < 2L * 1024L * 1024L -> 16
+                lastAverageSpeed < 6L * 1024L * 1024L -> 12
+                else -> 8
+            }
 
         return when (mode) {
             BILIBILI_SPEED_BALANCED ->
@@ -281,8 +292,8 @@ object DownloadUtil {
                 )
             else ->
                 BilibiliSpeedProfile(
-                    concurrentFragments = BILIBILI_AUTO_CONCURRENT_FRAGMENTS,
-                    aria2ConnectionCap = BILIBILI_AUTO_CONCURRENT_FRAGMENTS,
+                    concurrentFragments = adaptiveFragments,
+                    aria2ConnectionCap = adaptiveFragments,
                     socketTimeoutSeconds = 20,
                 )
         }
@@ -1524,6 +1535,11 @@ object DownloadUtil {
                     // slower Bilibili routes while Auto/Fast/Custom use the normal 20s.
                     bilibiliProfile?.let { profile ->
                         addOption("--socket-timeout", profile.socketTimeoutSeconds)
+                        // Bilibili/CDN routes can fluctuate heavily. Give fragmented
+                        // transfers extra recovery room without changing other sites.
+                        addOption("--fragment-retries", "20")
+                        addOption("--retries", "15")
+                        addOption("--retry-sleep", "fragment:exp=1:20")
                     }
 
                     if (extractAudio || (videoInfo.vcodec == "none")) {
@@ -1633,13 +1649,17 @@ object DownloadUtil {
                         )
                     }
                 }
+            val averageSpeed = computeAvgSpeed(videoInfo, downloadTiming)
+            if (isBilibili && averageSpeed > 0L) {
+                PreferenceUtil.updateValue(BILIBILI_LAST_AVG_SPEED, averageSpeed)
+            }
             return onFinishDownloading(
                 preferences = this,
                 videoInfo = videoInfo,
                 downloadPath = pathBuilder.toString(),
                 sdcardUri = sdcardUri,
                 downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
-                averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
+                averageSpeedBytesPerSec = averageSpeed,
             )
         }
     }

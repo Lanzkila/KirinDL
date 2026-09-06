@@ -89,6 +89,7 @@ const val ARIA2C_CONNECTIONS = "aria2c_connections"
 // Bilibili speed mode never changes another site's download behaviour.
 const val BILIBILI_SPEED_MODE = "bilibili_speed_mode"
 const val BILIBILI_CUSTOM_FRAGMENTS = "bilibili_custom_fragments"
+const val BILIBILI_LAST_AVG_SPEED = "bilibili_last_avg_speed"
 const val BILIBILI_SPEED_AUTO = 0
 const val BILIBILI_SPEED_BALANCED = 1
 const val BILIBILI_SPEED_FAST = 2
@@ -421,6 +422,7 @@ private val LongPreferenceDefaults = mapOf(
     GALLERY_DL_UPDATE_TIME to 0L,
     APP_UPDATE_CHECK_TIME to 0L,
     SPONSOR_DIALOG_LAST_SHOWN to 0L,
+    BILIBILI_LAST_AVG_SPEED to 0L,
 )
 
 fun String.getStringDefault() = StringPreferenceDefaults.getOrElse(this) { "" }
