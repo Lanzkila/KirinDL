@@ -3,6 +3,7 @@ package com.junkfood.seal.ui.page.settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -16,12 +17,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Cookie
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
@@ -46,6 +50,8 @@ import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.page.settings.general.YtdlpUpdateChannelDialog
 import com.junkfood.seal.ui.page.tools.GalleryDlViewModel
 import com.junkfood.seal.util.GalleryDlBehaviorPreference
+import com.junkfood.seal.util.GalleryDlThemePreference
+import com.junkfood.seal.util.GalleryDlThemeStyle
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,8 +62,10 @@ fun GalleryDlSettingsPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val exportFilter by GalleryDlBehaviorPreference.exportFilter.collectAsStateWithLifecycle()
+    val galleryTheme by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showYtdlpSettings by remember { mutableStateOf(false) }
+    var showGalleryThemeMenu by remember { mutableStateOf(false) }
 
     val cookiesLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -99,6 +107,78 @@ fun GalleryDlSettingsPage(
                 onOpenYtdlpSettings = { showYtdlpSettings = true },
                 onGalleryUpdated = viewModel::refreshFromDisk,
             )
+
+            SettingsSection(
+                icon = Icons.Outlined.Settings,
+                title = "Gallery appearance",
+                description =
+                    "Choose one Gallery DL accent from a compact dropdown. Background and text " +
+                        "still follow the active KirinDL theme.",
+            ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { showGalleryThemeMenu = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.Start,
+                        ) {
+                            Text(
+                                galleryTheme.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                galleryTheme.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Outlined.ArrowDropDown,
+                            contentDescription = "Choose Gallery theme",
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showGalleryThemeMenu,
+                        onDismissRequest = { showGalleryThemeMenu = false },
+                    ) {
+                        GalleryDlThemeStyle.entries.forEach { style ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            if (galleryTheme == style) {
+                                                "✓ ${style.title}"
+                                            } else {
+                                                style.title
+                                            },
+                                            fontWeight =
+                                                if (galleryTheme == style) {
+                                                    FontWeight.SemiBold
+                                                } else {
+                                                    FontWeight.Normal
+                                                },
+                                        )
+                                        Text(
+                                            style.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    GalleryDlThemePreference.setStyle(style)
+                                    showGalleryThemeMenu = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
 
             SettingsSection(
                 icon = Icons.Outlined.Settings,

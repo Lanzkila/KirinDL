@@ -24,6 +24,11 @@ val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 3, "x86_64" 
 val baseVersionName = currentVersion.name
 val currentVersionCode = currentVersion.code.toInt()
 
+val prereleaseVersionSuffix =
+    providers.gradleProperty("kirinPrereleaseSuffix").orNull
+        ?.takeIf { it.matches(Regex("-devpatch[0-9]+")) }
+        ?: "-prerelease"
+
 android {
     compileSdk = 37
 
@@ -66,6 +71,7 @@ android {
         versionName = baseVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+        manifestPlaceholders["appLabel"] = "@string/app_name"
 
         // Chaquopy embeds a native Python runtime, so it needs an explicit ABI list.
         // Keep this identical to the existing APK split coverage.
@@ -142,6 +148,20 @@ android {
             signingConfig = signingConfigs.getByName("kirinDebug")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+        }
+
+        // Kirin Pre-Release is intentionally a separate install from Stable.
+        // It keeps the generic flavor/resources but receives its own Android package identity.
+        // This lets com.kirin.downloader (Stable) and this build coexist on one phone.
+        create("prerelease") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".prerelease"
+            versionNameSuffix = prereleaseVersionSuffix
+            manifestPlaceholders["appLabel"] = "Kirin Pre-Release"
+
+            // Library/project dependencies usually expose release/debug only.
+            // Fall back to their release variant when resolving this custom build type.
+            matchingFallbacks += listOf("release")
         }
     }
 
