@@ -1,23 +1,24 @@
-name: Kirin Build Test
+name: Kirin Pre-Release
 
 on:
   workflow_dispatch:
     inputs:
       dev_tag:
-        description: "Dev release tag (example: v3.1.3-devpatch7)"
+        description: "Pre-release tag (example: v3.1.3-devpatch10)"
         required: true
-        default: "v3.1.3-devpatch7"
+        default: "v3.1.3-devpatch10"
         type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: kirindl-build-test
+  group: kirindl-pre-release
   cancel-in-progress: false
 
 jobs:
   build:
+    name: Build Kirin Pre-Release
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -46,8 +47,17 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      - name: Build stable-signed Universal Debug
-        run: ./gradlew assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache
+      - name: Validate pre-release tag
+        shell: bash
+        env:
+          DEV_TAG: ${{ inputs.dev_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$DEV_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-devpatch[0-9]+$ ]]; then
+            echo "::error::Invalid pre-release tag '$DEV_TAG'. Expected format: v3.1.3-devpatch10"
+            exit 1
+          fi
 
       - name: Prepare KirinDL release signing
         shell: bash
@@ -81,59 +91,89 @@ jobs:
 
           echo "KirinDL release keystore is valid."
 
-      - name: Build signed Universal Release
-        run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
+      - name: Build signed Kirin Pre-Release
+        shell: bash
+        env:
+          DEV_TAG: ${{ inputs.dev_tag }}
+        run: |
+          set -euo pipefail
+          PRERELEASE_SUFFIX="-${DEV_TAG##*-}"
+          ./gradlew assembleGenericPrerelease \
+            "-PkirinPrereleaseSuffix=$PRERELEASE_SUFFIX" \
+            --stacktrace --no-daemon --no-configuration-cache
 
-      - name: Locate Universal APKs
+      - name: Locate Universal Pre-Release APK
         shell: bash
         run: |
           set -euo pipefail
-          DEBUG_APK="$(find app/build/outputs/apk/generic/debug -type f -name '*universal*.apk' | head -n 1)"
-          RELEASE_APK="$(find app/build/outputs/apk/generic/release -type f -name '*universal*.apk' | head -n 1)"
 
-          [[ -n "$DEBUG_APK" ]] || { echo "::error::Universal debug APK was not generated."; exit 1; }
-          [[ -n "$RELEASE_APK" ]] || { echo "::error::Universal release APK was not generated."; exit 1; }
+          PRERELEASE_APK="$(find app/build/outputs/apk/generic/prerelease -type f -name '*universal*.apk' | head -n 1)"
+          [[ -n "$PRERELEASE_APK" ]] || {
+            echo "::error::Universal Kirin Pre-Release APK was not generated."
+            exit 1
+          }
 
-          mkdir -p artifacts/debug artifacts/release
-          cp "$DEBUG_APK" artifacts/debug/KirinDL-Universal-Debug.apk
-          cp "$RELEASE_APK" artifacts/release/KirinDL-Universal-Release.apk
+          mkdir -p artifacts/prerelease
+          cp "$PRERELEASE_APK" artifacts/prerelease/KirinDL-Pre-Release.apk
 
-      - name: Verify Universal Release signature
+      - name: Verify package identity and signature
         shell: bash
+        env:
+          DEV_TAG: ${{ inputs.dev_tag }}
         run: |
           set -euo pipefail
+
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
-          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose --print-certs \
-            artifacts/release/KirinDL-Universal-Release.apk
+          AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+          APK="artifacts/prerelease/KirinDL-Pre-Release.apk"
+          BADGING="$("$AAPT" dump badging "$APK")"
 
-      - name: Generate Universal Release SHA256
+          PACKAGE_ID="$(printf '%s\n' "$BADGING" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
+          VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
+          APP_LABEL="$(printf '%s\n' "$BADGING" | sed -n "s/application-label:'\([^']*\)'.*/\1/p" | head -n 1)"
+          EXPECTED_VERSION="${DEV_TAG#v}"
+
+          if [[ "$PACKAGE_ID" != "com.kirin.downloader.prerelease" ]]; then
+            echo "::error::Wrong package id: '$PACKAGE_ID'. Expected com.kirin.downloader.prerelease"
+            exit 1
+          fi
+
+          if [[ "$VERSION_NAME" != "$EXPECTED_VERSION" ]]; then
+            echo "::error::Wrong version name: '$VERSION_NAME'. Expected '$EXPECTED_VERSION'"
+            exit 1
+          fi
+
+          if [[ "$APP_LABEL" != "Kirin Pre-Release" ]]; then
+            echo "::error::Wrong app label: '$APP_LABEL'. Expected 'Kirin Pre-Release'"
+            exit 1
+          fi
+
+          echo "Verified package: $PACKAGE_ID"
+          echo "Verified version: $VERSION_NAME"
+          echo "Verified label: $APP_LABEL"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+
+      - name: Generate SHA256
         shell: bash
         run: |
           set -euo pipefail
           (
-            cd artifacts/release
-            sha256sum KirinDL-Universal-Release.apk > KirinDL-Universal-Release.apk.sha256
+            cd artifacts/prerelease
+            sha256sum KirinDL-Pre-Release.apk > KirinDL-Pre-Release.apk.sha256
           )
 
-      - name: Upload Universal Debug APK
+      - name: Upload Kirin Pre-Release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KirinDL-Universal-Debug-${{ github.run_number }}
-          path: artifacts/debug/KirinDL-Universal-Debug.apk
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Upload Signed Universal Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: KirinDL-Universal-Release-${{ github.run_number }}
+          name: KirinDL-Pre-Release-${{ github.run_number }}
           path: |
-            artifacts/release/KirinDL-Universal-Release.apk
-            artifacts/release/KirinDL-Universal-Release.apk.sha256
+            artifacts/prerelease/KirinDL-Pre-Release.apk
+            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish DevPatch prerelease
+      - name: Publish Kirin Pre-Release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -141,26 +181,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ ! "$DEV_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-devpatch[0-9]+$ ]]; then
-            echo "::error::Invalid dev tag '$DEV_TAG'. Expected format: v3.1.3-devpatch7"
-            exit 1
-          fi
-
-          RELEASE_TITLE="KirinDL ${DEV_TAG#v}"
-          NOTES_FILE="$RUNNER_TEMP/kirindl-dev-release-notes.md"
+          RELEASE_TITLE="KirinDL ${DEV_TAG#v} Pre-Release"
+          NOTES_FILE="$RUNNER_TEMP/kirindl-prerelease-notes.md"
 
           cat > "$NOTES_FILE" <<EOF_NOTES
-          ## Kirin Build Test
+          ## Kirin Pre-Release
 
-          Development prerelease generated automatically after a successful Kirin Build Test.
+          Test build generated automatically after a successful Kirin Pre-Release workflow.
 
           - Tag: \`$DEV_TAG\`
           - Commit: \`$GITHUB_SHA\`
           - Workflow run: \`#$GITHUB_RUN_NUMBER\`
-          - Signed Universal Release APK verified with Android apksigner.
-          - Debug APK is included for testing only.
+          - Android package: \`com.kirin.downloader.prerelease\`
+          - Stable package remains: \`com.kirin.downloader\`
+          - The Pre-Release APK can be installed beside Stable on the same phone.
+          - Signed APK verified with Android apksigner.
 
-          > Development build. This is not the stable KirinDL release.
+          > Test build only. Installing this APK does not replace the Stable KirinDL app.
           EOF_NOTES
 
           if gh release view "$DEV_TAG" >/dev/null 2>&1; then
@@ -179,9 +216,8 @@ jobs:
           fi
 
           gh release upload "$DEV_TAG" \
-            artifacts/release/KirinDL-Universal-Release.apk \
-            artifacts/release/KirinDL-Universal-Release.apk.sha256 \
-            artifacts/debug/KirinDL-Universal-Debug.apk \
+            artifacts/prerelease/KirinDL-Pre-Release.apk \
+            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256 \
             --clobber
 
       - name: Remove signing material
