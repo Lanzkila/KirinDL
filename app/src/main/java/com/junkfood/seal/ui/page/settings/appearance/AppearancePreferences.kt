@@ -31,6 +31,8 @@ import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -121,6 +123,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     val appSettings by PreferenceUtil.AppSettingsStateFlow.collectAsState()
     var showBodyColorDialog by remember { mutableStateOf(false) }
     var showButtonColorDialog by remember { mutableStateOf(false) }
+    var showGalleryThemeMenu by remember { mutableStateOf(false) }
     var favoriteColorPair by remember { mutableStateOf(PreferenceUtil.getFavoriteColorPair()) }
     val previewDarkTheme = LocalDarkTheme.current.isDarkTheme()
 
@@ -307,13 +310,44 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                     onNavigateTo(Route.LANGUAGES)
                 }
                 PreferenceSubtitle(text = "Gallery DL")
-                GalleryDlThemeStyle.entries.forEach { style ->
+                Box(modifier = Modifier.fillMaxWidth()) {
                     PreferenceItem(
-                        title = style.title,
-                        description = style.description,
-                        icon = if (galleryTheme == style) Icons.Outlined.Check else Icons.Outlined.Palette,
-                        onClick = { GalleryDlThemePreference.setStyle(style) },
+                        title = "Gallery DL appearance",
+                        description = "${galleryTheme.title} — ${galleryTheme.description}",
+                        icon = Icons.Outlined.Palette,
+                        onClick = { showGalleryThemeMenu = true },
                     )
+
+                    DropdownMenu(
+                        expanded = showGalleryThemeMenu,
+                        onDismissRequest = { showGalleryThemeMenu = false },
+                    ) {
+                        GalleryDlThemeStyle.entries.forEach { style ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            text =
+                                                if (galleryTheme == style) {
+                                                    "✓ ${style.title}"
+                                                } else {
+                                                    style.title
+                                                },
+                                        )
+                                        Text(
+                                            text = style.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    GalleryDlThemePreference.setStyle(style)
+                                    showGalleryThemeMenu = false
+                                },
+                            )
+                        }
+                    }
                 }
             }
         },
