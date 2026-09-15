@@ -34,6 +34,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          # setup-android v4 still defaults to the removed legacy `tools` package.
+          # Request only platform-tools; command-line tools are provided by the action.
+          packages: "platform-tools"
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
