@@ -213,25 +213,53 @@ private fun getAudioQualityScore(format: Format): Double {
 }
 
 /**
- * Returns true if [videoInfo] comes from a platform that natively separates video-only
- * and audio-only streams (e.g. YouTube and Reddit). For these platforms the highest-quality
- * video track has no audio and must be merged with a separate audio stream.
+ * Detects whether this item should prefer a separate video + audio pair.
  *
- * All other platforms serve fully-muxed video+audio streams, so the default download
- * should pick the best combined format directly — no merging required.
+ * Do not keep this as a hard-coded YouTube/Reddit list: yt-dlp can expose split streams on
+ * other extractors too (Instagram replay is one real example). First trust yt-dlp's own
+ * requested formats, then inspect the complete format inventory. Instagram gets the split
+ * path whenever both tracks are present because replay posts may expose a video-only stream
+ * whose size is unknown while the audio stream has normal size metadata.
  */
 private fun requiresStreamMerging(videoInfo: VideoInfo): Boolean {
-    val extractor = videoInfo.extractor?.lowercase() ?: ""
+    val requestedFormats =
+        buildList {
+            videoInfo.requestedFormats?.let { addAll(it) }
+            videoInfo.requestedDownloads?.forEach { download ->
+                download.requestedFormats?.let { addAll(it) }
+            }
+        }
+
+    fun List<Format>.containsSplitPair(): Boolean {
+        val hasVideoOnly = any { it.vcodec != "none" && it.acodec == "none" }
+        val hasAudioOnly = any { it.acodec != "none" && it.vcodec == "none" }
+        return hasVideoOnly && hasAudioOnly
+    }
+
+    if (requestedFormats.containsSplitPair()) return true
+
+    val formats = videoInfo.formats.orEmpty()
+    if (!formats.containsSplitPair()) return false
+
+    val hasCombined = formats.any { it.vcodec != "none" && it.acodec != "none" }
+    val extractor = videoInfo.extractor?.lowercase().orEmpty()
     val extractorKey = videoInfo.extractorKey.lowercase()
     val url = (videoInfo.webpageUrl ?: videoInfo.originalUrl ?: "").lowercase()
-    return extractor.contains("youtube") ||
-        extractorKey.contains("youtube") ||
-        extractor.contains("reddit") ||
-        extractorKey.contains("reddit") ||
-        url.contains("youtube.com") ||
-        url.contains("youtu.be") ||
-        url.contains("reddit.com") ||
-        url.contains("redd.it")
+    val isInstagram =
+        extractor.contains("instagram") ||
+            extractorKey.contains("instagram") ||
+            url.contains("instagram.com")
+
+    return isInstagram || !hasCombined
+}
+
+/** Returns an estimated byte size, or null when yt-dlp did not expose enough metadata. */
+private fun estimatedFormatSizeBytes(format: Format, duration: Double): Double? {
+    format.fileSize?.takeIf { it > 0.0 }?.let { return it }
+    format.fileSizeApprox?.takeIf { it > 0.0 }?.let { return it }
+    val bitrate = format.tbr?.takeIf { it > 0.0 } ?: return null
+    if (duration <= 0.0) return null
+    return bitrate * duration * 125.0
 }
 
 private data class FormatConfig(
@@ -269,9 +297,8 @@ fun FormatPage(
 
     var diffSubtitleLanguages by remember { mutableStateOf(emptySet<String>()) }
 
-    // Detect whether this site natively separates video and audio streams.
-    // Only YouTube and Reddit require stream merging; all other sites serve
-    // fully-muxed video+audio and should default to a direct combined download.
+    // Detect split streams from yt-dlp metadata instead of relying only on a site allow-list.
+    // This also covers Instagram Live replay posts when yt-dlp exposes video and audio separately.
     val siteSplitsStreams = requiresStreamMerging(videoInfo)
 
     FormatPageImpl(
@@ -548,8 +575,7 @@ private fun FormatPageImpl(
         }
     }
     
-    // Find highest resolution format from allVideoFormats for suggested section
-    // This will be the best quality format based on resolution sorting
+    // Find highest resolution format from allVideoFormats for the normal fallback path.
     val highestVideoFormat = remember(audioOnly, allVideoFormats) {
         if (!audioOnly && allVideoFormats.isNotEmpty()) {
             allVideoFormats.firstOrNull() // Already sorted by quality, highest quality first
@@ -557,6 +583,21 @@ private fun FormatPageImpl(
             null
         }
     }
+
+    // When yt-dlp says this item uses split streams (or Instagram exposes both tracks), prefer
+    // an actual video-only track here and pair it with the best audio track. Otherwise retain the
+    // best combined format when one is available. This keeps Suggested from silently becoming
+    // audio-only on replay posts.
+    val suggestedVideoFormat =
+        remember(audioOnly, siteSplitsStreams, mergedVideoFormats, highestVideoFormat) {
+            if (audioOnly) {
+                null
+            } else if (siteSplitsStreams) {
+                mergedVideoFormats.maxByOrNull { getQualityScore(it) } ?: highestVideoFormat
+            } else {
+                highestVideoFormat
+            }
+        }
 
     val duration = videoInfo.duration ?: 0.0
 
@@ -567,10 +608,9 @@ private fun FormatPageImpl(
     // Show all video formats by default (including merged high-quality ones)
     var videoAudioItemLimit by remember { mutableIntStateOf(Int.MAX_VALUE) }
 
-    val isSuggestedFormatAvailable =
-        !audioOnly &&
-            (!videoInfo.requestedFormats.isNullOrEmpty() ||
-                !videoInfo.requestedDownloads.isNullOrEmpty())
+    // Suggested must always represent a real video choice. If yt-dlp only returned audio,
+    // do not present that as a video download; the Audio section remains available explicitly.
+    val isSuggestedFormatAvailable = !audioOnly && suggestedVideoFormat != null
 
     var isSuggestedFormatSelected by remember { mutableStateOf(isSuggestedFormatAvailable) }
 
@@ -651,6 +691,7 @@ private fun FormatPageImpl(
         videoAudioFormats,
         bestAudioFormat,
         highestVideoFormat,
+        suggestedVideoFormat,
         audioOnly,
         siteSplitsStreams,
     ) {
@@ -658,58 +699,43 @@ private fun FormatPageImpl(
             mutableListOf<Format>().apply {
                 if (isSuggestedFormatSelected) {
                     if (!audioOnly) {
-                        if (siteSplitsStreams) {
-                            // ── YouTube / Reddit path ────────────────────────────────────────
-                            // These platforms serve high-quality video as a video-only stream.
-                            // We must merge the best video-only track with the best audio track.
-                            if (highestVideoFormat != null) {
-                                val isMergedFormat = mergedVideoFormats.any { it.formatId == highestVideoFormat.formatId }
-                                if (isMergedFormat && bestAudioFormat != null) {
-                                    val originalVideoFormat = videoOnlyFormats.find {
-                                        it.formatId == highestVideoFormat.formatId
-                                    }
-                                    if (originalVideoFormat != null) {
-                                        add(originalVideoFormat)
-                                        add(bestAudioFormat)
-                                    }
-                                } else {
-                                    add(highestVideoFormat)
+                        val candidate = suggestedVideoFormat
+                        if (candidate != null) {
+                            val isMergedFormat =
+                                mergedVideoFormats.any { it.formatId == candidate.formatId }
+                            if (isMergedFormat && bestAudioFormat != null) {
+                                val originalVideoFormat =
+                                    videoOnlyFormats.find { it.formatId == candidate.formatId }
+                                if (originalVideoFormat != null) {
+                                    add(originalVideoFormat)
+                                    add(bestAudioFormat)
+                                } else if (candidate.containsVideo()) {
+                                    // Defensive fallback: never replace a requested video with audio-only.
+                                    add(candidate)
                                 }
-                            } else {
-                                videoInfo.requestedFormats?.let { addAll(it) }
-                                    ?: videoInfo.requestedDownloads?.forEach {
-                                        it.requestedFormats?.let { addAll(it) }
-                                    }
+                            } else if (candidate.containsVideo()) {
+                                add(candidate)
                             }
-                        } else {
-                            // ── All other sites path ─────────────────────────────────────────
-                            // These platforms already provide fully-muxed video+audio streams.
-                            // Prefer the best combined format; only fall back to merging when
-                            // no combined formats exist at all.
-                            val bestCombined = videoAudioFormats
-                                .maxByOrNull { getQualityScore(it) }
-                            if (bestCombined != null) {
-                                // Direct combined stream — no merging needed.
-                                add(bestCombined)
-                            } else if (highestVideoFormat != null) {
-                                // No combined formats available: fall back to merge.
-                                val isMergedFormat = mergedVideoFormats.any { it.formatId == highestVideoFormat.formatId }
-                                if (isMergedFormat && bestAudioFormat != null) {
-                                    val originalVideoFormat = videoOnlyFormats.find {
-                                        it.formatId == highestVideoFormat.formatId
+                        }
+
+                        // Defensive fallback for unusual extractor metadata. Only copy requested
+                        // formats when they actually contain video; never let Suggested silently
+                        // degrade into an audio-only job.
+                        if (none { it.containsVideo() }) {
+                            val requested =
+                                buildList {
+                                    videoInfo.requestedFormats?.let { addAll(it) }
+                                    videoInfo.requestedDownloads?.forEach { download ->
+                                        download.requestedFormats?.let { addAll(it) }
                                     }
-                                    if (originalVideoFormat != null) {
-                                        add(originalVideoFormat)
-                                        add(bestAudioFormat)
-                                    }
-                                } else {
-                                    add(highestVideoFormat)
                                 }
-                            } else {
-                                videoInfo.requestedFormats?.let { addAll(it) }
-                                    ?: videoInfo.requestedDownloads?.forEach {
-                                        it.requestedFormats?.let { addAll(it) }
-                                    }
+                            val requestedVideo = requested.filter { it.containsVideo() }
+                            if (requestedVideo.isNotEmpty()) {
+                                addAll(requestedVideo)
+                                val needsAudio = requestedVideo.any { it.isVideoOnly() }
+                                if (needsAudio && none { it.containsAudio() }) {
+                                    bestAudioFormat?.let { add(it) }
+                                }
                             }
                         }
                     } else {
@@ -923,13 +949,15 @@ private fun FormatPageImpl(
                             formatList.firstNotNullOfOrNull { extractResolution(it) }
                                 ?.let { (w, h) -> "${w}\u00d7${h}" }
                         }
-                    val totalSize =
+                    val totalSizeText =
                         remember(formatList, duration) {
-                            formatList.sumOf { f ->
-                                f.fileSize ?: f.fileSizeApprox ?: (f.tbr?.times(duration * 125) ?: 0.0)
+                            val estimates = formatList.map { estimatedFormatSizeBytes(it, duration) }
+                            if (estimates.isEmpty() || estimates.any { it == null }) {
+                                "Unknown size"
+                            } else {
+                                estimates.filterNotNull().sum().toFileSizeText()
                             }
                         }
-                    val totalSizeText = totalSize.toFileSizeText()
                     val extText = remember(formatList) { formatList.firstOrNull()?.ext?.uppercase() }
 
                     SelectionSummaryCard(
@@ -1116,20 +1144,17 @@ private fun FormatPageImpl(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        // Display the highest format from allVideoFormats (merged format)
-                        val displayFormat = if (highestVideoFormat != null && !audioOnly) {
-                            // Check if it's a merged format to show proper info
-                            val isMergedFormat = mergedVideoFormats.any { it.formatId == highestVideoFormat.formatId }
-                            
+                        // Mirror the exact Suggested choice that will be sent to TaskFactory.
+                        val displayFormat = if (suggestedVideoFormat != null && !audioOnly) {
+                            val isMergedFormat =
+                                mergedVideoFormats.any { it.formatId == suggestedVideoFormat.formatId }
+
                             if (isMergedFormat && bestAudioFormat != null) {
-                                // Show as merged format (video + audio)
-                                val originalVideoFormat = videoOnlyFormats.find { 
-                                    it.formatId == highestVideoFormat.formatId 
-                                }
+                                val originalVideoFormat =
+                                    videoOnlyFormats.find { it.formatId == suggestedVideoFormat.formatId }
                                 listOfNotNull(originalVideoFormat, bestAudioFormat)
                             } else {
-                                // Original combined format
-                                listOf(highestVideoFormat)
+                                listOf(suggestedVideoFormat)
                             }
                         } else null
                         

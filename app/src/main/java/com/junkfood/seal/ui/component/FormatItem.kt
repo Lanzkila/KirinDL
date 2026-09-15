@@ -287,17 +287,24 @@ fun SuggestedFormatItem(
     val duration = videoInfo.duration ?: 0.0
 
     val containsVideo = requestedFormats.any { it.containsVideo() }
-    val containsAudio = requestedFormats.any { it.containsVideo() }
+    val containsAudio = requestedFormats.any { it.containsAudio() }
 
     val title = requestedFormats.joinToString(separator = " + ") { it.toDisplayTitle() }
 
-    val totalFileSize =
-        requestedFormats.fold(initial = 0.0) { acc: Double, format: Format ->
-            acc +
-                (format.fileSize ?: format.fileSizeApprox ?: (duration * (format.tbr ?: 0.0) * 125))
-            // kbps -> bytes 1000/8
+    val sizeEstimates =
+        requestedFormats.map { format ->
+            format.fileSize?.takeIf { it > 0.0 }
+                ?: format.fileSizeApprox?.takeIf { it > 0.0 }
+                ?: format.tbr?.takeIf { it > 0.0 }
+                    ?.takeIf { duration > 0.0 }
+                    ?.let { bitrate -> duration * bitrate * 125.0 }
         }
-    val fileSizeText = totalFileSize.toFileSizeText()
+    val fileSizeText =
+        if (sizeEstimates.isEmpty() || sizeEstimates.any { it == null }) {
+            "Unknown size"
+        } else {
+            sizeEstimates.filterNotNull().sum().toFileSizeText()
+        }
 
     val totalTbr =
         requestedFormats.fold(initial = 0.0) { acc: Double, format: Format ->
@@ -360,8 +367,13 @@ fun FormatItem(
                 else -> "%.2f Mbps".format(tbr / 1024f)
             }
 
-        val fileSize = fileSize ?: fileSizeApprox ?: (tbr?.times(duration * 125))
-        val fileSizeText = fileSize.toFileSizeText()
+        val estimatedSize =
+            fileSize?.takeIf { it > 0.0 }
+                ?: fileSizeApprox?.takeIf { it > 0.0 }
+                ?: tbr?.takeIf { it > 0.0 }
+                    ?.takeIf { duration > 0.0 }
+                    ?.times(duration * 125.0)
+        val fileSizeText = estimatedSize?.toFileSizeText() ?: "Unknown size"
 
         val firstLineText = connectWithDelimiter(fileSizeText, tbrText, delimiter = " ")
 
