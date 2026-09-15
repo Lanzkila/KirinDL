@@ -949,15 +949,18 @@ private fun FormatPageImpl(
                             formatList.firstNotNullOfOrNull { extractResolution(it) }
                                 ?.let { (w, h) -> "${w}\u00d7${h}" }
                         }
-                    val totalSizeText =
+                    val totalSizeBytes =
                         remember(formatList, duration) {
                             val estimates = formatList.map { estimatedFormatSizeBytes(it, duration) }
                             if (estimates.isEmpty() || estimates.any { it == null }) {
-                                "Unknown size"
+                                null
                             } else {
-                                estimates.filterNotNull().sum().toFileSizeText()
+                                estimates.filterNotNull().sum()
                             }
                         }
+                    // toFileSizeText() reads Compose string resources, so it must run in the
+                    // @Composable body rather than inside remember's non-composable calculation.
+                    val totalSizeText = totalSizeBytes?.toFileSizeText() ?: "Unknown size"
                     val extText = remember(formatList) { formatList.firstOrNull()?.ext?.uppercase() }
 
                     SelectionSummaryCard(
