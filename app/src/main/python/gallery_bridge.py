@@ -1,4 +1,4 @@
-"""Chaquopy bridge for KirinDownloader's optional Codeberg gallery-dl engine.
+"""Chaquopy bridge for KirinDL's optional Codeberg gallery-dl engine.
 
 The upstream gallery-dl package remains untouched. This bridge supplies Android paths, persistent
 configuration/cache files, safe output confinement, extractor preflight, and runtime diagnostics.
@@ -323,6 +323,8 @@ def inspect_url(
         queue_count = 0
         media_kinds = set()
         preview_items = []
+        queued_preview_items = []
+        queued_preview_urls = set()
         hit_limit = False
         preflight_status = "ready"
         preflight_error = ""
@@ -407,12 +409,62 @@ def inspect_url(
                     queue_count += 1
                     emitted_count += 1
 
+                    # Many gallery-dl collection/profile extractors emit Queue messages rather
+                    # than direct media URLs. Global Feed used to count those entries but throw
+                    # away their URLs, which made a fully supported source look empty. Preserve
+                    # queue targets as generic preview items. No media download is started here.
+                    target_url = str(target or "").strip()
+                    if (
+                        target_url.startswith(("https://", "http://"))
+                        and target_url not in queued_preview_urls
+                        and len(queued_preview_items) < 24
+                    ):
+                        item_data = data if isinstance(data, dict) else {}
+                        item_title = _pick_text(
+                            item_data,
+                            (
+                                "title", "post_title", "gallery_title", "album",
+                                "collection", "name", "filename", "id",
+                            ),
+                        )
+                        item_creator = _pick_text(
+                            item_data,
+                            (
+                                "username", "user_name", "author", "artist", "uploader",
+                                "owner", "account", "user",
+                            ),
+                        )
+                        item_thumb = _pick_text(
+                            item_data,
+                            (
+                                "thumbnail", "thumbnail_url", "preview", "preview_url",
+                                "cover", "cover_url", "poster", "poster_url",
+                            ),
+                        )
+                        if not item_thumb.startswith(("https://", "http://")):
+                            item_thumb = ""
+                        queued_preview_urls.add(target_url)
+                        queued_preview_items.append(
+                            {
+                                "id": str(item_data.get("id") or target_url),
+                                "title": item_title or ("Item %d" % (len(queued_preview_items) + 1)),
+                                "url": target_url,
+                                "thumbnail": item_thumb,
+                                "creator": item_creator,
+                            }
+                        )
+
                 if emitted_count >= _PREVIEW_SCAN_LIMIT:
                     hit_limit = True
                     break
         except Exception as exc:
             preflight_status = _classify_preflight_error(exc)
             preflight_error = "%s: %s" % (type(exc).__name__, str(exc))
+
+        # Queue-only extractors are valid gallery-dl sources too. Use their queued child URLs as
+        # feed cards only when no direct media preview was emitted by the parent extractor.
+        if not preview_items and queued_preview_items:
+            preview_items.extend(queued_preview_items[:24])
 
         if "image" in media_kinds and "video" in media_kinds:
             media_type = "Mixed media"

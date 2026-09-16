@@ -76,6 +76,7 @@ import com.junkfood.seal.ui.component.SealDialog
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel.Action
 import com.junkfood.seal.ui.theme.ErrorTonalPalettes
 import com.junkfood.seal.util.findURLsFromString
+import com.junkfood.seal.util.resolveFirstUrlFromInput
 
 @Composable
 fun InputUrlPage(
@@ -143,7 +144,7 @@ private fun InputUrlPageImpl(
     fun normalizedInput(value: String): String {
         val trimmed = value.trim()
         if (trimmed.isBlank()) return ""
-        return findURLsFromString(trimmed).firstOrNull() ?: trimmed
+        return resolveFirstUrlFromInput(trimmed) ?: trimmed
     }
 
     Column(modifier = modifier) {

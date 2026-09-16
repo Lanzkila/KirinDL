@@ -332,8 +332,8 @@ fun SavedSourcesPage(
                 onQueue = { queueUrls(listOf(it)) },
                 onConfigureSelected = { configureUrls(selectedUrls.toList()) },
                 onQueueSelected = { queueUrls(selectedUrls.toList()) },
-                onOpenGallery = { source ->
-                    GalleryDlBehaviorPreference.setPendingHomeUrl(source.url)
+                onOpenGallery = { url ->
+                    GalleryDlBehaviorPreference.setPendingHomeUrl(url)
                     onNavigateToGalleryDl()
                 },
                 onClearSelection = { selectedUrls.clear() },
@@ -807,7 +807,7 @@ private fun SavedSourceBrowser(
     onQueue: (String) -> Unit,
     onConfigureSelected: () -> Unit,
     onQueueSelected: () -> Unit,
-    onOpenGallery: (SavedSourceStore.SavedSource) -> Unit,
+    onOpenGallery: (String) -> Unit,
     onClearSelection: () -> Unit,
     onRetry: () -> Unit,
     onOpen: (String) -> Unit,
@@ -878,7 +878,7 @@ private fun SavedSourceBrowser(
         if (engineUsed == SavedSourceStore.SourceEngine.GALLERY_DL && !loading) {
             item {
                 FilledTonalButton(
-                    onClick = { onOpenGallery(source) },
+                    onClick = { onOpenGallery(source.url) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Open this source in Gallery DL")
@@ -895,7 +895,7 @@ private fun SavedSourceBrowser(
                 ) {
                     Column {
                         Text(
-                            "${items.size} media items",
+                            "${items.size} items",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -935,7 +935,7 @@ private fun SavedSourceBrowser(
                     onOpen = { onOpen(item.url) },
                     onCopy = { onCopy(item.url) },
                     galleryMode = engineUsed == SavedSourceStore.SourceEngine.GALLERY_DL,
-                    onGallery = { onOpenGallery(source) },
+                    onGallery = { onOpenGallery(item.url) },
                 )
             }
         }
@@ -1079,7 +1079,7 @@ private fun SavedSourceMediaCard(
                 ) {
                     if (galleryMode) {
                         FilledTonalButton(onClick = onGallery) {
-                            Text("Open Gallery DL")
+                            Text("Open in Gallery DL")
                         }
                     } else {
                         Button(onClick = onConfigure) {

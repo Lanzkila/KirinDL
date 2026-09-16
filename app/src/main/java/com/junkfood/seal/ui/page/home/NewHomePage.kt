@@ -151,7 +151,6 @@ import com.junkfood.seal.ui.theme.GradientDarkColors
 import com.junkfood.seal.util.DatabaseUtil
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
-import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import com.junkfood.seal.util.GalleryDlStore
 import com.junkfood.seal.util.HOME_RECENT_LIMIT
 import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
@@ -166,7 +165,7 @@ import java.io.File
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
 import com.junkfood.seal.util.makeToast
-import com.junkfood.seal.util.matchUrlFromClipboard
+import com.junkfood.seal.util.resolveFirstUrlFromInput
 import com.junkfood.seal.util.SPONSOR_DIALOG_FREQUENCY
 import com.junkfood.seal.util.SPONSOR_DIALOG_LAST_SHOWN
 import com.junkfood.seal.util.SPONSOR_FREQ_OFF
@@ -230,14 +229,13 @@ fun NewHomePage(
     
     var showExitDialog by remember { mutableStateOf(false) }
     var urlText by remember { mutableStateOf("") }
-    var galleryUrlText by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     // Pre-fill URL from share intent
     val sharedUrl by dialogViewModel.sharedUrlFlow.collectAsState()
     LaunchedEffect(sharedUrl) {
         if (sharedUrl.isNotBlank()) {
-            urlText = sharedUrl
+            urlText = resolveFirstUrlFromInput(sharedUrl) ?: sharedUrl.trim()
             dialogViewModel.consumeSharedUrl()
         }
     }
@@ -859,7 +857,7 @@ fun NewHomePage(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // KirinDownloader branding
+            // KirinDL branding
             item {
                 Box(
                     modifier = Modifier
@@ -868,7 +866,7 @@ fun NewHomePage(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "KirinDownloader",
+                        text = "KirinDL",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -927,60 +925,33 @@ fun NewHomePage(
             item {
                 URLInputField(
                     value = urlText,
+                    // Keep native Android editing intact. Paste/Autofill is allowed to place raw
+                    // clipboard text here; the resolver runs only when the user submits it.
                     onValueChange = { urlText = it },
                     onDownloadClick = {
-                        if (urlText.isNotBlank()) {
-                            view.slightHapticFeedback()
-                            dialogViewModel.postAction(Action.ShowSheet(listOf(urlText)))
-                            urlText = ""
-                            keyboardController?.hide()
-                        } else {
-                            context.makeToast(R.string.url_empty)
+                        val resolvedUrl = resolveFirstUrlFromInput(urlText)
+                        when {
+                            resolvedUrl != null -> {
+                                view.slightHapticFeedback()
+                                dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
+                                urlText = ""
+                                keyboardController?.hide()
+                            }
+                            urlText.isBlank() -> context.makeToast(R.string.url_empty)
+                            else -> context.makeToast("Could not detect a valid URL")
                         }
                     },
                     onPasteClick = {
-                        val clipText = clipboardManager.getText()?.text
-                        if (clipText != null) {
-                            context.matchUrlFromClipboard(clipText)?.let { url ->
-                                urlText = url
-                                context.makeToast(R.string.paste_msg)
-                            } ?: context.makeToast(R.string.paste_fail_msg)
+                        val clipText = clipboardManager.getText()?.text.orEmpty()
+                        val resolvedUrl = resolveFirstUrlFromInput(clipText)
+                        if (resolvedUrl != null) {
+                            urlText = resolvedUrl
+                            context.makeToast(R.string.paste_msg)
+                        } else {
+                            context.makeToast(R.string.paste_fail_msg)
                         }
                     },
                     onClearClick = { urlText = "" },
-                    animatePlaceholder = animateUrlHints,
-                )
-            }
-            item {
-                HomeInputDivider("Gallery DL")
-            }
-
-            item {
-                URLInputField(
-                    value = galleryUrlText,
-                    onValueChange = { galleryUrlText = it },
-                    placeholderText = "Enter Gallery DL URL",
-                    onDownloadClick = {
-                        if (galleryUrlText.isNotBlank()) {
-                            view.slightHapticFeedback()
-                            GalleryDlBehaviorPreference.setPendingHomeUrl(galleryUrlText)
-                            galleryUrlText = ""
-                            keyboardController?.hide()
-                            onNavigateToGalleryDl()
-                        } else {
-                            context.makeToast(R.string.url_empty)
-                        }
-                    },
-                    onPasteClick = {
-                        val clipText = clipboardManager.getText()?.text?.trim()
-                        if (!clipText.isNullOrBlank()) {
-                            context.matchUrlFromClipboard(clipText)?.let { url ->
-                                galleryUrlText = url
-                                context.makeToast(R.string.paste_msg)
-                            } ?: context.makeToast(R.string.paste_fail_msg)
-                        }
-                    },
-                    onClearClick = { galleryUrlText = "" },
                     animatePlaceholder = animateUrlHints,
                 )
             }

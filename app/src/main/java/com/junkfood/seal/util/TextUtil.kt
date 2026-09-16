@@ -74,20 +74,60 @@ fun ClosedFloatingPointRange<Float>.toIntRange() =
 fun String?.toHttpsUrl(): String =
     this?.run { if (matches(Regex("^(http:).*"))) replaceFirst("http", "https") else this } ?: ""
 
+private fun sanitizeUrlInputText(input: String): String =
+    input
+        .filterNot { ch ->
+            ch == '\u200B' ||
+                ch == '\u200C' ||
+                ch == '\u200D' ||
+                ch == '\u2060' ||
+                ch == '\uFEFF'
+        }
+        .trim()
+
+/**
+ * Resolve the first HTTP(S) URL from text entered through typing, Android's native Paste/Autofill,
+ * share intents, or KirinDL's explicit paste button. The text field itself stays untouched while
+ * editing so native selection/cursor behaviour is never intercepted.
+ */
+fun resolveFirstUrlFromInput(input: String): String? {
+    val sanitized = sanitizeUrlInputText(input)
+    if (sanitized.isBlank()) return null
+
+    findURLsFromString(sanitized, firstMatchOnly = true).firstOrNull()?.let { return it }
+
+    // Fallback for an otherwise valid HTTP(S) URL containing characters outside the lightweight
+    // regex (for example a Unicode path). Keep this intentionally strict to one whitespace-free
+    // token so surrounding clipboard text is never sent to an extractor as part of the URL.
+    return sanitized
+        .lineSequence()
+        .map(String::trim)
+        .firstOrNull { line ->
+            !line.any { it.isWhitespace() } &&
+                (line.startsWith("https://", ignoreCase = true) ||
+                    line.startsWith("http://", ignoreCase = true))
+        }
+}
+
 fun Context.matchUrlFromClipboard(string: String, isMatchingMultiLink: Boolean = false): String {
-    findURLsFromString(string, !isMatchingMultiLink).joinToString(separator = "\n").run {
-        if (isEmpty()) makeToast(R.string.paste_fail_msg)
-        else makeToast(R.string.paste_msg)
-        return this
-    }
+    val sanitized = sanitizeUrlInputText(string)
+    val matched =
+        if (isMatchingMultiLink) {
+            findURLsFromString(sanitized).distinct().joinToString(separator = "\n")
+        } else {
+            resolveFirstUrlFromInput(sanitized).orEmpty()
+        }
+
+    if (matched.isEmpty()) makeToast(R.string.paste_fail_msg)
+    else makeToast(R.string.paste_msg)
+    return matched
 }
 
 fun Context.matchUrlFromSharedText(s: String): String {
-    findURLsFromString(s, true).joinToString(separator = "\n").run {
-        if (isEmpty()) makeToast(R.string.share_fail_msg)
-        //            else makeToast(R.string.share_success_msg)
-        return this
-    }
+    val matched = resolveFirstUrlFromInput(s).orEmpty()
+    if (matched.isEmpty()) makeToast(R.string.share_fail_msg)
+    //            else makeToast(R.string.share_success_msg)
+    return matched
 }
 
 fun Number?.toBitrateText(): String {
@@ -105,7 +145,7 @@ fun getErrorReport(th: Throwable, url: String): String =
 
 fun findURLsFromString(input: String, firstMatchOnly: Boolean = false): List<String> {
     val result = mutableListOf<String>()
-    val pattern = Pattern.compile(URL_REGEX_PATTERN)
+    val pattern = Pattern.compile(URL_REGEX_PATTERN, Pattern.CASE_INSENSITIVE)
 
     with(pattern.matcher(input)) {
         if (!firstMatchOnly) {
