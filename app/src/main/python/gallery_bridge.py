@@ -322,6 +322,7 @@ def inspect_url(
         url_count = 0
         queue_count = 0
         media_kinds = set()
+        preview_items = []
         hit_limit = False
         preflight_status = "ready"
         preflight_error = ""
@@ -375,6 +376,33 @@ def inspect_url(
                         media_kinds.add("video")
                     elif extension:
                         media_kinds.add("other")
+
+                    target_url = str(target or "")
+                    if target_url.startswith(("https://", "http://")) and len(preview_items) < 24:
+                        item_data = data if isinstance(data, dict) else {}
+                        item_title = _pick_text(
+                            item_data,
+                            ("title", "post_title", "filename", "name", "id"),
+                        )
+                        item_creator = _pick_text(
+                            item_data,
+                            ("username", "author", "artist", "uploader", "owner", "user"),
+                        )
+                        item_thumb = _pick_text(
+                            item_data,
+                            ("thumbnail", "thumbnail_url", "preview", "preview_url", "cover", "cover_url"),
+                        )
+                        if not item_thumb.startswith(("https://", "http://")):
+                            item_thumb = target_url if extension in _IMAGE_EXTENSIONS else ""
+                        preview_items.append(
+                            {
+                                "id": str(item_data.get("id") or target_url),
+                                "title": item_title or ("Media %d" % len(preview_items)),
+                                "url": target_url,
+                                "thumbnail": item_thumb,
+                                "creator": item_creator,
+                            }
+                        )
                 elif message == Message.Queue:
                     queue_count += 1
                     emitted_count += 1
@@ -431,6 +459,7 @@ def inspect_url(
                 "cookies_loaded": cookies_loaded,
                 "preflight_status": preflight_status,
                 "preflight_error": preflight_error,
+                "preview_items": preview_items,
                 "error": preflight_error,
             },
             ensure_ascii=False,
@@ -457,6 +486,7 @@ def inspect_url(
                 "cookies_loaded": False,
                 "preflight_status": "extractor_error",
                 "preflight_error": "%s: %s" % (type(exc).__name__, str(exc)),
+                "preview_items": [],
                 "error": "%s: %s" % (type(exc).__name__, str(exc)),
             },
             ensure_ascii=False,

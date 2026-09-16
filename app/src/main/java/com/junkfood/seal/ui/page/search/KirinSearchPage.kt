@@ -317,7 +317,7 @@ fun KirinSearchPage(
                     IconButton(onClick = onNavigateToSavedSources) {
                         Icon(
                             imageVector = Icons.Outlined.PlaylistPlay,
-                            contentDescription = "Saved Sources",
+                            contentDescription = "Global Feed",
                         )
                     }
                     IconButton(onClick = onNavigateToDownloads) {
@@ -517,7 +517,7 @@ fun KirinSearchPage(
                             )
                         }
                         Text(
-                            "Playlist and Channel collections open in Saved Sources so Kirin Search stays video-first.",
+                            "Collections and gallery sources open in Global Feed so Kirin Search stays video-first.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

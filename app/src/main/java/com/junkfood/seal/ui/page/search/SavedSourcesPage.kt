@@ -83,6 +83,7 @@ import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel.Action
 import com.junkfood.seal.util.DownloadUtil
+import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import com.junkfood.seal.util.SavedSourceStore
 import com.junkfood.seal.util.SavedSourcesEngine
 import com.junkfood.seal.util.makeToast
@@ -96,6 +97,7 @@ fun SavedSourcesPage(
     dialogViewModel: DownloadDialogViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToDownloads: () -> Unit,
+    onNavigateToGalleryDl: () -> Unit,
     onConfigureUrls: (List<String>) -> Unit,
 ) {
     val context = LocalContext.current
@@ -118,6 +120,7 @@ fun SavedSourcesPage(
     var browseCreator by remember { mutableStateOf("") }
     var browseFromCache by remember { mutableStateOf(false) }
     var browseCacheStale by remember { mutableStateOf(false) }
+    var browseEngineUsed by remember { mutableStateOf(SavedSourceStore.SourceEngine.AUTO) }
     var refreshRevision by remember { mutableStateOf(0) }
     val selectedUrls = remember { mutableStateListOf<String>() }
 
@@ -179,6 +182,7 @@ fun SavedSourcesPage(
         browseCreator = ""
         browseFromCache = false
         browseCacheStale = false
+        browseEngineUsed = source.engine
         refreshRevision = 0
         selectedSourceId = source.id
     }
@@ -188,6 +192,7 @@ fun SavedSourcesPage(
         browseItems = emptyList()
         browseError = ""
         browseCacheStale = false
+        browseEngineUsed = SavedSourceStore.SourceEngine.AUTO
         selectedUrls.clear()
         sourceRevision += 1
     }
@@ -214,6 +219,7 @@ fun SavedSourcesPage(
                 browseCreator = result.creator
                 browseFromCache = result.fromCache
                 browseCacheStale = result.cacheStale
+                browseEngineUsed = result.engineUsed
                 selectedUrls.clear()
                 sourceRevision += 1
                 browseError =
@@ -235,7 +241,7 @@ fun SavedSourcesPage(
                 title = {
                     Text(
                         if (selectedSource != null) browseTitle.ifBlank { selectedSource.displayTitle }
-                        else "Saved Sources",
+                        else "Global Feed",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -255,7 +261,7 @@ fun SavedSourcesPage(
                         }
                     } else {
                         IconButton(onClick = { showAddDialog = true }) {
-                            Icon(Icons.Outlined.Add, contentDescription = "Add source")
+                            Icon(Icons.Outlined.Add, contentDescription = "Add Global Feed source")
                         }
                     }
                     IconButton(onClick = onNavigateToDownloads) {
@@ -310,6 +316,7 @@ fun SavedSourcesPage(
                 creator = browseCreator,
                 fromCache = browseFromCache,
                 cacheStale = browseCacheStale,
+                engineUsed = browseEngineUsed,
                 items = browseItems,
                 loading = browseLoading,
                 errorText = browseError,
@@ -325,6 +332,10 @@ fun SavedSourcesPage(
                 onQueue = { queueUrls(listOf(it)) },
                 onConfigureSelected = { configureUrls(selectedUrls.toList()) },
                 onQueueSelected = { queueUrls(selectedUrls.toList()) },
+                onOpenGallery = { source ->
+                    GalleryDlBehaviorPreference.setPendingHomeUrl(source.url)
+                    onNavigateToGalleryDl()
+                },
                 onClearSelection = { selectedUrls.clear() },
                 onRetry = { refreshRevision += 1 },
                 onOpen = { url ->
@@ -343,7 +354,7 @@ fun SavedSourcesPage(
     if (showAddDialog) {
         AddSourceDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { url, nickname ->
+            onAdd = { url, nickname, sourceEngine ->
                 val kind = SavedSourcesEngine.classifySourceUrl(url)
                 if (kind == null) {
                     SavedSourcesEngine.validationMessage(url)
@@ -352,7 +363,14 @@ fun SavedSourcesPage(
                     if (duplicate != null) {
                         "Already saved as ${duplicate.displayTitle}"
                     } else {
-                        val source = SavedSourceStore.addSource(context, url, kind, nickname)
+                        val source =
+                            SavedSourceStore.addSource(
+                                context = context,
+                                url = url,
+                                kind = kind,
+                                customName = nickname,
+                                engine = sourceEngine,
+                            )
                         sourceRevision += 1
                         showAddDialog = false
                         openSource(source)
@@ -469,7 +487,7 @@ private fun SavedSourcesList(
                     ) {
                         Icon(Icons.Outlined.FolderOpen, contentDescription = null)
                         Text(
-                            if (totalCount == 0) "No saved sources yet" else "No matching sources",
+                            if (totalCount == 0) "No Global Feed sources yet" else "No matching sources",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -565,19 +583,19 @@ private fun SavedSourcesIntroCard(onAdd: () -> Unit) {
                 Icon(Icons.Outlined.PlaylistPlay, contentDescription = null)
                 Column {
                     Text(
-                        "Saved Sources",
+                        "Global Feed",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        "Your own channel and playlist browser — not a feed.",
+                        "Browse saved feeds, channels, playlists, collections and galleries.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             Text(
-                "Only collection URLs can be saved. Direct video URLs stay in Home or Kirin Search.",
+                "Supports HTTP(S) collection sources through yt-dlp or gallery-dl. Direct single-video URLs stay in Home or Kirin Search.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             FilledTonalButton(onClick = onAdd) {
@@ -672,7 +690,7 @@ private fun SavedSourceCard(
                     )
                 }
                 Text(
-                    source.kind.label,
+                    "${source.kind.label} • ${source.engine.label}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -779,6 +797,7 @@ private fun SavedSourceBrowser(
     creator: String,
     fromCache: Boolean,
     cacheStale: Boolean,
+    engineUsed: SavedSourceStore.SourceEngine,
     items: List<SavedSourceStore.SourceItem>,
     loading: Boolean,
     errorText: String,
@@ -788,6 +807,7 @@ private fun SavedSourceBrowser(
     onQueue: (String) -> Unit,
     onConfigureSelected: () -> Unit,
     onQueueSelected: () -> Unit,
+    onOpenGallery: (SavedSourceStore.SavedSource) -> Unit,
     onClearSelection: () -> Unit,
     onRetry: () -> Unit,
     onOpen: (String) -> Unit,
@@ -806,6 +826,7 @@ private fun SavedSourceBrowser(
                 fromCache = fromCache,
                 cacheStale = cacheStale,
                 itemCount = items.size,
+                engineUsed = engineUsed,
             )
         }
 
@@ -824,7 +845,7 @@ private fun SavedSourceBrowser(
                         Column {
                             Text("Opening source…", fontWeight = FontWeight.SemiBold)
                             Text(
-                                "Reading ${source.kind.label} with yt-dlp",
+                                "Reading ${source.kind.label} with ${if (engineUsed == SavedSourceStore.SourceEngine.AUTO) source.engine.label else engineUsed.label}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -854,6 +875,17 @@ private fun SavedSourceBrowser(
             }
         }
 
+        if (engineUsed == SavedSourceStore.SourceEngine.GALLERY_DL && !loading) {
+            item {
+                FilledTonalButton(
+                    onClick = { onOpenGallery(source) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Open this source in Gallery DL")
+                }
+            }
+        }
+
         if (items.isNotEmpty()) {
             item {
                 Row(
@@ -879,7 +911,7 @@ private fun SavedSourceBrowser(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        if (selectedUrls.isNotEmpty()) {
+                        if (selectedUrls.isNotEmpty() && engineUsed != SavedSourceStore.SourceEngine.GALLERY_DL) {
                             TextButton(onClick = onClearSelection) { Text("Clear") }
                             OutlinedButton(onClick = onConfigureSelected) {
                                 Text("Configure ${selectedUrls.size}")
@@ -902,6 +934,8 @@ private fun SavedSourceBrowser(
                     onQueue = { onQueue(item.url) },
                     onOpen = { onOpen(item.url) },
                     onCopy = { onCopy(item.url) },
+                    galleryMode = engineUsed == SavedSourceStore.SourceEngine.GALLERY_DL,
+                    onGallery = { onOpenGallery(source) },
                 )
             }
         }
@@ -918,6 +952,7 @@ private fun BrowserHeaderCard(
     fromCache: Boolean,
     cacheStale: Boolean,
     itemCount: Int,
+    engineUsed: SavedSourceStore.SourceEngine,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -946,7 +981,11 @@ private fun BrowserHeaderCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    creator.ifBlank { source.kind.label },
+                    buildString {
+                        append(creator.ifBlank { source.kind.label })
+                        append(" • ")
+                        append(if (engineUsed == SavedSourceStore.SourceEngine.AUTO) source.engine.label else engineUsed.label)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -969,6 +1008,8 @@ private fun SavedSourceMediaCard(
     onQueue: () -> Unit,
     onOpen: () -> Unit,
     onCopy: () -> Unit,
+    galleryMode: Boolean = false,
+    onGallery: () -> Unit = {},
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -984,16 +1025,18 @@ private fun SavedSourceMediaCard(
                     modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
                     contentScale = ContentScale.Crop,
                 )
-                Surface(
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                ) {
-                    Checkbox(
-                        checked = selected,
-                        onCheckedChange = onSelectedChange,
-                        modifier = Modifier.size(38.dp),
-                    )
+                if (!galleryMode) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    ) {
+                        Checkbox(
+                            checked = selected,
+                            onCheckedChange = onSelectedChange,
+                            modifier = Modifier.size(38.dp),
+                        )
+                    }
                 }
                 item.durationSeconds?.let { duration ->
                     Surface(
@@ -1034,11 +1077,17 @@ private fun SavedSourceMediaCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(onClick = onConfigure) {
-                        Icon(Icons.Outlined.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(" Configure")
+                    if (galleryMode) {
+                        FilledTonalButton(onClick = onGallery) {
+                            Text("Open Gallery DL")
+                        }
+                    } else {
+                        Button(onClick = onConfigure) {
+                            Icon(Icons.Outlined.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text(" Configure")
+                        }
+                        FilledTonalButton(onClick = onQueue) { Text("Queue") }
                     }
-                    FilledTonalButton(onClick = onQueue) { Text("Queue") }
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
                             Icon(Icons.Outlined.MoreVert, contentDescription = "More actions")
@@ -1074,19 +1123,21 @@ private fun SavedSourceMediaCard(
 @Composable
 private fun AddSourceDialog(
     onDismiss: () -> Unit,
-    onAdd: (url: String, nickname: String) -> String?,
+    onAdd: (url: String, nickname: String, engine: SavedSourceStore.SourceEngine) -> String?,
 ) {
     var url by remember { mutableStateOf("") }
     var nickname by remember { mutableStateOf("") }
+    var sourceEngine by remember { mutableStateOf(SavedSourceStore.SourceEngine.AUTO) }
+    var engineMenuExpanded by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Saved Source") },
+        title = { Text("Add Global Feed Source") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Channel / playlist / collection URLs only. Direct video URLs are intentionally rejected.",
+                    "Add a feed, channel, playlist, collection or gallery URL. Auto tries yt-dlp first, then gallery-dl.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1107,6 +1158,26 @@ private fun AddSourceDialog(
                     label = { Text("Nickname (optional)") },
                     singleLine = true,
                 )
+                Box {
+                    OutlinedButton(onClick = { engineMenuExpanded = true }) {
+                        Text("Engine: ${sourceEngine.label}")
+                    }
+                    DropdownMenu(
+                        expanded = engineMenuExpanded,
+                        onDismissRequest = { engineMenuExpanded = false },
+                    ) {
+                        SavedSourceStore.SourceEngine.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label) },
+                                onClick = {
+                                    sourceEngine = option
+                                    engineMenuExpanded = false
+                                    errorText = ""
+                                },
+                            )
+                        }
+                    }
+                }
                 if (errorText.isNotBlank()) {
                     Text(
                         errorText,
@@ -1119,7 +1190,7 @@ private fun AddSourceDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val error = onAdd(url.trim(), nickname.trim())
+                    val error = onAdd(url.trim(), nickname.trim(), sourceEngine)
                     if (error != null) errorText = error
                 },
                 enabled = url.isNotBlank(),

@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
@@ -57,11 +56,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.state.ToggleableState
@@ -141,14 +139,11 @@ private fun InputUrlPageImpl(
     var showPasteDialog by remember { mutableStateOf(false) }
     var showSavedUrlDialog by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
-    val haptics = LocalHapticFeedback.current
 
-    fun pasteClipboardIntoInput() {
-        val clipboardText = clipboardManager.getText()?.text.orEmpty().trim()
-        if (clipboardText.isBlank()) return
-        val urls = findURLsFromString(clipboardText)
-        url = urls.firstOrNull() ?: clipboardText
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    fun normalizedInput(value: String): String {
+        val trimmed = value.trim()
+        if (trimmed.isBlank()) return ""
+        return findURLsFromString(trimmed).firstOrNull() ?: trimmed
     }
 
     Column(modifier = modifier) {
@@ -162,10 +157,7 @@ private fun InputUrlPageImpl(
             modifier =
                 Modifier.fillMaxWidth()
                     .padding(top = 8.dp)
-                    .padding(horizontal = 32.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures(onLongPress = { pasteClipboardIntoInput() })
-                    },
+                    .padding(horizontal = 32.dp),
             label = { Text(stringResource(R.string.video_url)) },
             maxLines = 3,
             trailingIcon = {
@@ -274,7 +266,11 @@ private fun InputUrlPageImpl(
                 icon = Icons.AutoMirrored.Outlined.ArrowForward,
                 text = stringResource(R.string.proceed),
             ) {
-                onActionPost(Action.ProceedWithURLs(listOf(url)))
+                val cleanUrl = normalizedInput(url)
+                if (cleanUrl.isNotBlank()) {
+                    url = cleanUrl
+                    onActionPost(Action.ProceedWithURLs(listOf(cleanUrl)))
+                }
             }
         }
     }

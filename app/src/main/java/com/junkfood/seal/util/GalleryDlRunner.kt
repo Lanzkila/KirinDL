@@ -25,6 +25,14 @@ object GalleryDlRunner {
     private val unsafeFileChars = Regex("""[\u0000-\u001F\\/:*?"<>|]""")
     private val repeatedWhitespace = Regex("""\s+""")
 
+    data class PreviewItem(
+        val id: String,
+        val title: String,
+        val url: String,
+        val thumbnailUrl: String = "",
+        val creator: String = "",
+    )
+
     data class ExtractorInfo(
         val supported: Boolean,
         val baseCategory: String,
@@ -42,6 +50,7 @@ object GalleryDlRunner {
         val cookiesLoaded: Boolean = false,
         val preflightStatus: String = "ready",
         val preflightError: String = "",
+        val previewItems: List<PreviewItem> = emptyList(),
     ) {
         val label: String
             get() =
@@ -140,6 +149,7 @@ object GalleryDlRunner {
                             cookiesLoaded = result.optBoolean("cookies_loaded", false),
                             preflightStatus = result.optString("preflight_status").ifBlank { "ready" },
                             preflightError = result.optString("preflight_error"),
+                            previewItems = parsePreviewItems(result.optJSONArray("preview_items")),
                         )
 
                     if (info.supported) {
@@ -397,6 +407,27 @@ object GalleryDlRunner {
             Python.start(AndroidPlatform(context.applicationContext))
         }
         return Python.getInstance().getModule("gallery_bridge")
+    }
+
+
+    private fun parsePreviewItems(array: JSONArray?): List<PreviewItem> {
+        if (array == null) return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val url = item.optString("url")
+                if (!url.startsWith("http://") && !url.startsWith("https://")) continue
+                add(
+                    PreviewItem(
+                        id = item.optString("id").ifBlank { url },
+                        title = item.optString("title").ifBlank { url },
+                        url = url,
+                        thumbnailUrl = item.optString("thumbnail"),
+                        creator = item.optString("creator"),
+                    )
+                )
+            }
+        }
     }
 
     private fun jsonArrayToList(array: JSONArray?): List<String> {

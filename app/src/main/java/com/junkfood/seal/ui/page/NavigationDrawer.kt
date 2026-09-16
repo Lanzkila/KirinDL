@@ -374,7 +374,7 @@ fun NavigationDrawerSheetContent(
                     modifier = Modifier.padding(vertical = 2.dp)
                 )
                 NavigationDrawerItem(
-                    label = { Text("Saved Sources") },
+                    label = { Text("Global Feed") },
                     icon = { Icon(Icons.Outlined.FolderOpen, null, tint = ThemedIconColors.primary) },
                     onClick = {
                         scope

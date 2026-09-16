@@ -11,13 +11,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Discovery-only browser for Saved Sources.
+ * Discovery-only browser for Global Feed sources.
  *
- * It uses the existing yt-dlp runtime only to list media. Actual downloading still goes through
- * KirinDL's normal configure / queue path.
+ * It can browse with yt-dlp or gallery-dl. Media downloads still use KirinDL's normal
+ * configure / queue flow; gallery sources hand off to the Gallery DL screen.
  */
 object SavedSourcesEngine {
     data class BrowseResult(
+        val engineUsed: SavedSourceStore.SourceEngine,
         val title: String,
         val thumbnail: String?,
         val creator: String,
@@ -38,6 +39,7 @@ object SavedSourcesEngine {
                 SavedSourceStore.loadFreshCache(context, source.id)?.let { cache ->
                     return@withContext Result.success(
                         BrowseResult(
+                            engineUsed = cache.engine,
                             title = cache.title.ifBlank { source.displayTitle },
                             thumbnail = cache.thumbnail,
                             creator = cache.creator,
@@ -52,11 +54,12 @@ object SavedSourcesEngine {
 
             val networkAttempt =
                 runCatching {
-                    val result = executeBrowse(source, limit.coerceIn(10, 50))
+                    val result = executeBrowse(context, source, limit.coerceIn(10, 50))
                     SavedSourceStore.saveCache(
                         context,
                         SavedSourceStore.CacheRecord(
                             sourceId = source.id,
+                            engine = result.engineUsed,
                             title = result.title,
                             thumbnail = result.thumbnail,
                             creator = result.creator,
@@ -83,6 +86,7 @@ object SavedSourcesEngine {
             if (stale != null && stale.items.isNotEmpty()) {
                 Result.success(
                     BrowseResult(
+                        engineUsed = stale.engine,
                         title = stale.title.ifBlank { source.displayTitle },
                         thumbnail = stale.thumbnail,
                         creator = stale.creator,
@@ -153,20 +157,43 @@ object SavedSourcesEngine {
                 }
             }
 
-            else -> null
+            else -> SavedSourceStore.SourceKind.GENERIC_COLLECTION
         }
     }
 
     fun validationMessage(text: String): String {
         val raw = text.trim()
-        if (raw.isBlank()) return "Paste a channel, playlist or collection URL"
+        if (raw.isBlank()) return "Paste a feed, channel, playlist, collection or gallery URL"
         if (KirinSearchEngine.looksLikeDirectVideoUrl(raw)) {
-            return "Direct video URLs belong in Kirin Search or Home, not Saved Sources"
+            return "Direct video URLs belong in Kirin Search or Home, not Global Feed"
         }
-        return "Supported: YouTube channel/playlist, YT Music playlist/album, Bilibili space/collection"
+        return "Use a valid HTTP(S) source supported by yt-dlp or gallery-dl"
     }
 
-    private fun executeBrowse(
+    private suspend fun executeBrowse(
+        context: Context,
+        source: SavedSourceStore.SavedSource,
+        limit: Int,
+    ): BrowseResult {
+        return when (source.engine) {
+            SavedSourceStore.SourceEngine.YT_DLP -> executeYtDlpBrowse(source, limit)
+            SavedSourceStore.SourceEngine.GALLERY_DL -> executeGalleryBrowse(context, source, limit)
+            SavedSourceStore.SourceEngine.AUTO -> {
+                val ytResult = runCatching { executeYtDlpBrowse(source, limit) }
+                val ytValue = ytResult.getOrNull()
+                if (ytValue != null && ytValue.items.isNotEmpty()) {
+                    ytValue
+                } else {
+                    val galleryResult = runCatching { executeGalleryBrowse(context, source, limit) }
+                    galleryResult.getOrElse { galleryError ->
+                        ytValue ?: throw (ytResult.exceptionOrNull() ?: galleryError)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun executeYtDlpBrowse(
         source: SavedSourceStore.SavedSource,
         limit: Int,
     ): BrowseResult {
@@ -185,6 +212,7 @@ object SavedSourcesEngine {
         val raw = response.out.trim()
         if (raw.isBlank()) {
             return BrowseResult(
+                engineUsed = SavedSourceStore.SourceEngine.YT_DLP,
                 title = source.displayTitle,
                 thumbnail = source.thumbnail.takeIf { it.startsWith("http") },
                 creator = "",
@@ -228,10 +256,49 @@ object SavedSourcesEngine {
         val fetchedAt = System.currentTimeMillis()
 
         return BrowseResult(
+            engineUsed = SavedSourceStore.SourceEngine.YT_DLP,
             title = title,
             thumbnail = thumbnail,
             creator = creator,
             fetchedAt = fetchedAt,
+            fromCache = false,
+            items = items,
+        )
+    }
+
+    private suspend fun executeGalleryBrowse(
+        context: Context,
+        source: SavedSourceStore.SavedSource,
+        limit: Int,
+    ): BrowseResult {
+        val info = GalleryDlRunner.inspectUrl(context, source.url).getOrThrow()
+        if (!info.supported) {
+            throw IllegalArgumentException(
+                info.preflightError.ifBlank { "gallery-dl does not support this source" },
+            )
+        }
+
+        val items =
+            info.previewItems
+                .take(limit)
+                .map { item ->
+                    SavedSourceStore.SourceItem(
+                        id = item.id,
+                        title = item.title,
+                        url = item.url,
+                        thumbnail = item.thumbnailUrl.takeIf { it.startsWith("http") },
+                        creator = item.creator.ifBlank { info.author },
+                        durationSeconds = null,
+                        extractor = info.label.ifBlank { "gallery-dl" },
+                    )
+                }
+
+        return BrowseResult(
+            engineUsed = SavedSourceStore.SourceEngine.GALLERY_DL,
+            title = info.title.ifBlank { source.displayTitle },
+            thumbnail = info.thumbnailUrl.takeIf { it.startsWith("http") } ?: source.thumbnail.takeIf { it.startsWith("http") },
+            creator = info.author,
+            fetchedAt = System.currentTimeMillis(),
             fromCache = false,
             items = items,
         )
@@ -316,6 +383,9 @@ object SavedSourcesEngine {
                     else -> null
                 }
             }
+
+            SavedSourceStore.SourceKind.GENERIC_COLLECTION ->
+                rawUrl.takeIf { it.startsWith("http://") || it.startsWith("https://") }
         }
     }
 

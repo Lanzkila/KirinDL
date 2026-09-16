@@ -21,12 +21,20 @@ object SavedSourceStore {
         YOUTUBE_MUSIC_COLLECTION("YT Music Collection"),
         BILIBILI_SPACE("Bilibili Space"),
         BILIBILI_COLLECTION("Bilibili Collection"),
+        GENERIC_COLLECTION("Web Collection"),
+    }
+
+    enum class SourceEngine(val label: String) {
+        AUTO("Auto"),
+        YT_DLP("yt-dlp"),
+        GALLERY_DL("gallery-dl"),
     }
 
     data class SavedSource(
         val id: String,
         val url: String,
         val kind: SourceKind,
+        val engine: SourceEngine,
         val customName: String,
         val resolvedTitle: String,
         val thumbnail: String,
@@ -52,6 +60,7 @@ object SavedSourceStore {
 
     data class CacheRecord(
         val sourceId: String,
+        val engine: SourceEngine = SourceEngine.AUTO,
         val title: String,
         val thumbnail: String?,
         val creator: String,
@@ -82,6 +91,9 @@ object SavedSourceStore {
                             kind =
                                 runCatching { SourceKind.valueOf(json.getString("kind")) }
                                     .getOrDefault(SourceKind.YOUTUBE_PLAYLIST),
+                            engine =
+                                runCatching { SourceEngine.valueOf(json.optString("engine")) }
+                                    .getOrDefault(SourceEngine.AUTO),
                             customName = json.optString("customName"),
                             resolvedTitle = json.optString("resolvedTitle"),
                             thumbnail = json.optString("thumbnail"),
@@ -113,6 +125,7 @@ object SavedSourceStore {
         url: String,
         kind: SourceKind,
         customName: String = "",
+        engine: SourceEngine = SourceEngine.AUTO,
     ): SavedSource {
         val cleanUrl = url.trim()
         val current = loadSources(context).toMutableList()
@@ -131,6 +144,7 @@ object SavedSourceStore {
                 id = UUID.randomUUID().toString(),
                 url = cleanUrl,
                 kind = kind,
+                engine = engine,
                 customName = customName.trim(),
                 resolvedTitle = "",
                 thumbnail = "",
@@ -236,6 +250,7 @@ object SavedSourceStore {
         val root =
             JSONObject()
                 .put("sourceId", cache.sourceId)
+                .put("engine", cache.engine.name)
                 .put("title", cache.title)
                 .put("thumbnail", cache.thumbnail.orEmpty())
                 .put("creator", cache.creator)
@@ -292,6 +307,9 @@ object SavedSourceStore {
                 }
                 CacheRecord(
                     sourceId = sourceId,
+                    engine =
+                        runCatching { SourceEngine.valueOf(json.optString("engine")) }
+                            .getOrDefault(SourceEngine.AUTO),
                     title = json.optString("title"),
                     thumbnail = json.optString("thumbnail").takeIf { it.startsWith("http") },
                     creator = json.optString("creator"),
@@ -317,6 +335,7 @@ object SavedSourceStore {
                     .put("id", source.id)
                     .put("url", source.url)
                     .put("kind", source.kind.name)
+                    .put("engine", source.engine.name)
                     .put("customName", source.customName)
                     .put("resolvedTitle", source.resolvedTitle)
                     .put("thumbnail", source.thumbnail)

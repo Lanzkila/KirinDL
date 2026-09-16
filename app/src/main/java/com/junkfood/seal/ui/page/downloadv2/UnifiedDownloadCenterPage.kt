@@ -4,9 +4,7 @@ import android.net.Uri
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +23,7 @@ import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
@@ -33,10 +32,9 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -65,7 +63,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.junkfood.seal.database.objects.DownloadedVideoInfo
 import com.junkfood.seal.download.DownloaderV2
 import com.junkfood.seal.download.Task
@@ -120,7 +117,7 @@ private data class CenterRecord(
     val galleryFileCount: Int = 0,
 )
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UnifiedDownloadCenterPage(
     onNavigateBack: () -> Unit,
@@ -139,6 +136,7 @@ fun UnifiedDownloadCenterPage(
     var sort by rememberSaveable { mutableStateOf(CenterSort.ActiveFirst) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showClearCompletedDialog by remember { mutableStateOf(false) }
+    var showActionsMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         DatabaseUtil.getVisibleDownloadHistoryFlow().collect { mediaHistory = it }
@@ -237,7 +235,8 @@ fun UnifiedDownloadCenterPage(
             }
         }
 
-    val allRecords = liveRecords + completedMedia
+    // Unified center: Media and Gallery DL records share the same filter/search/sort pipeline.
+    val allRecords = liveRecords + completedMedia + galleryQueueRecords + galleryHistoryRecords
     val filteredRecords =
         remember(allRecords, engine, status, sort, searchQuery) {
             val q = searchQuery.trim()
@@ -286,6 +285,75 @@ fun UnifiedDownloadCenterPage(
                     IconButton(onClick = { refreshKey++ }) {
                         Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
                     }
+                    Box {
+                        IconButton(onClick = { showActionsMenu = true }) {
+                            Icon(Icons.Outlined.MoreVert, contentDescription = "Download Center actions")
+                        }
+                        DropdownMenu(
+                            expanded = showActionsMenu,
+                            onDismissRequest = { showActionsMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Media Queue") },
+                                leadingIcon = { Icon(Icons.Outlined.FileDownload, null) },
+                                onClick = {
+                                    showActionsMenu = false
+                                    onOpenMediaQueue()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Media History") },
+                                leadingIcon = { Icon(Icons.Outlined.History, null) },
+                                onClick = {
+                                    showActionsMenu = false
+                                    onOpenMediaHistory()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Gallery DL") },
+                                leadingIcon = { Icon(Icons.Outlined.Folder, null) },
+                                onClick = {
+                                    showActionsMenu = false
+                                    onOpenGallery()
+                                },
+                            )
+                            if (failedCount > 0) {
+                                DropdownMenuItem(
+                                    text = { Text("Retry Failed") },
+                                    leadingIcon = { Icon(Icons.Outlined.Replay, null) },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        val failedMedia =
+                                            taskMap
+                                                .filterValues { state ->
+                                                    state.downloadState is Task.DownloadState.Error ||
+                                                        state.downloadState is Task.DownloadState.Canceled
+                                                }
+                                                .keys
+                                                .toList()
+                                        failedMedia.forEach(downloader::restart)
+                                        if (failedMedia.isEmpty()) {
+                                            context.makeToast("No failed Media tasks to retry")
+                                        } else {
+                                            context.makeToast(
+                                                "Retrying ${failedMedia.size} Media task${if (failedMedia.size == 1) "" else "s"}",
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                            if (doneCount > 0) {
+                                DropdownMenuItem(
+                                    text = { Text("Clear Completed") },
+                                    leadingIcon = { Icon(Icons.Outlined.Clear, null) },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        showClearCompletedDialog = true
+                                    },
+                                )
+                            }
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             )
@@ -307,61 +375,6 @@ fun UnifiedDownloadCenterPage(
                     failed = failedCount,
                     done = doneCount,
                 )
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedButton(onClick = onOpenMediaQueue) {
-                        Icon(Icons.Outlined.FileDownload, null, Modifier.size(18.dp))
-                        Text(" Media Queue")
-                    }
-                    OutlinedButton(onClick = onOpenMediaHistory) {
-                        Icon(Icons.Outlined.History, null, Modifier.size(18.dp))
-                        Text(" Media History")
-                    }
-                }
-            }
-
-            if (failedCount > 0 || doneCount > 0) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        if (failedCount > 0) {
-                            OutlinedButton(
-                                onClick = {
-                                    val failedMedia =
-                                        taskMap
-                                            .filterValues { state ->
-                                                state.downloadState is Task.DownloadState.Error ||
-                                                    state.downloadState is Task.DownloadState.Canceled
-                                            }
-                                            .keys
-                                            .toList()
-                                    failedMedia.forEach(downloader::restart)
-                                    if (failedMedia.isEmpty()) {
-                                        context.makeToast("No failed Media tasks to retry")
-                                    } else {
-                                        context.makeToast("Retrying ${failedMedia.size} Media task${if (failedMedia.size == 1) "" else "s"}")
-                                    }
-                                },
-                            ) {
-                                Icon(Icons.Outlined.Replay, null, Modifier.size(18.dp))
-                                Text(" Retry Failed")
-                            }
-                        }
-                        if (doneCount > 0) {
-                            OutlinedButton(onClick = { showClearCompletedDialog = true }) {
-                                Icon(Icons.Outlined.Clear, null, Modifier.size(18.dp))
-                                Text(" Clear Completed")
-                            }
-                        }
-                    }
-                }
             }
 
             item {
@@ -395,7 +408,7 @@ fun UnifiedDownloadCenterPage(
                                 if (searchQuery.isNotBlank() || status != CenterStatus.All || engine != CenterEngine.All)
                                     "Try clearing Search or changing the current filters."
                                 else
-                                    "New Media activity will appear here.",
+                                    "New Media or Gallery DL activity will appear here.",
                                 modifier = Modifier.padding(top = 6.dp),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -463,81 +476,43 @@ fun UnifiedDownloadCenterPage(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CenterMetrics(active: Int, queued: Int, failed: Int, done: Int) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val compact = maxWidth < 600.dp
-        val cardWidth = if (compact) (maxWidth - 8.dp) / 2 else (maxWidth - 24.dp) / 4
-
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            maxItemsInEachRow = if (compact) 2 else 4,
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            CenterMetric(
-                label = "Active",
-                value = active,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.widthIn(min = cardWidth, max = cardWidth),
-            )
-            CenterMetric(
-                label = "Queue",
-                value = queued,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.widthIn(min = cardWidth, max = cardWidth),
-            )
-            CenterMetric(
-                label = "Failed",
-                value = failed,
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.widthIn(min = cardWidth, max = cardWidth),
-            )
-            CenterMetric(
-                label = "Done",
-                value = done,
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.widthIn(min = cardWidth, max = cardWidth),
-            )
+            CenterMetricCompact("Active", active)
+            CenterMetricCompact("Queue", queued)
+            CenterMetricCompact("Failed", failed)
+            CenterMetricCompact("Done", done)
         }
     }
 }
 
 @Composable
-private fun CenterMetric(
-    label: String,
-    value: Int,
-    containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.large,
-        color = containerColor,
+private fun CenterMetricCompact(label: String, value: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                value.toString(),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = contentColor,
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = contentColor.copy(alpha = 0.85f),
-                maxLines = 1,
-            )
-        }
+        Text(
+            value.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -552,45 +527,25 @@ private fun CenterFilterPanel(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
 ) {
-    val selectedChipColors =
-        FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-        )
+    var engineMenu by remember { mutableStateOf(false) }
+    var statusMenu by remember { mutableStateOf(false) }
+    var sortMenu by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                text = "Options",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CenterEngine.entries.filter { it != CenterEngine.Gallery }.forEach { tab ->
-                    FilterChip(
-                        selected = engine == tab,
-                        onClick = { onEngineChange(tab) },
-                        label = { Text(tab.label) },
-                        colors = selectedChipColors,
-                    )
-                }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                leadingIcon = { Icon(Icons.Outlined.Search, null, tint = MaterialTheme.colorScheme.primary) },
+                leadingIcon = { Icon(Icons.Outlined.Search, null) },
                 trailingIcon =
                     if (searchQuery.isNotBlank()) {
                         {
@@ -599,45 +554,64 @@ private fun CenterFilterPanel(
                             }
                         }
                     } else null,
-                placeholder = { Text("Search title, site, creator or URL") },
-                shape = MaterialTheme.shapes.large,
+                placeholder = { Text("Search downloads") },
+                shape = MaterialTheme.shapes.medium,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                 ),
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
+
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                CenterStatus.entries.forEach { filter ->
-                    FilterChip(
-                        selected = status == filter,
-                        onClick = { onStatusChange(filter) },
-                        label = { Text(filter.label) },
-                        colors = selectedChipColors,
-                    )
+                Box {
+                    OutlinedButton(onClick = { engineMenu = true }) {
+                        Text("Engine: ${engine.label}")
+                    }
+                    DropdownMenu(expanded = engineMenu, onDismissRequest = { engineMenu = false }) {
+                        CenterEngine.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label) },
+                                onClick = {
+                                    engineMenu = false
+                                    onEngineChange(option)
+                                },
+                            )
+                        }
+                    }
                 }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Sort", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CenterSort.entries.forEach { option ->
-                        FilterChip(
-                            selected = sort == option,
-                            onClick = { onSortChange(option) },
-                            label = { Text(option.label) },
-                            colors = selectedChipColors,
-                        )
+                Box {
+                    OutlinedButton(onClick = { statusMenu = true }) {
+                        Text("Status: ${status.label}")
+                    }
+                    DropdownMenu(expanded = statusMenu, onDismissRequest = { statusMenu = false }) {
+                        CenterStatus.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label) },
+                                onClick = {
+                                    statusMenu = false
+                                    onStatusChange(option)
+                                },
+                            )
+                        }
+                    }
+                }
+                Box {
+                    OutlinedButton(onClick = { sortMenu = true }) {
+                        Text("Sort: ${sort.label}")
+                    }
+                    DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                        CenterSort.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label) },
+                                onClick = {
+                                    sortMenu = false
+                                    onSortChange(option)
+                                },
+                            )
+                        }
                     }
                 }
             }

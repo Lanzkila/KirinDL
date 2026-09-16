@@ -251,6 +251,9 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                         onNavigateToDownloads = {
                             navController.navigate(Route.DOWNLOADS) { launchSingleTop = true }
                         },
+                        onNavigateToGalleryDl = {
+                            navController.navigate(Route.GALLERY_DL) { launchSingleTop = true }
+                        },
                         onConfigureUrls = openConfigureFromDiscovery,
                     )
                 }
