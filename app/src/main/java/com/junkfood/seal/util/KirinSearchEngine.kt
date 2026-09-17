@@ -26,7 +26,7 @@ object KirinSearchEngine {
     enum class YoutubeContent {
         ALL,
         VIDEO,
-        MUSIC,
+        ORIGINAL_AUDIO,
     }
 
     data class ResultItem(
@@ -91,11 +91,7 @@ object KirinSearchEngine {
                             )
 
                         KirinSearchStore.SearchSource.YOUTUBE_MUSIC ->
-                            if (songsOnly) {
-                                searchFocusedYouTubeMusicSongs(clean, boundedLimit)
-                            } else {
-                                searchYouTubeMusicAll(clean, boundedLimit)
-                            }
+                            searchYouTubeMusicTopics(clean, boundedLimit)
 
                         KirinSearchStore.SearchSource.BILIBILI ->
                             runCatching { searchBilibiliRich(clean, boundedLimit) }
@@ -131,7 +127,7 @@ object KirinSearchEngine {
             when (content) {
                 YoutubeContent.ALL -> limit
                 YoutubeContent.VIDEO -> (limit * 2).coerceAtMost(30)
-                YoutubeContent.MUSIC -> (limit + 10).coerceAtMost(30)
+                YoutubeContent.ORIGINAL_AUDIO -> (limit + 12).coerceAtMost(30)
             }
         val primary =
             executeDiscovery(
@@ -143,60 +139,49 @@ object KirinSearchEngine {
         return when (content) {
             YoutubeContent.ALL -> primary.take(limit)
             YoutubeContent.VIDEO -> primary.filterNot(::isMusicResult).take(limit)
-            YoutubeContent.MUSIC -> {
-                val music = primary.filter(::isMusicResult).sortedByDescending(::musicPriority)
-                if (music.size >= minOf(5, limit)) {
-                    music.take(limit)
-                } else {
-                    val extra =
-                        runCatching {
-                                executeDiscovery(
-                                    target = "ytsearch$poolLimit:$query official audio",
-                                    source = KirinSearchStore.SearchSource.YOUTUBE,
-                                    limit = poolLimit,
-                                )
-                            }
-                            .getOrDefault(emptyList())
-                    (music + extra.filter(::isMusicResult))
-                        .distinctBy { it.url }
-                        .sortedByDescending(::musicPriority)
-                        .take(limit)
-                }
+            YoutubeContent.ORIGINAL_AUDIO -> {
+                val focused =
+                    runCatching {
+                            executeDiscovery(
+                                target = "ytsearch$poolLimit:$query original audio",
+                                source = KirinSearchStore.SearchSource.YOUTUBE,
+                                limit = poolLimit,
+                            )
+                        }
+                        .getOrDefault(emptyList())
+
+                (primary.filter(::isOriginalAudioResult) +
+                        focused.filter(::isOriginalAudioResult))
+                    .distinctBy { it.url }
+                    .sortedByDescending(::originalAudioPriority)
+                    .take(limit)
             }
         }
     }
 
     /**
-     * Songs-only intentionally uses YouTube search instead of the fragile music.youtube.com
-     * search endpoint. Topic / official / original audio results are then ranked locally.
+     * YT Music is intentionally Topic-only. Search through YouTube's discovery endpoint, then
+     * keep only artist Topic channels so official/original audio uploads do not leak into this
+     * feed. Original Audio has its own filter under normal YouTube search.
      */
-    private fun searchFocusedYouTubeMusicSongs(query: String, limit: Int): List<ResultItem> {
+    private fun searchYouTubeMusicTopics(query: String, limit: Int): List<ResultItem> {
         val poolLimit = (limit + 12).coerceAtMost(30)
-        val focusedQueries =
-            listOf(
-                "$query official audio",
-                "$query original audio",
-                "$query topic",
-            )
-
         val focused =
-            focusedQueries
-                .flatMap { focusedQuery ->
-                    runCatching {
-                            executeDiscovery(
-                                target = "ytsearch$poolLimit:$focusedQuery",
-                                source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
-                                limit = poolLimit,
-                            )
-                        }
-                        .getOrDefault(emptyList())
+            runCatching {
+                    executeDiscovery(
+                        target = "ytsearch$poolLimit:$query topic",
+                        source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
+                        limit = poolLimit,
+                    )
                 }
-                .distinctBy { it.url }
-                .filter(::isFocusedSong)
-                .sortedByDescending(::musicPriority)
+                .getOrDefault(emptyList())
+                .filter(::isTopicResult)
 
         if (focused.size >= minOf(5, limit)) {
-            return focused.take(limit)
+            return focused
+                .distinctBy { it.url }
+                .sortedByDescending(::topicPriority)
+                .take(limit)
         }
 
         val fallback =
@@ -208,32 +193,11 @@ object KirinSearchEngine {
                     )
                 }
                 .getOrDefault(emptyList())
-                .filter(::isFocusedSong)
+                .filter(::isTopicResult)
 
         return (focused + fallback)
             .distinctBy { it.url }
-            .sortedByDescending(::musicPriority)
-            .take(limit)
-    }
-
-    private fun searchYouTubeMusicAll(query: String, limit: Int): List<ResultItem> {
-        val target =
-            "https://music.youtube.com/search?q=" +
-                URLEncoder.encode(query, StandardCharsets.UTF_8.toString())
-        return runCatching {
-                executeDiscovery(
-                    target = target,
-                    source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
-                    limit = limit,
-                )
-            }
-            .getOrElse {
-                executeDiscovery(
-                    target = "ytsearch$limit:$query",
-                    source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
-                    limit = limit,
-                )
-            }
+            .sortedByDescending(::topicPriority)
             .take(limit)
     }
 
@@ -514,54 +478,31 @@ object KirinSearchEngine {
             title.contains("original song")
     }
 
-    private fun isFocusedSong(item: ResultItem): Boolean {
-        val title = item.title.lowercase()
+    fun isTopicResult(item: ResultItem): Boolean {
         val creator = item.creator.lowercase()
-        val blockers =
-            listOf(
-                "lyrics",
-                "lyric video",
-                "official video",
-                "music video",
-                " live",
-                "live ",
-                "cover",
-                "reaction",
-                "tutorial",
-                "karaoke",
-                "shorts",
-                "performance",
-                "visualizer",
-                "teaser",
-                "trailer",
-            )
-        if (blockers.any { token -> title.contains(token) }) return false
-
-        val topicChannel =
-            creator == "topic" ||
-                creator.endsWith(" - topic") ||
-                creator.endsWith(" topic")
-        val audioOrSongLabel =
-            title.contains("official audio") ||
-                title.contains("original audio") ||
-                title.contains("official song") ||
-                title.contains("original song")
-
-        // Songs-only is intentionally strict: generic music metadata alone is not enough,
-        // because YouTube music-video entries frequently expose artist/track metadata too.
-        return topicChannel || audioOrSongLabel
+        return creator == "topic" ||
+            creator.endsWith(" - topic") ||
+            creator.endsWith(" topic")
     }
 
-    private fun musicPriority(item: ResultItem): Int {
+    fun isOriginalAudioResult(item: ResultItem): Boolean {
         val title = item.title.lowercase()
-        val creator = item.creator.lowercase()
-        var score = 0
-        if (creator == "topic" || creator.endsWith(" - topic") || creator.endsWith(" topic")) {
-            score += 120
-        }
-        if (title.contains("official audio") || title.contains("original audio")) score += 100
-        if (title.contains("official song") || title.contains("original song")) score += 90
+        return title.contains("original audio")
+    }
+
+    private fun topicPriority(item: ResultItem): Int {
+        var score = 100
         if (item.musicSongHint) score += 20
+        if (item.durationSeconds != null) score += 5
+        if (item.viewCount != null) score += 2
+        return score
+    }
+
+    private fun originalAudioPriority(item: ResultItem): Int {
+        val title = item.title.lowercase()
+        var score = 0
+        if (title.contains("original audio")) score += 120
+        if (item.musicSongHint) score += 15
         if (item.durationSeconds != null) score += 5
         return score
     }

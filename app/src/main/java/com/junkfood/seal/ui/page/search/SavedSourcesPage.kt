@@ -118,6 +118,7 @@ fun SavedSourcesPage(
     var browseError by remember { mutableStateOf("") }
     var browseTitle by remember { mutableStateOf("") }
     var browseCreator by remember { mutableStateOf("") }
+    var browseThumbnail by remember { mutableStateOf<String?>(null) }
     var browseFromCache by remember { mutableStateOf(false) }
     var browseCacheStale by remember { mutableStateOf(false) }
     var browseEngineUsed by remember { mutableStateOf(SavedSourceStore.SourceEngine.AUTO) }
@@ -180,6 +181,7 @@ fun SavedSourcesPage(
         browseError = ""
         browseTitle = source.displayTitle
         browseCreator = ""
+        browseThumbnail = source.thumbnail
         browseFromCache = false
         browseCacheStale = false
         browseEngineUsed = source.engine
@@ -217,6 +219,7 @@ fun SavedSourcesPage(
                 browseItems = result.items
                 browseTitle = result.title.ifBlank { source.displayTitle }
                 browseCreator = result.creator
+                browseThumbnail = result.thumbnail
                 browseFromCache = result.fromCache
                 browseCacheStale = result.cacheStale
                 browseEngineUsed = result.engineUsed
@@ -314,6 +317,7 @@ fun SavedSourcesPage(
                 source = selectedSource,
                 title = browseTitle,
                 creator = browseCreator,
+                thumbnail = browseThumbnail,
                 fromCache = browseFromCache,
                 cacheStale = browseCacheStale,
                 engineUsed = browseEngineUsed,
@@ -795,6 +799,7 @@ private fun SavedSourceBrowser(
     source: SavedSourceStore.SavedSource,
     title: String,
     creator: String,
+    thumbnail: String?,
     fromCache: Boolean,
     cacheStale: Boolean,
     engineUsed: SavedSourceStore.SourceEngine,
@@ -823,6 +828,7 @@ private fun SavedSourceBrowser(
                 source = source,
                 title = title,
                 creator = creator,
+                thumbnail = thumbnail,
                 fromCache = fromCache,
                 cacheStale = cacheStale,
                 itemCount = items.size,
@@ -949,6 +955,7 @@ private fun BrowserHeaderCard(
     source: SavedSourceStore.SavedSource,
     title: String,
     creator: String,
+    thumbnail: String?,
     fromCache: Boolean,
     cacheStale: Boolean,
     itemCount: Int,
@@ -966,12 +973,28 @@ private fun BrowserHeaderCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            AsyncImage(
-                model = source.thumbnail.takeIf { it.isNotBlank() },
-                contentDescription = null,
-                modifier = Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)),
-                contentScale = ContentScale.Crop,
-            )
+            if (!thumbnail.isNullOrBlank()) {
+                AsyncImage(
+                    model = thumbnail,
+                    contentDescription = null,
+                    modifier = Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Surface(
+                    modifier = Modifier.size(76.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Outlined.FolderOpen,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     title.ifBlank { source.displayTitle },
@@ -1018,14 +1041,15 @@ private fun SavedSourceMediaCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                AsyncImage(
-                    model = item.thumbnail,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                    contentScale = ContentScale.Crop,
-                )
-                if (!galleryMode) {
+            if (!item.thumbnail.isNullOrBlank()) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    AsyncImage(
+                        model = item.thumbnail,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                        contentScale = ContentScale.Crop,
+                    )
+                    if (!galleryMode) {
                     Surface(
                         modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
                         shape = RoundedCornerShape(50),
@@ -1038,17 +1062,40 @@ private fun SavedSourceMediaCard(
                         )
                     }
                 }
-                item.durationSeconds?.let { duration ->
-                    Surface(
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp),
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f),
+                    item.durationSeconds?.let { duration ->
+                        Surface(
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f),
+                        ) {
+                            Text(
+                                formatDuration(duration),
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.inverseOnSurface,
+                            )
+                        }
+                    }
+                }
+            } else {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().height(92.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
+                        Icon(
+                            Icons.Outlined.FolderOpen,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         Text(
-                            formatDuration(duration),
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.inverseOnSurface,
+                            "Preview unavailable",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

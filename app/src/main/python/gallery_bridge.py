@@ -180,6 +180,8 @@ def diagnostics(engine_dir):
 
 _PREVIEW_SCAN_LIMIT = 40
 _LARGE_GALLERY_THRESHOLD = 30
+_QUEUE_PREVIEW_PROBE_LIMIT = 12
+_QUEUE_CHILD_MESSAGE_LIMIT = 14
 _IMAGE_EXTENSIONS = {
     "jpg", "jpeg", "png", "gif", "webp", "avif", "bmp", "tif", "tiff", "heic",
 }
@@ -261,6 +263,91 @@ def _classify_preflight_error(exc):
     ):
         return "login_required"
     return "extractor_error"
+
+
+def _generic_preview_title(value):
+    text = _safe_text(value)
+    return not text or text.lower().startswith("item ") or text.lower().startswith("media ")
+
+
+def _probe_queued_preview(extractor_module, message_enum, item):
+    """Resolve a bounded child preview for Queue-only collection extractors.
+
+    Some gallery-dl search/profile extractors only yield child page URLs. The parent queue data
+    often has no thumbnail at all, so KirinDL performs a very small metadata-only scan of the
+    child extractor. No downloader job is started and the scan stops after a handful of messages.
+    """
+    result = dict(item)
+    url = _safe_text(result.get("url"))
+    if not url.startswith(("https://", "http://")):
+        return result
+
+    try:
+        child = extractor_module.find(url)
+        if child is None:
+            return result
+
+        title = "" if _generic_preview_title(result.get("title")) else _safe_text(result.get("title"))
+        creator = _safe_text(result.get("creator"))
+        thumbnail = _safe_text(result.get("thumbnail"))
+
+        scanned = 0
+        for child_message, child_target, child_data in child:
+            scanned += 1
+            data = child_data if isinstance(child_data, dict) else {}
+
+            if not title:
+                title = _pick_text(
+                    data,
+                    (
+                        "title", "post_title", "gallery_title", "album", "album_name",
+                        "collection", "name", "filename", "id",
+                    ),
+                )
+            if not creator:
+                creator = _pick_text(
+                    data,
+                    (
+                        "username", "user_name", "author", "author_name", "artist",
+                        "uploader", "owner", "account", "user",
+                    ),
+                )
+            if not thumbnail:
+                candidate = _pick_text(
+                    data,
+                    (
+                        "thumbnail", "thumbnail_url", "preview", "preview_url",
+                        "cover", "cover_url", "poster", "poster_url",
+                    ),
+                )
+                if candidate.startswith(("https://", "http://")):
+                    thumbnail = candidate
+
+            if child_message == message_enum.Url:
+                target_url = str(child_target or "").strip()
+                extension = _extension_from(target_url, data)
+                if not thumbnail and target_url.startswith(("https://", "http://")):
+                    if extension in _IMAGE_EXTENSIONS:
+                        thumbnail = target_url
+                if not title:
+                    title = _pick_text(data, ("filename", "name", "id"))
+                if thumbnail and title:
+                    break
+
+            if scanned >= _QUEUE_CHILD_MESSAGE_LIMIT:
+                break
+
+        if title:
+            result["title"] = title
+        if creator:
+            result["creator"] = creator
+        if thumbnail.startswith(("https://", "http://")):
+            result["thumbnail"] = thumbnail
+    except Exception:
+        # Preview enrichment is best-effort. A failed child probe must never make the source fail.
+        return result
+
+    return result
 
 
 def inspect_url(
@@ -463,8 +550,24 @@ def inspect_url(
 
         # Queue-only extractors are valid gallery-dl sources too. Use their queued child URLs as
         # feed cards only when no direct media preview was emitted by the parent extractor.
+        # Enrich the first few children with a bounded child-extractor scan so collection/search
+        # feeds can show a real preview thumbnail instead of a large empty card.
         if not preview_items and queued_preview_items:
-            preview_items.extend(queued_preview_items[:24])
+            enriched = []
+            for index, item in enumerate(queued_preview_items[:24]):
+                if index < _QUEUE_PREVIEW_PROBE_LIMIT and (
+                    not item.get("thumbnail") or _generic_preview_title(item.get("title"))
+                ):
+                    item = _probe_queued_preview(extractor, Message, item)
+                enriched.append(item)
+            preview_items.extend(enriched)
+
+        if not thumbnail:
+            for item in preview_items:
+                candidate = _safe_text(item.get("thumbnail"))
+                if candidate.startswith(("https://", "http://")):
+                    thumbnail = candidate
+                    break
 
         if "image" in media_kinds and "video" in media_kinds:
             media_type = "Mixed media"

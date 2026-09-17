@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -99,7 +101,7 @@ import kotlinx.coroutines.launch
 private enum class SearchResultFilter(val label: String) {
     ALL("All"),
     VIDEO("Video"),
-    MUSIC("Music"),
+    ORIGINAL_AUDIO("Original audio"),
 }
 
 private enum class SearchResultSort(val label: String) {
@@ -132,7 +134,7 @@ fun KirinSearchPage(
     var errorText by remember { mutableStateOf("") }
     var searchRevision by remember { mutableStateOf(0) }
     var detailsTarget by remember { mutableStateOf<KirinSearchEngine.ResultItem?>(null) }
-    var musicSongsOnly by remember { mutableStateOf(initialUiState.musicSongsOnly) }
+    var musicSongsOnly by remember { mutableStateOf(true) }
     var resultFilter by
         remember {
             mutableStateOf(
@@ -162,8 +164,8 @@ fun KirinSearchPage(
                             SearchResultFilter.ALL -> results
                             SearchResultFilter.VIDEO ->
                                 results.filterNot(KirinSearchEngine::isMusicResult)
-                            SearchResultFilter.MUSIC ->
-                                results.filter(KirinSearchEngine::isMusicResult)
+                            SearchResultFilter.ORIGINAL_AUDIO ->
+                                results.filter(KirinSearchEngine::isOriginalAudioResult)
                         }
                     } else {
                         results
@@ -255,16 +257,12 @@ fun KirinSearchPage(
                 SearchResultFilter.ALL
             }
         val songsOnly =
-            if (searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC) {
-                songsOnlyOverride ?: musicSongsOnly
-            } else {
-                false
-            }
+            searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC
         val youtubeContent =
             when (activeFilter) {
                 SearchResultFilter.ALL -> KirinSearchEngine.YoutubeContent.ALL
                 SearchResultFilter.VIDEO -> KirinSearchEngine.YoutubeContent.VIDEO
-                SearchResultFilter.MUSIC -> KirinSearchEngine.YoutubeContent.MUSIC
+                SearchResultFilter.ORIGINAL_AUDIO -> KirinSearchEngine.YoutubeContent.ORIGINAL_AUDIO
             }
 
         requestSerial += 1
@@ -295,9 +293,8 @@ fun KirinSearchPage(
                     errorText =
                         when {
                             searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC &&
-                                songsOnly &&
                                 message.contains("search unavailable", ignoreCase = true) ->
-                                "Song search is temporarily unavailable. Retry or switch to All music."
+                                "Topic search is temporarily unavailable. Retry in a moment."
                             searchSource == KirinSearchStore.SearchSource.BILIBILI ->
                                 "Bilibili search failed. Retry in a moment."
                             message.isNotBlank() -> message
@@ -408,67 +405,28 @@ fun KirinSearchPage(
 
             if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC) {
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f),
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             FilterChip(
-                                selected = musicSongsOnly,
-                                onClick = {
-                                    if (!musicSongsOnly) {
-                                        requestSerial += 1
-                                        KirinSearchEngine.cancelActiveSearch()
-                                        loading = false
-                                        musicSongsOnly = true
-                                        results = emptyList()
-                                        errorText = ""
-                                        selectedUrls.clear()
-                                        if (query.isNotBlank()) {
-                                            runSearch(
-                                                sourceOverride =
-                                                    KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
-                                                songsOnlyOverride = true,
-                                                force = true,
-                                            )
-                                        }
-                                    }
-                                },
-                                label = { Text("Songs only") },
+                                selected = true,
+                                onClick = {},
+                                label = { Text("Topic only") },
                             )
-                            FilterChip(
-                                selected = !musicSongsOnly,
-                                onClick = {
-                                    if (musicSongsOnly) {
-                                        requestSerial += 1
-                                        KirinSearchEngine.cancelActiveSearch()
-                                        loading = false
-                                        musicSongsOnly = false
-                                        results = emptyList()
-                                        errorText = ""
-                                        selectedUrls.clear()
-                                        if (query.isNotBlank()) {
-                                            runSearch(
-                                                sourceOverride =
-                                                    KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
-                                                songsOnlyOverride = false,
-                                                force = true,
-                                            )
-                                        }
-                                    }
-                                },
-                                label = { Text("All music") },
+                            Text(
+                                "YT Music now keeps artist Topic-channel results only.",
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Text(
-                            text =
-                                if (musicSongsOnly)
-                                    "Prioritizes Topic, original/official audio and song metadata; lyrics, live, covers and obvious music videos are filtered out."
-                                else
-                                    "Shows the wider YouTube Music search result set.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 }
             }
@@ -672,21 +630,28 @@ private fun SearchIntroCard() {
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                text = "Search → Download → Continue",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+            Icon(
+                imageVector = Icons.Outlined.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
             )
-            Text(
-                text =
-                    "Discovery stays separate from the downloader. YouTube and Bilibili stay video-first; YT Music defaults to a song-focused filter before results enter KirinDL's normal configure or queue flow.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Search media",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "YouTube • YT Music Topic • Bilibili",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -850,93 +815,99 @@ private fun SearchResultCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Column {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                AsyncImage(
-                    model = item.thumbnail,
-                    contentDescription = null,
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                    contentScale = ContentScale.Crop,
-                )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val thumbnailWidth = if (maxWidth < 600.dp) 132.dp else 220.dp
 
-                Surface(
-                    modifier = Modifier.align(Alignment.TopStart).padding(10.dp),
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Text(
-                        text = item.source.label,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
+                    Box(
+                        modifier =
+                            Modifier.width(thumbnailWidth)
+                                .aspectRatio(16f / 9f)
+                                .clip(RoundedCornerShape(12.dp)),
+                    ) {
+                        AsyncImage(
+                            model = item.thumbnail,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                        Surface(
+                            modifier = Modifier.align(Alignment.TopStart).padding(6.dp),
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                        ) {
+                            Text(
+                                text = item.source.label,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        Surface(
+                            modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                        ) {
+                            Checkbox(
+                                checked = selected,
+                                onCheckedChange = onSelectedChange,
+                                modifier = Modifier.size(34.dp),
+                            )
+                        }
+                        item.durationSeconds?.let { duration ->
+                            Surface(
+                                modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f),
+                            ) {
+                                Text(
+                                    text = formatDuration(duration),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                                )
+                            }
+                        }
+                    }
 
-                Surface(
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                ) {
-                    Checkbox(
-                        checked = selected,
-                        onCheckedChange = onSelectedChange,
-                        modifier = Modifier.size(38.dp),
-                    )
-                }
-
-                item.durationSeconds?.let { duration ->
-                    Surface(
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp),
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f),
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Text(
-                            text = formatDuration(duration),
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.inverseOnSurface,
+                            text = item.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text =
+                                buildString {
+                                    append(item.creator.ifBlank { item.extractor.ifBlank { item.source.label } })
+                                    resultKindLabel(item)?.let { kind -> append(" • $kind") }
+                                    item.viewCount?.let { count -> append(" • ${formatViewCount(count)}") }
+                                    item.uploadTimestamp?.let { timestamp ->
+                                        append(" • ${formatUploadDate(timestamp)}")
+                                    }
+                                },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
-            }
-
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text =
-                        buildString {
-                            append(item.creator.ifBlank { item.extractor.ifBlank { item.source.label } })
-                            resultKindLabel(item)?.let { kind -> append(" • $kind") }
-                            item.viewCount?.let { count -> append(" • ${formatViewCount(count)} views") }
-                            item.uploadTimestamp?.let { timestamp ->
-                                append(" • ${formatUploadDate(timestamp)}")
-                            }
-                        },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -1101,7 +1072,7 @@ private fun EmptySearchCard() {
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "YouTube is the default. YT Music starts in Songs only mode; switch to Bilibili when needed.",
+                text = "YouTube is the default. YT Music stays Topic-only; switch to Bilibili when needed.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1179,15 +1150,11 @@ private fun normalizeInfoText(value: String): String =
         .trim()
 
 private fun resultKindLabel(item: KirinSearchEngine.ResultItem): String? {
-    if (item.source != KirinSearchStore.SearchSource.YOUTUBE_MUSIC) return null
-    val text = "${item.title} ${item.creator} ${item.extractor}".lowercase()
     return when {
-        item.creator.contains(" - Topic", ignoreCase = true) ||
-            item.creator.endsWith("Topic", ignoreCase = true) -> "Topic"
-        "official audio" in text -> "Official Audio"
-        "original audio" in text -> "Original Audio"
-        "original song" in text -> "Original Song"
-        item.musicSongHint -> "Song"
+        item.source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC &&
+            KirinSearchEngine.isTopicResult(item) -> "Topic"
+        item.source == KirinSearchStore.SearchSource.YOUTUBE &&
+            KirinSearchEngine.isOriginalAudioResult(item) -> "Original Audio"
         else -> null
     }
 }

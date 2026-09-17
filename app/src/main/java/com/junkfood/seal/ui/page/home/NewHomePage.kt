@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.contextmenu.modifier.filterTextContextMenuComponents
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -1318,7 +1319,10 @@ fun URLInputField(
         onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp),
+            .height(64.dp)
+            // KirinDL keeps paste on Gboard/IME and the dedicated paste icon.
+            // Remove Android's floating Paste/Autofill text toolbar for this media field.
+            .filterTextContextMenuComponents { false },
         placeholder = {
             if (animatePlaceholder) {
                 Text(
