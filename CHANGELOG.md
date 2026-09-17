@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✦ KirinDL Rebrand & Visual Identity
 
-- Renamed the visible application branding from **KirinDownloader** to **KirinDL**
+- Standardized the visible application branding as **KirinDL**
 - Preserved Android package ID `com.kirin.downloader` for release-update compatibility
 - Preserved debug package ID `com.kirin.downloader.debug`
 - Added Kirin-focused launcher, adaptive, themed, splash, and notification icon branding
@@ -115,7 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - KirinDL now checks GitHub releases and opens the official release page in the browser
 - Kept app updates separate from yt-dlp and Gallery DL engine updates
 - Updated release fallback URLs to the current `Lanzkila/KirinDL` repository
-- Removed stale references to `KirinDownloader-Seal` from About and updater links
+- Removed stale legacy fork references from About and updater links
 
 ### ✦ Stable Debug Signing
 
@@ -160,7 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release publishing defaults to disabled for safer testing
 - Signed release artifact is always generated before optional GitHub Release publishing
 - Removed old `ANDROID_SIGNING_KEY`, `ANDROID_ALIAS`, and related SealPlus signing configuration
-- Removed hardcoded old KirinDownloader v3.0 release body
+- Removed hardcoded legacy v3.0 release body
 - Removed old Telegram release-notification dependency
 - Reworked `android_ci.yml` to use `assembleGenericDebug`
 - Removed obsolete `buildGenericRelease` CI task

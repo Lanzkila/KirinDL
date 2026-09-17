@@ -2808,7 +2808,7 @@ fun AnimatedGlowingPlus() {
 
 /**
  * Quick-access row for the 5 More Tools (Batch URL Import, Thumbnail Download, Video Info
- * Download, Comment Download, Gallery DL), placed between the KirinDownloader branding and the URL input field.
+ * Download, Comment Download, Gallery DL), placed between the KirinDL branding and the URL input field.
  *
  * Icon-only by design — no labels/section header — so it reads as a native strip of shortcuts
  * baked into the home screen rather than a bolted-on section. Colors reuse the same

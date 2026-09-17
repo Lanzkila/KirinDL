@@ -28,8 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.junkfood.seal.ui.component.BackButton
 
-private const val PROJECT_REPOSITORY = "https://github.com/Lanzkila/KirinDownloader-Seal"
-private const val PROJECT_ISSUES = "https://github.com/Lanzkila/KirinDownloader-Seal/issues"
+private const val PROJECT_REPOSITORY = "https://github.com/Lanzkila/KirinDL"
+private const val PROJECT_ISSUES = "https://github.com/Lanzkila/KirinDL/issues"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +44,7 @@ fun SupportDeveloperPage(
     Scaffold(
         topBar = {
             LargeTopAppBar(
-                title = { Text("Support KirinDownloader") },
+                title = { Text("Support KirinDL") },
                 navigationIcon = { BackButton(onNavigateBack) },
                 scrollBehavior = scrollBehavior,
             )
@@ -57,7 +57,7 @@ fun SupportDeveloperPage(
         ) {
             item {
                 Text(
-                    "KirinDownloader is an open-source fork. Donation and payment links are not configured in this build.",
+                    "KirinDL is an open-source fork. Donation and payment links are not configured in this build.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -65,7 +65,7 @@ fun SupportDeveloperPage(
             item {
                 SupportLinkCard(
                     title = "Project source",
-                    description = "View KirinDownloader source code and releases on GitHub",
+                    description = "View KirinDL source code and releases on GitHub",
                     icon = Icons.Outlined.Code,
                     onClick = { uriHandler.openUri(PROJECT_REPOSITORY) },
                 )
@@ -73,7 +73,7 @@ fun SupportDeveloperPage(
             item {
                 SupportLinkCard(
                     title = "Report a bug or suggest a feature",
-                    description = "Open the KirinDownloader issue tracker",
+                    description = "Open the KirinDL issue tracker",
                     icon = Icons.Outlined.BugReport,
                     onClick = { uriHandler.openUri(PROJECT_ISSUES) },
                 )
@@ -81,7 +81,7 @@ fun SupportDeveloperPage(
             item {
                 SupportLinkCard(
                     title = "Upstream credits",
-                    description = "KirinDownloader retains credit for Seal, SealPlus, and their contributors",
+                    description = "KirinDL retains credit for Seal, SealPlus, and their contributors",
                     icon = Icons.Outlined.FavoriteBorder,
                     onClick = onNavigateToSponsors,
                 )

@@ -1135,6 +1135,7 @@ private fun SavedSourceMediaCard(
                         }
                         FilledTonalButton(onClick = onQueue) { Text("Queue") }
                     }
+                    Spacer(Modifier.weight(1f))
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
                             Icon(Icons.Outlined.MoreVert, contentDescription = "More actions")

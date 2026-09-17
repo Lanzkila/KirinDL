@@ -29,7 +29,7 @@ fun CryptoDonationPage(onNavigateBack: () -> Unit) {
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             Text(
-                "Donation links are not configured for KirinDownloader. You can support the project by reporting bugs and contributing improvements on GitHub.",
+                "Donation links are not configured for KirinDL. You can support the project by reporting bugs and contributing improvements on GitHub.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

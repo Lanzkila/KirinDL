@@ -39,6 +39,7 @@ object KirinSearchEngine {
         val source: KirinSearchStore.SearchSource,
         val extractor: String,
         val musicSongHint: Boolean = false,
+        val topicChannelHint: Boolean = false,
         val viewCount: Long? = null,
         val uploadTimestamp: Long? = null,
     )
@@ -150,11 +151,24 @@ object KirinSearchEngine {
                         }
                         .getOrDefault(emptyList())
 
-                (primary.filter(::isOriginalAudioResult) +
-                        focused.filter(::isOriginalAudioResult))
-                    .distinctBy { it.url }
-                    .sortedByDescending(::originalAudioPriority)
-                    .take(limit)
+                val strict =
+                    (primary.filter(::isOriginalAudioResult) +
+                            focused.filter(::isOriginalAudioResult))
+                        .distinctBy { it.url }
+                        .sortedByDescending(::originalAudioPriority)
+
+                if (strict.isNotEmpty()) {
+                    strict.take(limit)
+                } else {
+                    // Some uploads do not literally include “Original Audio” in the title even
+                    // though YouTube ranks them for that search. Keep the fallback audio-biased
+                    // and reject Topic/official-video/live/cover style results.
+                    focused
+                        .filter(::isOriginalAudioCandidate)
+                        .distinctBy { it.url }
+                        .sortedByDescending(::originalAudioPriority)
+                        .take(limit)
+                }
             }
         }
     }
@@ -395,15 +409,19 @@ object KirinSearchEngine {
         val artist = entry.optString("artist")
         val track = entry.optString("track")
         val album = entry.optString("album")
+        val channel = entry.optString("channel")
+        val uploader = entry.optString("uploader")
+        val uploaderId = entry.optString("uploader_id")
         val creator =
             sequenceOf(
                     artist,
-                    entry.optString("channel"),
-                    entry.optString("uploader"),
-                    entry.optString("uploader_id"),
+                    channel,
+                    uploader,
+                    uploaderId,
                 )
                 .firstOrNull { it.isNotBlank() }
                 .orEmpty()
+        val topicChannelHint = isTopicChannelName(channel) || isTopicChannelName(uploader)
 
         val thumbnail =
             entry.optString("thumbnail").takeIf { it.startsWith("http") }
@@ -457,6 +475,7 @@ object KirinSearchEngine {
             source = source,
             extractor = extractor,
             musicSongHint = artist.isNotBlank() || track.isNotBlank() || album.isNotBlank(),
+            topicChannelHint = topicChannelHint,
             viewCount = viewCount,
             uploadTimestamp = uploadTimestamp,
         )
@@ -478,16 +497,45 @@ object KirinSearchEngine {
             title.contains("original song")
     }
 
-    fun isTopicResult(item: ResultItem): Boolean {
-        val creator = item.creator.lowercase()
-        return creator == "topic" ||
-            creator.endsWith(" - topic") ||
-            creator.endsWith(" topic")
+    fun isTopicResult(item: ResultItem): Boolean =
+        item.topicChannelHint || isTopicChannelName(item.creator)
+
+    private fun isTopicChannelName(value: String): Boolean {
+        val name = value.trim().lowercase()
+        return name == "topic" || name.endsWith(" - topic") || name.endsWith(" topic")
     }
 
     fun isOriginalAudioResult(item: ResultItem): Boolean {
         val title = item.title.lowercase()
-        return title.contains("original audio")
+        return title.contains("original audio") ||
+            title.contains("original song") ||
+            title.contains("audio only")
+    }
+
+    private fun isOriginalAudioCandidate(item: ResultItem): Boolean {
+        if (isTopicResult(item)) return false
+        val title = item.title.lowercase()
+        val blockers =
+            listOf(
+                "official video",
+                "music video",
+                "lyrics",
+                "lyric video",
+                " live",
+                "live ",
+                "cover",
+                "reaction",
+                "tutorial",
+                "karaoke",
+                "shorts",
+                "performance",
+                "visualizer",
+                "teaser",
+                "trailer",
+            )
+        if (blockers.any { token -> title.contains(token) }) return false
+        if (title.contains("official audio")) return false
+        return item.musicSongHint || title.contains("audio") || title.contains("song")
     }
 
     private fun topicPriority(item: ResultItem): Int {
@@ -502,6 +550,8 @@ object KirinSearchEngine {
         val title = item.title.lowercase()
         var score = 0
         if (title.contains("original audio")) score += 120
+        if (title.contains("original song") || title.contains("audio only")) score += 100
+        if (title.contains("audio")) score += 25
         if (item.musicSongHint) score += 15
         if (item.durationSeconds != null) score += 5
         return score

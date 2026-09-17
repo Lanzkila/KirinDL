@@ -253,7 +253,7 @@ fun PremiumHomeScreenExample() {
     Scaffold(
         topBar = {
             LargeTopAppBar(
-                title = { Text("KirinDownloader") },
+                title = { Text("KirinDL") },
                 scrollBehavior = scrollBehavior
             )
         }
@@ -372,7 +372,7 @@ fun PremiumAboutPageExample() {
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "KirinDownloader",
+                                text = "KirinDL",
                                 style = MaterialTheme.typography.headlineMedium
                             )
                             Text(

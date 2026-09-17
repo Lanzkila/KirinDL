@@ -2,7 +2,7 @@
 
 <img width="" src="fastlane/metadata/android/en-US/images/icon.png"  width=160 height=160  align="center">
 
-# KirinDownloader
+# KirinDL
 
 ### Android के लिए वीडियो/ऑडियो डाउनलोडर
 
@@ -133,7 +133,7 @@ Seal हमेशा के लिए मुफ्त और ओपन-सोर
 
 ## 🧱 क्रेडिट
 
-KirinDownloader एक सरल GUI है [yt-dlp](https://github.com/yt-dlp/yt-dlp) का, जो [youtubedl-android](https://github.com/yausername/youtubedl-android) पर आधारित है।
+KirinDL एक सरल GUI है [yt-dlp](https://github.com/yt-dlp/yt-dlp) का, जो [youtubedl-android](https://github.com/yausername/youtubedl-android) पर आधारित है।
 
 UI डिज़ाइन और कोड में से कुछ [Read You](https://github.com/Ashinch/ReadYou) और [Music You](https://github.com/Kyant0/MusicYou) से उधार लिए गए हैं।
 

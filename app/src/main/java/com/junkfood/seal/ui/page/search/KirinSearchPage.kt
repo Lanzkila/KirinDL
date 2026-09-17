@@ -152,6 +152,7 @@ fun KirinSearchPage(
     var requestSerial by remember { mutableIntStateOf(0) }
     var lastSearchRequestAt by remember { mutableStateOf(0L) }
     var configureBusy by remember { mutableStateOf(false) }
+    var searchCompleted by remember { mutableStateOf(false) }
     val selectedUrls = remember { mutableStateListOf<String>() }
 
     val searches = remember(searchRevision) { KirinSearchStore.loadSearches(context) }
@@ -270,6 +271,7 @@ fun KirinSearchPage(
 
         // Keep the previous result list visible while a source/filter refresh is running.
         loading = true
+        searchCompleted = false
         errorText = ""
         selectedUrls.clear()
 
@@ -285,10 +287,12 @@ fun KirinSearchPage(
                     results = items
                     KirinSearchStore.addSearch(context, clean, searchSource)
                     searchRevision += 1
-                    errorText = if (items.isEmpty()) "No results found" else ""
+                    searchCompleted = true
+                    errorText = ""
                 }
                 .onFailure { throwable ->
                     if (thisRequest != requestSerial) return@onFailure
+                    searchCompleted = true
                     val message = throwable.message.orEmpty()
                     errorText =
                         when {
@@ -386,6 +390,7 @@ fun KirinSearchPage(
                                         resultFilter = SearchResultFilter.ALL
                                     }
                                     results = emptyList()
+                                    searchCompleted = false
                                     errorText = ""
                                     selectedUrls.clear()
                                     if (query.isNotBlank()) {
@@ -525,6 +530,21 @@ fun KirinSearchPage(
                 }
             }
 
+            if (
+                searchCompleted &&
+                    !loading &&
+                    errorText.isBlank() &&
+                    query.isNotBlank() &&
+                    results.isEmpty()
+            ) {
+                item {
+                    NoSearchResultsCard(
+                        source = source,
+                        onRetry = { runSearch(force = true) },
+                    )
+                }
+            }
+
             if (results.isNotEmpty()) {
                 item {
                     ResultsHeader(
@@ -565,7 +585,7 @@ fun KirinSearchPage(
                         onDetails = { detailsTarget = item },
                     )
                 }
-            } else if (!loading && errorText.isBlank() && searches.isNotEmpty()) {
+            } else if (!loading && !searchCompleted && errorText.isBlank() && searches.isNotEmpty()) {
                 item {
                     RecentSearchHeader(
                         onClearRecent = {
@@ -596,7 +616,7 @@ fun KirinSearchPage(
                         },
                     )
                 }
-            } else if (!loading && errorText.isBlank() && query.isBlank()) {
+            } else if (!loading && !searchCompleted && errorText.isBlank() && query.isBlank()) {
                 item {
                     EmptySearchCard()
                 }
@@ -714,6 +734,43 @@ private fun LoadingSearchCard(source: KirinSearchStore.SearchSource) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun NoSearchResultsCard(
+    source: KirinSearchStore.SearchSource,
+    onRetry: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(Modifier.weight(1f)) {
+                Text("No matching results", fontWeight = FontWeight.SemiBold)
+                Text(
+                    text =
+                        if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC)
+                            "No Topic-channel result matched this search yet."
+                        else
+                            "Try another keyword or retry the current source.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onRetry) { Text("Retry") }
         }
     }
 }

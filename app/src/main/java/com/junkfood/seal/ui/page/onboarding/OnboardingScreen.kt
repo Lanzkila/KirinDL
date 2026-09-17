@@ -62,7 +62,7 @@ fun OnboardingScreen(
     val pages = listOf(
         OnboardingPage(
             icon = Icons.Filled.VideoLibrary,
-            title = "Welcome to KirinDownloader",
+            title = "Welcome to KirinDL",
             description = "Your ultimate video downloader powered by yt-dlp. Download videos, audio, and playlists from your favorite platforms with ease.",
             gradient = GradientBrushes.Primary
         ),

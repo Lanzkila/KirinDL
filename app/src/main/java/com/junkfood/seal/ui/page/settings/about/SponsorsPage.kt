@@ -48,7 +48,7 @@ fun SponsorsPage(onNavigateBack: () -> Unit) {
         ) {
             item {
                 Text(
-                    "KirinDownloader is built on open-source work from Seal and SealPlus. Original authors and contributors keep full credit for their work.",
+                    "KirinDL is built on open-source work from Seal and SealPlus. Original authors and contributors keep full credit for their work.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -63,7 +63,7 @@ fun SponsorsPage(onNavigateBack: () -> Unit) {
             item {
                 CreditCard(
                     title = "SealPlus",
-                    description = "Upstream fork used as the starting point for KirinDownloader-Seal",
+                    description = "Upstream fork used as the starting point for KirinDL",
                     onClick = { uriHandler.openUri("https://github.com/MaheshTechnicals/Sealplus") },
                 )
             }

@@ -1,4 +1,4 @@
-KirinDownloader is an open-source media and gallery downloader for Android.
+KirinDL is an open-source media and gallery downloader for Android.
 
 Features include:
 • Media downloads powered by yt-dlp
@@ -6,9 +6,9 @@ Features include:
 • Gallery batch queue and history
 • Download format and output controls
 • Optional cookies and advanced configuration
-• KirinDownloader visual identity with adaptive and themed icons
+• KirinDL visual identity with adaptive and themed icons
 
-KirinDownloader does not request Android package-install permission for self-updates. Update checks
+KirinDL does not request Android package-install permission for self-updates. Update checks
 open the official GitHub release page so installation remains an explicit user action outside the
 app.
 

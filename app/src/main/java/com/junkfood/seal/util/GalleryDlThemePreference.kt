@@ -12,7 +12,7 @@ enum class GalleryDlThemeStyle(
     APP_DEFAULT(
         key = "app_default",
         title = "Follow app",
-        description = "Use the active KirinDownloader theme and accent.",
+        description = "Use the active KirinDL theme and accent.",
     ),
     KIRIN_CYAN(
         key = "kirin_cyan",
@@ -75,7 +75,7 @@ enum class GalleryDlThemeStyle(
  * Gallery Hub appearance preference.
  *
  * Only the Gallery accent can be customized. Background, surface and text colors always come from
- * KirinDownloader's active MaterialTheme, which keeps Gallery DL synchronized with the app's
+ * KirinDL's active MaterialTheme, which keeps Gallery DL synchronized with the app's
  * Light/Dark/Dynamic/Gradient appearance and prevents light-on-light input fields.
  */
 object GalleryDlThemePreference {
