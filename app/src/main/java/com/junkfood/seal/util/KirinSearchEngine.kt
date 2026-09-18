@@ -67,7 +67,6 @@ object KirinSearchEngine {
     suspend fun search(
         query: String,
         source: KirinSearchStore.SearchSource,
-        songsOnly: Boolean = true,
         youtubeContent: YoutubeContent = YoutubeContent.ALL,
         limit: Int = DEFAULT_LIMIT,
     ): Result<List<ResultItem>> =
@@ -78,8 +77,7 @@ object KirinSearchEngine {
 
                 val boundedLimit = limit.coerceIn(8, 30)
                 val cacheKey =
-                    "${source.name}:${if (songsOnly) "songs" else "all"}:${youtubeContent.name}:" +
-                        "${clean.lowercase()}:$boundedLimit"
+                    "${source.name}:${youtubeContent.name}:${clean.lowercase()}:$boundedLimit"
                 getCached(cacheKey)?.let { return@runCatching it }
 
                 val finalItems =
@@ -91,8 +89,6 @@ object KirinSearchEngine {
                                 limit = boundedLimit,
                             )
 
-                        KirinSearchStore.SearchSource.YOUTUBE_MUSIC ->
-                            searchYouTubeMusicTopics(clean, boundedLimit)
 
                         KirinSearchStore.SearchSource.BILIBILI ->
                             runCatching { searchBilibiliRich(clean, boundedLimit) }
@@ -171,48 +167,6 @@ object KirinSearchEngine {
                 }
             }
         }
-    }
-
-    /**
-     * YT Music is intentionally Topic-only. Search through YouTube's discovery endpoint, then
-     * keep only artist Topic channels so official/original audio uploads do not leak into this
-     * feed. Original Audio has its own filter under normal YouTube search.
-     */
-    private fun searchYouTubeMusicTopics(query: String, limit: Int): List<ResultItem> {
-        val poolLimit = (limit + 12).coerceAtMost(30)
-        val focused =
-            runCatching {
-                    executeDiscovery(
-                        target = "ytsearch$poolLimit:$query topic",
-                        source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
-                        limit = poolLimit,
-                    )
-                }
-                .getOrDefault(emptyList())
-                .filter(::isTopicResult)
-
-        if (focused.size >= minOf(5, limit)) {
-            return focused
-                .distinctBy { it.url }
-                .sortedByDescending(::topicPriority)
-                .take(limit)
-        }
-
-        val fallback =
-            runCatching {
-                    executeDiscovery(
-                        target = "ytsearch$poolLimit:$query",
-                        source = KirinSearchStore.SearchSource.YOUTUBE_MUSIC,
-                        limit = poolLimit,
-                    )
-                }
-                .getOrDefault(emptyList())
-                .filter(::isTopicResult)
-
-        return (focused + fallback)
-            .distinctBy { it.url }
-            .sortedByDescending(::topicPriority)
-            .take(limit)
     }
 
     /**
@@ -482,9 +436,9 @@ object KirinSearchEngine {
     }
 
     /**
-     * Strict YT Music song focus. Strong music metadata is accepted, while obvious lyric/live/
-     * cover/music-video results are removed. Topic and original/official audio/song labels rank
-     * highest, matching KirinDL's audio-first search preference.
+     * Lightweight music classification used by the normal YouTube filters. Topic results remain
+     * part of YouTube search, so users can find songs naturally with queries such as
+     * "artist name topic" without a separate YT Music source.
      */
     fun isMusicResult(item: ResultItem): Boolean {
         val title = item.title.lowercase()
@@ -538,13 +492,6 @@ object KirinSearchEngine {
         return item.musicSongHint || title.contains("audio") || title.contains("song")
     }
 
-    private fun topicPriority(item: ResultItem): Int {
-        var score = 100
-        if (item.musicSongHint) score += 20
-        if (item.durationSeconds != null) score += 5
-        if (item.viewCount != null) score += 2
-        return score
-    }
 
     private fun originalAudioPriority(item: ResultItem): Int {
         val title = item.title.lowercase()
@@ -563,8 +510,7 @@ object KirinSearchEngine {
     ): String? =
         if (
             id.isNotBlank() &&
-                (source == KirinSearchStore.SearchSource.YOUTUBE ||
-                    source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC)
+                source == KirinSearchStore.SearchSource.YOUTUBE
         ) {
             "https://i.ytimg.com/vi/$id/hqdefault.jpg"
         } else {
@@ -579,8 +525,7 @@ object KirinSearchEngine {
         if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
             if (looksLikeDirectVideoUrl(rawUrl)) return rawUrl
             if (
-                (source == KirinSearchStore.SearchSource.YOUTUBE ||
-                    source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC) &&
+                source == KirinSearchStore.SearchSource.YOUTUBE &&
                     id.length in 8..15 && !id.startsWith("UC")
             ) {
                 return "https://www.youtube.com/watch?v=$id"
@@ -589,8 +534,7 @@ object KirinSearchEngine {
         }
 
         return when (source) {
-            KirinSearchStore.SearchSource.YOUTUBE,
-            KirinSearchStore.SearchSource.YOUTUBE_MUSIC ->
+            KirinSearchStore.SearchSource.YOUTUBE ->
                 id.takeIf { it.isNotBlank() }?.let { "https://www.youtube.com/watch?v=$it" }
             KirinSearchStore.SearchSource.BILIBILI -> {
                 val candidate = rawUrl.ifBlank { id }

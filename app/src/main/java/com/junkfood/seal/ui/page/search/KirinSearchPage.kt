@@ -134,7 +134,6 @@ fun KirinSearchPage(
     var errorText by remember { mutableStateOf("") }
     var searchRevision by remember { mutableStateOf(0) }
     var detailsTarget by remember { mutableStateOf<KirinSearchEngine.ResultItem?>(null) }
-    var musicSongsOnly by remember { mutableStateOf(true) }
     var resultFilter by
         remember {
             mutableStateOf(
@@ -181,7 +180,7 @@ fun KirinSearchPage(
             }
         }
 
-    LaunchedEffect(query, source, musicSongsOnly, resultFilter, resultSort) {
+    LaunchedEffect(query, source, resultFilter, resultSort) {
         // Debounce tiny UI-state writes so typing stays smooth.
         delay(350)
         KirinSearchStore.saveUiState(
@@ -189,7 +188,6 @@ fun KirinSearchPage(
             KirinSearchStore.SearchUiState(
                 query = query,
                 source = source,
-                musicSongsOnly = musicSongsOnly,
                 contentFilter = resultFilter.name,
                 sort = resultSort.name,
             ),
@@ -233,7 +231,6 @@ fun KirinSearchPage(
 
     fun runSearch(
         sourceOverride: KirinSearchStore.SearchSource? = null,
-        songsOnlyOverride: Boolean? = null,
         filterOverride: SearchResultFilter? = null,
         force: Boolean = false,
     ) {
@@ -257,8 +254,6 @@ fun KirinSearchPage(
             } else {
                 SearchResultFilter.ALL
             }
-        val songsOnly =
-            searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC
         val youtubeContent =
             when (activeFilter) {
                 SearchResultFilter.ALL -> KirinSearchEngine.YoutubeContent.ALL
@@ -279,7 +274,6 @@ fun KirinSearchPage(
             KirinSearchEngine.search(
                     query = clean,
                     source = searchSource,
-                    songsOnly = songsOnly,
                     youtubeContent = youtubeContent,
                 )
                 .onSuccess { items ->
@@ -296,9 +290,6 @@ fun KirinSearchPage(
                     val message = throwable.message.orEmpty()
                     errorText =
                         when {
-                            searchSource == KirinSearchStore.SearchSource.YOUTUBE_MUSIC &&
-                                message.contains("search unavailable", ignoreCase = true) ->
-                                "Topic search is temporarily unavailable. Retry in a moment."
                             searchSource == KirinSearchStore.SearchSource.BILIBILI ->
                                 "Bilibili search failed. Retry in a moment."
                             message.isNotBlank() -> message
@@ -408,34 +399,6 @@ fun KirinSearchPage(
                 }
             }
 
-            if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC) {
-                item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            FilterChip(
-                                selected = true,
-                                onClick = {},
-                                label = { Text("Topic only") },
-                            )
-                            Text(
-                                "YT Music now keeps artist Topic-channel results only.",
-                                modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-
             if (source == KirinSearchStore.SearchSource.YOUTUBE) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -480,7 +443,7 @@ fun KirinSearchPage(
                             )
                         }
                         Text(
-                            "Collections and gallery sources open in Global Feed so Kirin Search stays video-first.",
+                            "For Topic songs, search the artist/song name + topic. Collections and galleries stay in Global Feed.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -539,7 +502,6 @@ fun KirinSearchPage(
             ) {
                 item {
                     NoSearchResultsCard(
-                        source = source,
                         onRetry = { runSearch(force = true) },
                     )
                 }
@@ -667,7 +629,7 @@ private fun SearchIntroCard() {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "YouTube • YT Music Topic • Bilibili",
+                    text = "YouTube • Bilibili",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -740,7 +702,6 @@ private fun LoadingSearchCard(source: KirinSearchStore.SearchSource) {
 
 @Composable
 private fun NoSearchResultsCard(
-    source: KirinSearchStore.SearchSource,
     onRetry: () -> Unit,
 ) {
     Surface(
@@ -761,11 +722,7 @@ private fun NoSearchResultsCard(
             Column(Modifier.weight(1f)) {
                 Text("No matching results", fontWeight = FontWeight.SemiBold)
                 Text(
-                    text =
-                        if (source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC)
-                            "No Topic-channel result matched this search yet."
-                        else
-                            "Try another keyword or retry the current source.",
+                    text = "Try another keyword or retry the current source.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1129,7 +1086,7 @@ private fun EmptySearchCard() {
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "YouTube is the default. YT Music stays Topic-only; switch to Bilibili when needed.",
+                text = "YouTube is the default. For Topic songs, search the artist or song name with ‘topic’; switch to Bilibili when needed.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1208,7 +1165,7 @@ private fun normalizeInfoText(value: String): String =
 
 private fun resultKindLabel(item: KirinSearchEngine.ResultItem): String? {
     return when {
-        item.source == KirinSearchStore.SearchSource.YOUTUBE_MUSIC &&
+        item.source == KirinSearchStore.SearchSource.YOUTUBE &&
             KirinSearchEngine.isTopicResult(item) -> "Topic"
         item.source == KirinSearchStore.SearchSource.YOUTUBE &&
             KirinSearchEngine.isOriginalAudioResult(item) -> "Original Audio"

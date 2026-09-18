@@ -15,7 +15,6 @@ object KirinSearchStore {
 
     enum class SearchSource(val label: String) {
         YOUTUBE("YouTube"),
-        YOUTUBE_MUSIC("YT Music"),
         BILIBILI("Bilibili"),
     }
 
@@ -30,7 +29,6 @@ object KirinSearchStore {
     data class SearchUiState(
         val query: String = "",
         val source: SearchSource = SearchSource.YOUTUBE,
-        val musicSongsOnly: Boolean = true,
         val contentFilter: String = "ALL",
         val sort: String = "RELEVANCE",
     )
@@ -74,7 +72,6 @@ object KirinSearchStore {
                     source =
                         runCatching { SearchSource.valueOf(json.optString("source")) }
                             .getOrDefault(SearchSource.YOUTUBE),
-                    musicSongsOnly = json.optBoolean("musicSongsOnly", true),
                     contentFilter = json.optString("contentFilter").ifBlank { "ALL" },
                     sort = json.optString("sort").ifBlank { "RELEVANCE" },
                 )
@@ -87,7 +84,6 @@ object KirinSearchStore {
             JSONObject()
                 .put("query", state.query.take(300))
                 .put("source", state.source.name)
-                .put("musicSongsOnly", state.musicSongsOnly)
                 .put("contentFilter", state.contentFilter)
                 .put("sort", state.sort)
         writeTextAtomic(uiStateFile(context), json.toString())
