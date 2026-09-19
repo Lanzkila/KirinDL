@@ -45,7 +45,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.page.settings.general.YtdlpUpdateChannelDialog
 import com.junkfood.seal.ui.page.tools.GalleryDlViewModel
-import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +54,6 @@ fun GalleryDlSettingsPage(
     viewModel: GalleryDlViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val exportFilter by GalleryDlBehaviorPreference.exportFilter.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showYtdlpSettings by remember { mutableStateOf(false) }
 
@@ -149,30 +147,6 @@ fun GalleryDlSettingsPage(
                     Spacer(Modifier.width(8.dp))
                     Text("Clear Gallery DL Cache")
                 }
-            }
-
-            SettingsSection(
-                icon = Icons.Outlined.Settings,
-                title = "Media Export Filter",
-                description =
-                    "Choose which finished files KirinDL exports. Gallery DL may still " +
-                        "fetch supporting files during the job.",
-            ) {
-                listOf(
-                        GalleryDlBehaviorPreference.EXPORT_ALL to "All files",
-                        GalleryDlBehaviorPreference.EXPORT_IMAGES to "Images only",
-                        GalleryDlBehaviorPreference.EXPORT_VIDEOS to "Videos only",
-                        GalleryDlBehaviorPreference.EXPORT_MEDIA to "Images + videos",
-                    )
-                    .forEach { (value, label) ->
-                        OutlinedButton(
-                            onClick = { GalleryDlBehaviorPreference.setExportFilter(value) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (exportFilter == value) "✓ $label" else label)
-                        }
-                        Spacer(Modifier.height(6.dp))
-                    }
             }
 
             SettingsSection(
@@ -297,11 +271,7 @@ fun GalleryDlSettingsPage(
     }
 
     if (showYtdlpSettings) {
-        YtdlpUpdateChannelDialog(
-            onDismissRequest = {
-                showYtdlpSettings = false
-            }
-        )
+        YtdlpUpdateChannelDialog(onDismissRequest = { showYtdlpSettings = false })
     }
 }
 

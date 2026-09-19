@@ -1,9 +1,8 @@
 package com.junkfood.seal.ui.page.tools
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,36 +17,43 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Queue
+import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,11 +66,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,9 +78,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.junkfood.seal.ui.component.BackButton
-import com.junkfood.seal.ui.component.SealModalBottomSheet
 import com.junkfood.seal.util.GalleryDlBehaviorPreference
-import com.junkfood.seal.util.GalleryDlStore
 import com.junkfood.seal.util.GalleryDlRunner
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
@@ -103,7 +107,6 @@ private enum class GalleryConfirmAction {
 @Composable
 private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
     val scheme = MaterialTheme.colorScheme
-
     val accent =
         when (style) {
             GalleryDlThemeStyle.APP_DEFAULT -> scheme.primary
@@ -118,7 +121,6 @@ private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
             GalleryDlThemeStyle.INDIGO -> Color(0xFF6674E8)
             GalleryDlThemeStyle.LIME -> Color(0xFF91C94B)
         }
-
     val onAccent =
         if (style == GalleryDlThemeStyle.APP_DEFAULT) {
             scheme.onPrimary
@@ -127,19 +129,14 @@ private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
         } else {
             Color.White
         }
-
     return KirinGalleryColors(
-        // IMPORTANT: these always follow the real app MaterialTheme, not Android's system setting.
         background = scheme.background,
         panel = scheme.surface,
         panelAlt = scheme.surfaceVariant,
         accent = accent,
         accentSoft =
-            if (style == GalleryDlThemeStyle.APP_DEFAULT) {
-                scheme.primaryContainer
-            } else {
-                accent.copy(alpha = 0.14f)
-            },
+            if (style == GalleryDlThemeStyle.APP_DEFAULT) scheme.primaryContainer
+            else accent.copy(alpha = 0.14f),
         onAccent = onAccent,
         text = scheme.onSurface,
         muted = scheme.onSurfaceVariant,
@@ -148,6 +145,7 @@ private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryDlPage(
     onNavigateBack: () -> Unit,
@@ -156,20 +154,17 @@ fun GalleryDlPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val themeStyle by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
-    val confirmBeforeDownload by GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
-    val exportFilter by GalleryDlBehaviorPreference.exportFilter.collectAsStateWithLifecycle()
+    val confirmBeforeDownload by
+        GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
     val colors = kirinGalleryColors(themeStyle)
     val clipboard = LocalClipboardManager.current
-    val context = LocalContext.current
-    val outputRoot = remember {
-        runCatching { GalleryDlRunner.galleryRootDirectory(context).absolutePath }
-            .getOrDefault("Download/GalleryDL/")
+
+    var selectedTab by rememberSaveable {
+        mutableIntStateOf(GalleryDlBehaviorPreference.lastTab())
     }
-    var tab by remember { mutableIntStateOf(GalleryDlBehaviorPreference.lastTab()) }
-    var siteFilterRevision by remember { mutableIntStateOf(0) }
-    var showBatch by remember { mutableStateOf(false) }
-    var pendingAction by remember { mutableStateOf<GalleryConfirmAction?>(null) }
-    var pendingBatchText by remember { mutableStateOf<String?>(null) }
+    var showBatchDialog by remember { mutableStateOf(false) }
+    var showDownloadCenter by remember { mutableStateOf(false) }
+    var confirmAction by remember { mutableStateOf<GalleryConfirmAction?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.refreshFromDisk()
@@ -178,16 +173,6 @@ fun GalleryDlPage(
             viewModel.checkExtractor()
         }
     }
-
-    val siteExportFilter =
-        remember(state.url, exportFilter, siteFilterRevision) {
-            GalleryDlBehaviorPreference.siteExportFilter(state.url)
-        }
-    val effectiveExportFilter = siteExportFilter ?: exportFilter
-    val gallerySiteLabel =
-        remember(state.url, siteFilterRevision) {
-            GalleryDlBehaviorPreference.siteLabel(state.url)
-        }
 
     Scaffold(
         containerColor = colors.background,
@@ -204,18 +189,44 @@ fun GalleryDlPage(
                 Spacer(Modifier.width(4.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "KIRIN GALLERY",
+                        "Gallery DL",
                         color = colors.text,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.2.sp,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        state.installedVersion?.let { "Codeberg • $it" }
-                            ?: "Engine setup required in Settings",
+                        state.installedVersion?.let { "Ready • $it" }
+                            ?: "Engine setup required",
                         color = if (state.isInstalled) colors.accent else colors.muted,
                         fontSize = 11.sp,
                     )
+                }
+                IconButton(onClick = { showDownloadCenter = true }) {
+                    Box {
+                        Icon(
+                            Icons.Outlined.FileDownload,
+                            contentDescription = "Gallery Download Center",
+                            tint = colors.accent,
+                        )
+                        val pendingCount =
+                            state.queue.count { it.state == "pending" || it.state == "running" }
+                        if (pendingCount > 0) {
+                            Surface(
+                                modifier = Modifier.align(Alignment.TopEnd).size(15.dp),
+                                shape = CircleShape,
+                                color = colors.error,
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        if (pendingCount > 9) "9+" else pendingCount.toString(),
+                                        color = MaterialTheme.colorScheme.onError,
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
                 IconButton(onClick = onOpenSettings) {
                     Icon(
@@ -234,61 +245,41 @@ fun GalleryDlPage(
                     .imePadding()
                     .verticalScroll(rememberScrollState()),
         ) {
-            KirinTabs(
-                selected = tab,
+            GalleryTabs(
+                selected = selectedTab,
                 queueCount = state.queue.count { it.state == "pending" || it.state == "running" },
                 historyCount = state.history.size,
                 colors = colors,
                 onSelected = {
-                    tab = it
+                    selectedTab = it
                     GalleryDlBehaviorPreference.setLastTab(it)
                 },
             )
 
-            when (tab) {
+            when (selectedTab) {
                 0 ->
-                    DownloadTab(
+                    GalleryDownloadTab(
                         state = state,
                         colors = colors,
                         clipboardText = { clipboard.getText()?.text.orEmpty() },
                         onUrlChanged = viewModel::updateUrl,
                         onCheck = viewModel::checkExtractor,
                         onDownload = {
-                            if (confirmBeforeDownload) {
-                                pendingAction = GalleryConfirmAction.DOWNLOAD
-                                viewModel.checkExtractor()
-                            } else {
-                                viewModel.download()
-                            }
+                            if (confirmBeforeDownload) confirmAction = GalleryConfirmAction.DOWNLOAD
+                            else viewModel.download()
                         },
                         onQueue = {
-                            if (confirmBeforeDownload) {
-                                pendingAction = GalleryConfirmAction.QUEUE
-                                viewModel.checkExtractor()
-                            } else {
+                            if (confirmBeforeDownload) confirmAction = GalleryConfirmAction.QUEUE
+                            else {
                                 viewModel.addCurrentToQueue()
-                                tab = 1
+                                selectedTab = 1
                                 GalleryDlBehaviorPreference.setLastTab(1)
                             }
                         },
-                        onBatch = { showBatch = true },
-                        exportFilter = effectiveExportFilter,
-                        siteLabel = gallerySiteLabel,
-                        siteFilterSaved = siteExportFilter != null,
-                        onRememberSiteFilter = {
-                            GalleryDlBehaviorPreference.rememberSiteExportFilter(
-                                state.url,
-                                exportFilter,
-                            )
-                            siteFilterRevision++
-                        },
-                        onClearSiteFilter = {
-                            GalleryDlBehaviorPreference.clearSiteExportFilter(state.url)
-                            siteFilterRevision++
-                        },
+                        onBatch = { showBatchDialog = true },
                     )
                 1 ->
-                    QueueTab(
+                    GalleryQueueTab(
                         state = state,
                         colors = colors,
                         onRun = viewModel::runQueue,
@@ -299,124 +290,153 @@ fun GalleryDlPage(
                         onMove = viewModel::moveQueueItem,
                     )
                 else ->
-                    HistoryTab(
+                    GalleryHistoryTab(
                         state = state,
                         colors = colors,
                         onReuse = {
                             viewModel.reuseHistoryUrl(it)
-                            tab = 0
+                            selectedTab = 0
                             GalleryDlBehaviorPreference.setLastTab(0)
                         },
-                        onClear = viewModel::clearHistory,
+                        onClearAll = viewModel::clearHistory,
                         onClearSuccessful = viewModel::clearSuccessfulHistory,
                         onClearFailed = viewModel::clearFailedHistory,
                     )
             }
 
-            state.statusMessage?.let { Notice(it, colors.success, colors) }
-            state.errorMessage?.let { Notice(it, colors.error, colors) }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
         }
     }
 
-    if (showBatch) {
-        BatchDialog(
+    if (showBatchDialog) {
+        GalleryBatchDialog(
             colors = colors,
-            onDismiss = { showBatch = false },
+            onDismiss = { showBatchDialog = false },
             onAdd = {
-                showBatch = false
-                if (confirmBeforeDownload) {
-                    pendingBatchText = it
-                } else {
-                    viewModel.addBatch(it)
-                    tab = 1
-                    GalleryDlBehaviorPreference.setLastTab(1)
-                }
+                viewModel.addBatch(it)
+                showBatchDialog = false
+                selectedTab = 1
+                GalleryDlBehaviorPreference.setLastTab(1)
             },
         )
     }
 
-    pendingAction?.let { action ->
-        GalleryDownloadConfirmDialog(
-            state = state,
-            colors = colors,
-            outputRoot = outputRoot,
-            action = action,
-            onDismiss = { pendingAction = null },
-            onConfirm = {
-                when (action) {
-                    GalleryConfirmAction.DOWNLOAD -> viewModel.download()
-                    GalleryConfirmAction.QUEUE -> {
-                        viewModel.addCurrentToQueue()
-                        tab = 1
-                        GalleryDlBehaviorPreference.setLastTab(1)
+    confirmAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = { confirmAction = null },
+            title = {
+                Text(
+                    if (action == GalleryConfirmAction.DOWNLOAD) "Download gallery?"
+                    else "Add to Gallery queue?"
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        state.preflightInfo?.title?.takeIf(String::isNotBlank)
+                            ?: state.url,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    state.extractorLabel?.let {
+                        Text(
+                            "Extractor: $it",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
-                pendingAction = null
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when (action) {
+                            GalleryConfirmAction.DOWNLOAD -> viewModel.download()
+                            GalleryConfirmAction.QUEUE -> {
+                                viewModel.addCurrentToQueue()
+                                selectedTab = 1
+                                GalleryDlBehaviorPreference.setLastTab(1)
+                            }
+                        }
+                        confirmAction = null
+                    }
+                ) {
+                    Text(if (action == GalleryConfirmAction.DOWNLOAD) "Download" else "Add")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmAction = null }) { Text("Cancel") }
             },
         )
     }
 
-    pendingBatchText?.let { batchText ->
-        GalleryBatchConfirmDialog(
-            text = batchText,
+    if (showDownloadCenter) {
+        GalleryDownloadCenterSheet(
+            state = state,
             colors = colors,
-            outputRoot = outputRoot,
-            onDismiss = { pendingBatchText = null },
-            onConfirm = {
-                viewModel.addBatch(batchText)
-                pendingBatchText = null
-                tab = 1
+            onDismiss = { showDownloadCenter = false },
+            onRun = viewModel::runQueue,
+            onRetryFailed = viewModel::retryFailedQueue,
+            onOpenQueue = {
+                showDownloadCenter = false
+                selectedTab = 1
                 GalleryDlBehaviorPreference.setLastTab(1)
+            },
+            onOpenHistory = {
+                showDownloadCenter = false
+                selectedTab = 2
+                GalleryDlBehaviorPreference.setLastTab(2)
             },
         )
     }
 }
 
 @Composable
-private fun KirinTabs(
+private fun GalleryTabs(
     selected: Int,
     queueCount: Int,
     historyCount: Int,
     colors: KirinGalleryColors,
     onSelected: (Int) -> Unit,
 ) {
+    val entries =
+        listOf(
+            Triple("Download", Icons.Outlined.Download, ""),
+            Triple("Queue", Icons.Outlined.Queue, if (queueCount > 0) " $queueCount" else ""),
+            Triple("History", Icons.Outlined.History, if (historyCount > 0) " $historyCount" else ""),
+        )
     Row(
-        modifier = Modifier.fillMaxWidth().background(colors.panel).padding(6.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(colors.panel)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        val tabs =
-            listOf(
-                Triple("Download", Icons.Outlined.Download, ""),
-                Triple("Queue", Icons.Outlined.Queue, if (queueCount > 0) " $queueCount" else ""),
-                Triple("History", Icons.Outlined.History, if (historyCount > 0) " $historyCount" else ""),
-            )
-        tabs.forEachIndexed { index, item ->
+        entries.forEachIndexed { index, entry ->
             val active = selected == index
             Row(
                 modifier =
                     Modifier.weight(1f)
-                        .background(
-                            if (active) colors.accentSoft else Color.Transparent,
-                            RoundedCornerShape(10.dp),
-                        )
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (active) colors.accentSoft else Color.Transparent)
                         .clickable { onSelected(index) }
-                        .padding(vertical = 10.dp),
+                        .padding(vertical = 9.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    item.second,
+                    entry.second,
                     contentDescription = null,
+                    modifier = Modifier.size(16.dp),
                     tint = if (active) colors.accent else colors.muted,
-                    modifier = Modifier.size(17.dp),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(5.dp))
                 Text(
-                    item.first + item.third,
+                    entry.first + entry.third,
                     color = if (active) colors.text else colors.muted,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1,
                 )
             }
         }
@@ -424,7 +444,7 @@ private fun KirinTabs(
 }
 
 @Composable
-private fun DownloadTab(
+private fun GalleryDownloadTab(
     state: GalleryDlViewModel.ViewState,
     colors: KirinGalleryColors,
     clipboardText: () -> String,
@@ -433,59 +453,34 @@ private fun DownloadTab(
     onDownload: () -> Unit,
     onQueue: () -> Unit,
     onBatch: () -> Unit,
-    exportFilter: Int,
-    siteLabel: String?,
-    siteFilterSaved: Boolean,
-    onRememberSiteFilter: () -> Unit,
-    onClearSiteFilter: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Text("Download a gallery", color = colors.text, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Download a gallery",
-            color = colors.text,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Black,
-        )
-        Text(
-            "Paste one URL, check its extractor, or add several URLs into the queue.",
+            "Paste a gallery, album, post, or collection URL. Check it first, then download or queue it.",
             color = colors.muted,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
         )
 
-        GalleryDashboard(state = state, colors = colors)
-
-        Box(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .background(colors.panel, RoundedCornerShape(16.dp))
-                    .padding(14.dp),
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = colors.panel,
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 OutlinedTextField(
                     value = state.url,
                     onValueChange = onUrlChanged,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isBusy,
                     singleLine = true,
-                    textStyle =
-                        MaterialTheme.typography.bodyLarge.copy(
-                            color = colors.text,
-                        ),
-                    placeholder = {
-                        Text(
-                            "Gallery or collection URL",
-                            color = colors.muted,
-                        )
-                    },
                     leadingIcon = {
-                        Icon(
-                            Icons.Outlined.Link,
-                            contentDescription = null,
-                            tint = colors.accent,
-                        )
+                        Icon(Icons.Outlined.Link, contentDescription = null, tint = colors.accent)
                     },
                     trailingIcon =
                         if (state.url.isNotBlank() && !state.isBusy) {
@@ -501,7 +496,10 @@ private fun DownloadTab(
                         } else {
                             null
                         },
+                    placeholder = { Text("Gallery or collection URL", color = colors.muted) },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.text),
                 )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -520,121 +518,47 @@ private fun DownloadTab(
                         enabled =
                             state.isInstalled &&
                                 !state.isBusy &&
-                                com.junkfood.seal.util.GalleryDlRunner.isCandidateUrl(state.url),
+                                GalleryDlRunner.isCandidateUrl(state.url),
                         modifier = Modifier.weight(1f),
                     ) {
                         if (state.isCheckingExtractor) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
                             Icon(Icons.Outlined.Check, contentDescription = null)
                         }
                         Spacer(Modifier.width(6.dp))
-                        Text("Download")
+                        Text("Check")
                     }
                 }
             }
         }
 
-        when (state.extractorSupported) {
-            true ->
-                FlatInfoRow(
-                    "Extractor",
-                    state.extractorLabel ?: "Ready",
-                    colors.success,
-                    colors,
-                )
-            false -> FlatInfoRow("Extractor", "No match", colors.error, colors)
-            null -> Unit
-        }
+        GalleryStatusStrip(state = state, colors = colors)
 
-        FlatInfoRow(
-            "Export filter",
-            GalleryDlBehaviorPreference.exportFilterLabel(exportFilter),
-            colors.accent,
-            colors,
-        )
-        siteLabel?.let { label ->
-            GallerySiteFilterMemory(
-                siteLabel = label,
-                filterLabel = GalleryDlBehaviorPreference.exportFilterLabel(exportFilter),
-                saved = siteFilterSaved,
-                onRemember = onRememberSiteFilter,
-                onClear = onClearSiteFilter,
-                colors = colors,
-            )
-        }
-        if (state.preflightInfo != null || state.extractorSupported != null) {
-            GalleryPreflightDiagnostic(state, colors)
+        state.errorMessage?.let { InlineNotice(it, colors.error, colors) }
+        state.statusMessage?.let { InlineNotice(it, colors.success, colors) }
+
+        state.preflightInfo?.let { info ->
+            GalleryExtractorInspector(info = info, state = state, colors = colors)
+        } ?: when (state.extractorSupported) {
+            false -> InlineNotice("No active gallery-dl extractor matched this URL.", colors.error, colors)
+            else -> Unit
         }
 
         if (state.isDownloading) {
-            val total = state.downloadTotalCount
-            val completed = state.downloadCompletedCount
-            val progress =
-                if (total != null && total > 0) {
-                    (completed.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-                } else {
-                    null
-                }
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        state.downloadStage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        buildString {
-                            append(completed)
-                            append(" / ")
-                            append(total?.toString() ?: "?")
-                            if (progress != null) {
-                                append(" • ")
-                                append((progress * 100).toInt())
-                                append('%')
-                            }
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.muted,
-                    )
-                }
-                if (progress != null) {
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxWidth().height(7.dp),
-                        color = colors.accent,
-                        trackColor = colors.panelAlt,
-                    )
-                } else {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth().height(7.dp),
-                        color = colors.accent,
-                        trackColor = colors.panelAlt,
-                    )
-                }
-            }
+            GalleryProgress(state = state, colors = colors)
         }
 
         Button(
             onClick = onDownload,
             enabled = state.canDownload,
             modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(14.dp),
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor = colors.accent,
                     contentColor = colors.onAccent,
                 ),
-            shape = RoundedCornerShape(12.dp),
         ) {
             if (state.isDownloading) {
                 CircularProgressIndicator(
@@ -643,12 +567,7 @@ private fun DownloadTab(
                     color = colors.onAccent,
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    if (state.downloadTotalCount != null)
-                        "${state.downloadCompletedCount}/${state.downloadTotalCount}"
-                    else
-                        "${state.downloadCompletedCount}/?"
-                )
+                Text("${state.downloadCompletedCount}/${state.downloadTotalCount ?: "?"}")
             } else {
                 Icon(Icons.Outlined.Download, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
@@ -665,7 +584,7 @@ private fun DownloadTab(
                 enabled =
                     state.isInstalled &&
                         !state.isBusy &&
-                        com.junkfood.seal.util.GalleryDlRunner.isCandidateUrl(state.url),
+                        GalleryDlRunner.isCandidateUrl(state.url),
                 modifier = Modifier.weight(1f),
             ) {
                 Icon(Icons.Outlined.Add, contentDescription = null)
@@ -684,21 +603,168 @@ private fun DownloadTab(
         }
 
         if (!state.isInstalled) {
-            Notice(
+            InlineNotice(
                 "Install or update the Gallery DL engine from Settings before downloading.",
                 colors.accent,
                 colors,
             )
         }
-
-        state.destinationDirectory?.let {
-            FlatInfoRow("Saved to", it, colors.text, colors)
+        state.destinationDirectory?.takeIf(String::isNotBlank)?.let {
+            InlineNotice("Saved to $it", colors.text, colors)
         }
     }
 }
 
 @Composable
-private fun QueueTab(
+private fun GalleryStatusStrip(
+    state: GalleryDlViewModel.ViewState,
+    colors: KirinGalleryColors,
+) {
+    val pending = state.queue.count { it.state == "pending" || it.state == "running" }
+    val history = state.history.size
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .background(colors.panel, RoundedCornerShape(14.dp))
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        GalleryStatusChip("Engine", state.installedVersion?.let { "v$it" } ?: "Setup", colors)
+        GalleryStatusChip("Queue", pending.toString(), colors)
+        GalleryStatusChip("History", history.toString(), colors)
+        GalleryStatusChip("Cookies", if (state.cookiesImported) "Ready" else "Off", colors)
+    }
+}
+
+@Composable
+private fun GalleryStatusChip(label: String, value: String, colors: KirinGalleryColors) {
+    Surface(shape = RoundedCornerShape(10.dp), color = colors.panelAlt) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Text(label, color = colors.muted, fontSize = 10.sp)
+            Text(value, color = colors.text, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun GalleryExtractorInspector(
+    info: GalleryDlRunner.ExtractorInfo,
+    state: GalleryDlViewModel.ViewState,
+    colors: KirinGalleryColors,
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = colors.panel,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (info.thumbnailUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = info.thumbnailUrl,
+                        contentDescription = null,
+                        modifier = Modifier.size(62.dp).clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Spacer(Modifier.width(12.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        info.title.ifBlank { info.label },
+                        color = colors.text,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (info.author.isNotBlank()) {
+                        Text(
+                            info.author,
+                            color = colors.muted,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Text(
+                        if (info.supported) "Supported ✓" else "Unsupported",
+                        color = if (info.supported) colors.success else colors.error,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+            HorizontalDivider(color = colors.panelAlt)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                InspectorPill("Extractor", state.extractorLabel ?: info.label, colors)
+                info.mediaType.takeIf(String::isNotBlank)?.let {
+                    InspectorPill("Type", it, colors)
+                }
+                val count = info.estimatedItemCount ?: info.scannedItemCount.takeIf { it > 0 }
+                count?.let { InspectorPill("Items", it.toString(), colors) }
+                InspectorPill("Cookies", if (info.cookiesLoaded) "Loaded" else "Not required", colors)
+            }
+            if (info.preflightError.isNotBlank()) {
+                Text(info.preflightError, color = colors.error, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InspectorPill(label: String, value: String, colors: KirinGalleryColors) {
+    Surface(shape = RoundedCornerShape(50), color = colors.accentSoft) {
+        Text(
+            "$label: $value",
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+            color = colors.text,
+            fontSize = 10.sp,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun GalleryProgress(state: GalleryDlViewModel.ViewState, colors: KirinGalleryColors) {
+    val total = state.downloadTotalCount
+    val completed = state.downloadCompletedCount
+    val progress =
+        if (total != null && total > 0) (completed.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+        else null
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(state.downloadStage, color = colors.text, fontWeight = FontWeight.SemiBold)
+            Text("$completed / ${total ?: "?"}", color = colors.muted)
+        }
+        if (progress != null) {
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(7.dp),
+                color = colors.accent,
+                trackColor = colors.panelAlt,
+            )
+        } else {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().height(7.dp),
+                color = colors.accent,
+                trackColor = colors.panelAlt,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GalleryQueueTab(
     state: GalleryDlViewModel.ViewState,
     colors: KirinGalleryColors,
     onRun: () -> Unit,
@@ -708,162 +774,97 @@ private fun QueueTab(
     onClearCompleted: () -> Unit,
     onMove: (String, Int) -> Unit,
 ) {
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    val visibleQueue =
-        remember(state.queue, searchQuery) {
-            val query = searchQuery.trim()
-            if (query.isBlank()) state.queue
-            else
-                state.queue.filter { item ->
-                    item.url.contains(query, ignoreCase = true) ||
-                        item.extractor.contains(query, ignoreCase = true) ||
-                        item.state.contains(query, ignoreCase = true) ||
-                        item.error.contains(query, ignoreCase = true)
-                }
+    var query by rememberSaveable { mutableStateOf("") }
+    var showMenu by remember { mutableStateOf(false) }
+    val visible = remember(state.queue, query) {
+        val q = query.trim()
+        if (q.isBlank()) state.queue
+        else state.queue.filter {
+            it.url.contains(q, true) || it.extractor.contains(q, true) || it.state.contains(q, true)
         }
-    val pendingCount = state.queue.count { it.state == "pending" }
-    val runningCount = state.queue.count { it.state == "running" }
-    val failedCount = state.queue.count { it.state == "failed" }
-    val completedCount = state.queue.count { it.state == "completed" }
+    }
+    val runnable = state.queue.count { it.state == "pending" || it.state == "failed" }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Download queue",
-                    color = colors.text,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
+                Text("Queue", color = colors.text, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text("${state.queue.size} Gallery job(s)", color = colors.muted, fontSize = 11.sp)
+            }
+            IconButton(onClick = { showMenu = true }) {
+                Icon(Icons.Outlined.MoreVert, contentDescription = "Queue menu", tint = colors.accent)
+            }
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Retry failed") },
+                    onClick = { showMenu = false; onRetryFailed() },
+                    leadingIcon = { Icon(Icons.Outlined.Replay, null) },
                 )
-                Text(
-                    "${state.queue.size} item(s) • sequential jobs",
-                    color = colors.muted,
-                    fontSize = 12.sp,
+                DropdownMenuItem(
+                    text = { Text("Clear failed") },
+                    onClick = { showMenu = false; onClearFailed() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Clear completed") },
+                    onClick = { showMenu = false; onClearCompleted() },
                 )
             }
         }
 
-        GalleryStatsStrip(
-            firstLabel = "Pending",
-            firstValue = pendingCount,
-            secondLabel = "Running",
-            secondValue = runningCount,
-            thirdLabel = "Failed",
-            thirdValue = failedCount,
-            fourthLabel = "Done",
-            fourthValue = completedCount,
-            colors = colors,
-        )
+        GallerySearchField(query, { query = it }, "Search queue", colors)
 
-        Row(
+        Button(
+            onClick = onRun,
+            enabled = runnable > 0 && !state.isBusy,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.onAccent),
         ) {
-            TextButton(
-                onClick = onRetryFailed,
-                enabled = failedCount > 0 && !state.isQueueRunning,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("Retry failed")
-            }
-            TextButton(
-                onClick = onClearFailed,
-                enabled = failedCount > 0 && !state.isQueueRunning,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("Clear failed")
-            }
-            TextButton(
-                onClick = onClearCompleted,
-                enabled = completedCount > 0 && !state.isQueueRunning,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("Clear done")
-            }
-        }
-        if (state.queue.isNotEmpty()) {
-            GallerySearchField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = "Search queue URL, extractor or status",
-                colors = colors,
-            )
-        }
-
-        if (state.queue.isEmpty()) {
-            EmptyState(
-                "Queue is empty",
-                "Add a URL or use Batch URLs from Download.",
-                colors,
-            )
-        } else {
-            Button(
-                onClick = onRun,
-                enabled =
-                    state.isInstalled &&
-                        !state.isBusy &&
-                        state.queue.any { it.state == "pending" || it.state == "failed" },
-                modifier = Modifier.fillMaxWidth(),
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = colors.accent,
-                        contentColor = colors.onAccent,
-                    ),
-            ) {
-                if (state.isQueueRunning) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(17.dp),
-                        strokeWidth = 2.dp,
-                        color = colors.onAccent,
-                    )
-                } else {
-                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(if (state.isQueueRunning) "Queue Running" else "Run Queue")
-            }
-
-            if (visibleQueue.isEmpty()) {
-                EmptyState(
-                    "No queue matches",
-                    "Try another URL, extractor, or status.",
-                    colors,
-                )
+            if (state.isQueueRunning) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = colors.onAccent)
+                Spacer(Modifier.width(7.dp))
+                Text("Running queue")
             } else {
-                visibleQueue.forEach { item ->
-                    val actualIndex = state.queue.indexOfFirst { it.id == item.id }
-                    QueueRow(
-                        item = item,
-                        colors = colors,
-                        removeEnabled = !state.isQueueRunning && item.state != "running",
-                        canMoveUp = !state.isQueueRunning && actualIndex > 0,
-                        canMoveDown =
-                            !state.isQueueRunning &&
-                                actualIndex >= 0 &&
-                                actualIndex < state.queue.lastIndex,
-                        onMoveUp = { onMove(item.id, -1) },
-                        onMoveDown = { onMove(item.id, 1) },
-                        onRemove = { onRemove(item.id) },
-                    )
-                }
+                Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(7.dp))
+                Text("Run Queue ($runnable)")
             }
         }
+
+        if (visible.isEmpty()) {
+            GalleryEmptyState("Queue is empty", "Add a URL or use Batch URLs from Download.", colors)
+        } else {
+            visible.forEach { item ->
+                val realIndex = state.queue.indexOfFirst { it.id == item.id }
+                GalleryQueueCard(
+                    item = item,
+                    colors = colors,
+                    canMoveUp = realIndex > 0 && !state.isQueueRunning,
+                    canMoveDown = realIndex >= 0 && realIndex < state.queue.lastIndex && !state.isQueueRunning,
+                    onMoveUp = { onMove(item.id, -1) },
+                    onMoveDown = { onMove(item.id, 1) },
+                    onRemove = { onRemove(item.id) },
+                    removeEnabled = !state.isQueueRunning,
+                )
+            }
+        }
+        state.errorMessage?.let { InlineNotice(it, colors.error, colors) }
+        state.statusMessage?.let { InlineNotice(it, colors.success, colors) }
     }
 }
 
 @Composable
-private fun QueueRow(
-    item: GalleryDlStore.QueueRecord,
+private fun GalleryQueueCard(
+    item: com.junkfood.seal.util.GalleryDlStore.QueueRecord,
     colors: KirinGalleryColors,
-    removeEnabled: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onRemove: () -> Unit,
+    removeEnabled: Boolean,
 ) {
     val statusColor =
         when (item.state) {
@@ -872,189 +873,193 @@ private fun QueueRow(
             "running" -> colors.accent
             else -> colors.muted
         }
-
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .background(colors.panel, RoundedCornerShape(12.dp))
-                .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier =
-                Modifier.size(9.dp)
-                    .background(statusColor, RoundedCornerShape(99.dp))
-        )
-        Spacer(Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                item.url,
-                color = colors.text,
-                fontSize = 12.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                item.state.uppercase() +
-                    item.extractor.takeIf(String::isNotBlank)?.let { " • $it" }.orEmpty(),
-                color = statusColor,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            if (item.error.isNotBlank()) {
+    Surface(shape = RoundedCornerShape(14.dp), color = colors.panel) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.url, color = colors.text, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    item.error,
-                    color = colors.error,
+                    item.state.uppercase() + item.extractor.takeIf(String::isNotBlank)?.let { " • $it" }.orEmpty(),
+                    color = statusColor,
                     fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Bold,
                 )
+                item.error.takeIf(String::isNotBlank)?.let {
+                    Text(it, color = colors.error, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            IconButton(
-                onClick = onMoveUp,
-                enabled = canMoveUp,
-                modifier = Modifier.size(32.dp),
-            ) {
-                Icon(
-                    Icons.Outlined.ArrowUpward,
-                    contentDescription = "Move up",
-                    tint = colors.muted,
-                    modifier = Modifier.size(18.dp),
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.size(30.dp)) {
+                    Icon(Icons.Outlined.ArrowUpward, "Move up", tint = colors.muted, modifier = Modifier.size(17.dp))
+                }
+                IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.size(30.dp)) {
+                    Icon(Icons.Outlined.ArrowDownward, "Move down", tint = colors.muted, modifier = Modifier.size(17.dp))
+                }
             }
-            IconButton(
-                onClick = onMoveDown,
-                enabled = canMoveDown,
-                modifier = Modifier.size(32.dp),
-            ) {
-                Icon(
-                    Icons.Outlined.ArrowDownward,
-                    contentDescription = "Move down",
-                    tint = colors.muted,
-                    modifier = Modifier.size(18.dp),
-                )
+            IconButton(onClick = onRemove, enabled = removeEnabled, modifier = Modifier.size(38.dp)) {
+                Icon(Icons.Outlined.Delete, "Remove", tint = colors.muted)
             }
-        }
-        IconButton(onClick = onRemove, enabled = removeEnabled, modifier = Modifier.size(38.dp)) {
-            Icon(
-                Icons.Outlined.Delete,
-                contentDescription = "Remove",
-                tint = colors.muted,
-            )
         }
     }
 }
 
 @Composable
-private fun HistoryTab(
+private fun GalleryHistoryTab(
     state: GalleryDlViewModel.ViewState,
     colors: KirinGalleryColors,
     onReuse: (String) -> Unit,
-    onClear: () -> Unit,
+    onClearAll: () -> Unit,
     onClearSuccessful: () -> Unit,
     onClearFailed: () -> Unit,
 ) {
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    val visibleHistory =
-        remember(state.history, searchQuery) {
-            val query = searchQuery.trim()
-            if (query.isBlank()) state.history
-            else
-                state.history.filter { record ->
-                    record.url.contains(query, ignoreCase = true) ||
-                        record.extractor.contains(query, ignoreCase = true) ||
-                        record.error.contains(query, ignoreCase = true) ||
-                        (record.success && "completed".contains(query, ignoreCase = true)) ||
-                        (!record.success && "failed".contains(query, ignoreCase = true))
-                }
+    var query by rememberSaveable { mutableStateOf("") }
+    var showMenu by remember { mutableStateOf(false) }
+    val visible = remember(state.history, query) {
+        val q = query.trim()
+        if (q.isBlank()) state.history
+        else state.history.filter {
+            it.url.contains(q, true) || it.extractor.contains(q, true) || it.error.contains(q, true)
         }
-    val successCount = state.history.count { it.success }
-    val failureCount = state.history.size - successCount
+    }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "History",
-                    color = colors.text,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
-                )
-                Text(
-                    "Latest ${state.history.size} Gallery DL job(s)",
-                    color = colors.muted,
-                    fontSize = 12.sp,
-                )
+                Text("History", color = colors.text, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text("${state.history.size} recent Gallery job(s)", color = colors.muted, fontSize = 11.sp)
             }
-            TextButton(
-                onClick = onClear,
-                enabled = state.history.isNotEmpty() && !state.isBusy,
-            ) {
-                Text("Clear", color = colors.error)
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Outlined.MoreVert, "History menu", tint = colors.accent)
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(text = { Text("Clear completed") }, onClick = { showMenu = false; onClearSuccessful() })
+                    DropdownMenuItem(text = { Text("Clear failed") }, onClick = { showMenu = false; onClearFailed() })
+                    DropdownMenuItem(text = { Text("Clear all") }, onClick = { showMenu = false; onClearAll() })
+                }
             }
         }
 
-        GalleryStatsStrip(
-            firstLabel = "Total",
-            firstValue = state.history.size,
-            secondLabel = "Done",
-            secondValue = successCount,
-            thirdLabel = "Failed",
-            thirdValue = failureCount,
-            fourthLabel = "Files",
-            fourthValue = state.history.filter { it.success }.sumOf { it.fileCount },
-            colors = colors,
-        )
+        GallerySearchField(query, { query = it }, "Search history", colors)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(
-                onClick = onClearSuccessful,
-                enabled = successCount > 0 && !state.isBusy,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("Clear done")
-            }
-            OutlinedButton(
-                onClick = onClearFailed,
-                enabled = failureCount > 0 && !state.isBusy,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("Clear failed")
-            }
-        }
-        if (state.history.isNotEmpty()) {
-            GallerySearchField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = "Search history URL, extractor or status",
-                colors = colors,
-            )
-        }
-
-        if (state.history.isEmpty()) {
-            EmptyState(
-                "No history yet",
-                "Finished and failed jobs will appear here.",
-                colors,
-            )
+        if (visible.isEmpty()) {
+            GalleryEmptyState("No Gallery history", "Completed and failed Gallery jobs appear here.", colors)
         } else {
-            if (visibleHistory.isEmpty()) {
-                EmptyState(
-                    "No history matches",
-                    "Try another URL, extractor, or status.",
-                    colors,
-                )
-            } else {
-                visibleHistory.forEach { record ->
-                    HistoryRow(record, colors) { onReuse(record.url) }
+            visible.forEach { record ->
+                Surface(shape = RoundedCornerShape(14.dp), color = colors.panel) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(record.url, color = colors.text, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    buildString {
+                                        append(if (record.success) "COMPLETED" else "FAILED")
+                                        record.extractor.takeIf(String::isNotBlank)?.let { append(" • $it") }
+                                        if (record.success && record.fileCount > 0) append(" • ${record.fileCount} file(s)")
+                                    },
+                                    color = if (record.success) colors.success else colors.error,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                            TextButton(onClick = { onReuse(record.url) }) { Text("Reuse") }
+                        }
+                        Text(
+                            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(record.finishedAt)),
+                            color = colors.muted,
+                            fontSize = 10.sp,
+                        )
+                        record.error.takeIf(String::isNotBlank)?.let {
+                            Text(it, color = colors.error, fontSize = 10.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
+        state.errorMessage?.let { InlineNotice(it, colors.error, colors) }
+        state.statusMessage?.let { InlineNotice(it, colors.success, colors) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GalleryDownloadCenterSheet(
+    state: GalleryDlViewModel.ViewState,
+    colors: KirinGalleryColors,
+    onDismiss: () -> Unit,
+    onRun: () -> Unit,
+    onRetryFailed: () -> Unit,
+    onOpenQueue: () -> Unit,
+    onOpenHistory: () -> Unit,
+) {
+    val running = state.queue.count { it.state == "running" }
+    val pending = state.queue.count { it.state == "pending" }
+    val failed = state.queue.count { it.state == "failed" }
+    val completed = state.history.count { it.success }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Gallery Download Center", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "Gallery DL jobs only. Media/yt-dlp remains in the main KirinDL Download Center.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                CenterMetric("Running", running, colors, Modifier.weight(1f))
+                CenterMetric("Queue", pending, colors, Modifier.weight(1f))
+                CenterMetric("Failed", failed, colors, Modifier.weight(1f))
+                CenterMetric("Done", completed, colors, Modifier.weight(1f))
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onRun,
+                    enabled = !state.isBusy && (pending + failed) > 0,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Outlined.PlayArrow, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text("Run")
+                }
+                OutlinedButton(onClick = onRetryFailed, enabled = !state.isBusy && failed > 0, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.Replay, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text("Retry")
+                }
+            }
+            OutlinedButton(onClick = onOpenQueue, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.Queue, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Open Gallery Queue")
+            }
+            OutlinedButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.History, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Open Gallery History")
+            }
+            val recentQueue = state.queue.take(3)
+            if (recentQueue.isNotEmpty()) {
+                HorizontalDivider()
+                Text("Up next", fontWeight = FontWeight.SemiBold)
+                recentQueue.forEach { item ->
+                    Text(
+                        "${item.state.uppercase()} • ${item.url}",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
         }
@@ -1062,218 +1067,55 @@ private fun HistoryTab(
 }
 
 @Composable
-private fun HistoryRow(
-    record: GalleryDlStore.HistoryRecord,
-    colors: KirinGalleryColors,
-    onReuse: () -> Unit,
-) {
-    val stateColor = if (record.success) colors.success else colors.error
-
-    Column(
-        modifier =
-            Modifier.fillMaxWidth()
-                .background(colors.panel, RoundedCornerShape(12.dp))
-                .clickable(onClick = onReuse)
-                .padding(13.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (record.success) "COMPLETED" else "FAILED",
-                color = stateColor,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
-                    .format(Date(record.finishedAt)),
-                color = colors.muted,
-                fontSize = 10.sp,
-            )
-        }
-
-        Text(
-            record.url,
-            color = colors.text,
-            fontSize = 12.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Text(
-            if (record.success) {
-                listOf(
-                        record.extractor.takeIf(String::isNotBlank),
-                        "${record.fileCount} file(s)",
-                    )
-                    .filterNotNull()
-                    .joinToString(" • ")
-            } else {
-                record.error.ifBlank { "Download failed" }
-            },
-            color = if (record.success) colors.muted else colors.error,
-            fontSize = 10.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun GallerySiteFilterMemory(
-    siteLabel: String,
-    filterLabel: String,
-    saved: Boolean,
-    onRemember: () -> Unit,
-    onClear: () -> Unit,
-    colors: KirinGalleryColors,
-) {
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .background(colors.panelAlt, RoundedCornerShape(12.dp))
-                .padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "Site profile • $siteLabel",
-                color = colors.text,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                if (saved) "Remembered • $filterLabel" else "Using global export filter",
-                color = colors.muted,
-                fontSize = 10.sp,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            if (!saved) {
-                TextButton(onClick = onRemember) { Text("Remember") }
-            } else {
-                Text(
-                    "Active",
-                    color = colors.accent,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                )
-                TextButton(onClick = onClear) { Text("Clear") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GalleryPreflightDiagnostic(
-    state: GalleryDlViewModel.ViewState,
-    colors: KirinGalleryColors,
-) {
-    val info = state.preflightInfo
-    val errorText =
-        listOfNotNull(info?.preflightError, state.errorMessage)
-            .joinToString(" ")
-            .lowercase()
-    val authLabel =
-        when {
-            info?.cookiesLoaded == true -> "Cookies loaded for this extractor"
-            state.cookiesImported -> "Cookies imported • available if the site needs login"
-            errorText.contains("login") ||
-                errorText.contains("auth") ||
-                errorText.contains("unauthorized") ||
-                errorText.contains("forbidden") -> "Authentication may be required"
-            else -> "No authentication warning detected"
-        }
-    val rateWarning =
-        errorText.contains("429") ||
-            errorText.contains("rate limit") ||
-            errorText.contains("too many requests")
-    val rateLabel =
-        when {
-            rateWarning -> "Rate-limit warning detected"
-            info?.largeGallery == true ->
-                "Large gallery • conservative retry behavior recommended"
-            else -> "No rate-limit warning detected"
-        }
-
-    Column(
-        modifier =
-            Modifier.fillMaxWidth()
-                .background(colors.panelAlt, RoundedCornerShape(12.dp))
-                .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            "Preflight diagnostics",
-            color = colors.text,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(authLabel, color = colors.muted, fontSize = 10.sp)
-        Text(
-            rateLabel,
-            color = if (rateWarning) colors.error else colors.muted,
-            fontSize = 10.sp,
-        )
-        info?.mediaType?.takeIf(String::isNotBlank)?.let {
-            Text("Media • $it", color = colors.muted, fontSize = 10.sp)
-        }
-    }
-}
-
-@Composable
-private fun GalleryStatsStrip(
-    firstLabel: String,
-    firstValue: Int,
-    secondLabel: String,
-    secondValue: Int,
-    thirdLabel: String,
-    thirdValue: Int,
-    fourthLabel: String,
-    fourthValue: Int,
-    colors: KirinGalleryColors,
-) {
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .background(colors.panelAlt, RoundedCornerShape(12.dp))
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        GalleryMetric(firstLabel, firstValue, colors, Modifier.weight(1f))
-        GalleryMetric(secondLabel, secondValue, colors, Modifier.weight(1f))
-        GalleryMetric(thirdLabel, thirdValue, colors, Modifier.weight(1f))
-        GalleryMetric(fourthLabel, fourthValue, colors, Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun GalleryMetric(
+private fun CenterMetric(
     label: String,
-    value: Int,
+    count: Int,
     colors: KirinGalleryColors,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            value.toString(),
-            color = if (value > 0) colors.accent else colors.text,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Black,
-        )
-        Text(
-            label,
-            color = colors.muted,
-            fontSize = 9.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+    Surface(modifier = modifier, shape = RoundedCornerShape(12.dp), color = colors.panelAlt) {
+        Column(
+            modifier = Modifier.padding(vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(count.toString(), fontWeight = FontWeight.Bold, color = if (count > 0) colors.accent else colors.text)
+            Text(label, fontSize = 9.sp, color = colors.muted, maxLines = 1)
+        }
     }
+}
+
+@Composable
+private fun GalleryBatchDialog(
+    colors: KirinGalleryColors,
+    onDismiss: () -> Unit,
+    onAdd: (String) -> Unit,
+) {
+    var text by remember { mutableStateOf("") }
+    val validCount = remember(text) {
+        text.lines().map(String::trim).filter(String::isNotBlank).distinct().count(GalleryDlRunner::isCandidateUrl)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Batch Gallery URLs") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("One URL per line. Valid links are added as separate Gallery jobs.")
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 6,
+                    maxLines = 10,
+                    placeholder = { Text("https://…\nhttps://…") },
+                )
+                Text("$validCount valid URL(s)", color = colors.accent, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onAdd(text) }, enabled = validCount > 0) { Text("Add $validCount") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -1288,604 +1130,45 @@ private fun GallerySearchField(
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
-        leadingIcon = {
-            Icon(Icons.Outlined.Search, contentDescription = null, tint = colors.accent)
-        },
+        leadingIcon = { Icon(Icons.Outlined.Search, null, tint = colors.accent) },
         trailingIcon =
             if (value.isNotBlank()) {
                 {
                     IconButton(onClick = { onValueChange("") }) {
-                        Icon(
-                            Icons.Outlined.Clear,
-                            contentDescription = "Clear search",
-                            tint = colors.muted,
-                        )
+                        Icon(Icons.Outlined.Clear, "Clear search", tint = colors.muted)
                     }
                 }
             } else {
                 null
             },
         placeholder = { Text(placeholder, color = colors.muted) },
-        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.text),
     )
 }
 
 @Composable
-private fun FlatInfoRow(
-    label: String,
-    value: String,
-    valueColor: Color,
-    colors: KirinGalleryColors,
-) {
-    Row(
-        modifier =
-            Modifier.fillMaxWidth()
-                .background(colors.panelAlt, RoundedCornerShape(10.dp))
-                .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, color = colors.muted, fontSize = 11.sp)
-        Spacer(Modifier.weight(1f))
-        Text(
-            value,
-            color = valueColor,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun Notice(
-    text: String,
-    color: Color,
-    colors: KirinGalleryColors,
-) {
+private fun InlineNotice(text: String, color: Color, colors: KirinGalleryColors) {
     Text(
         text,
         modifier =
             Modifier.fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
                 .background(colors.panelAlt, RoundedCornerShape(10.dp))
-                .padding(12.dp),
+                .padding(11.dp),
         color = color,
         fontSize = 11.sp,
     )
 }
 
 @Composable
-private fun EmptyState(
-    title: String,
-    description: String,
-    colors: KirinGalleryColors,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 44.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(title, color = colors.text, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(5.dp))
-        Text(description, color = colors.muted, fontSize = 11.sp)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun GalleryDownloadConfirmDialog(
-    state: GalleryDlViewModel.ViewState,
-    colors: KirinGalleryColors,
-    outputRoot: String,
-    action: GalleryConfirmAction,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    val host =
-        remember(state.url) {
-            runCatching {
-                Uri.parse(state.url).host.orEmpty().removePrefix("www.")
-            }.getOrDefault("")
-        }
-    val info = state.preflightInfo
-    val preflightReady = !state.isCheckingExtractor && state.extractorSupported == true
-    val itemCountLabel =
-        info?.estimatedItemCount?.let { count ->
-            when {
-                info?.itemCountExact == true -> count.toString()
-                count > 0 -> "$count+ / estimated"
-                else -> "Unknown"
-            }
-        } ?: "Unknown"
-    val statusLabel =
-        when {
-            state.isCheckingExtractor -> "Analyzing metadata…"
-            state.extractorSupported == false -> "Unsupported URL"
-            info?.preflightStatus == "login_required" -> "Login / cookies may be required"
-            info?.preflightStatus == "rate_limited" -> "Site rate limited preflight"
-            info?.preflightStatus == "extractor_error" -> "Metadata partially unavailable"
-            preflightReady -> "Ready"
-            else -> "Waiting for preflight"
-        }
-    val statusColor =
-        when {
-            state.extractorSupported == false -> colors.error
-            info?.preflightStatus == "login_required" -> colors.error
-            info?.preflightStatus == "rate_limited" -> colors.error
-            info?.preflightStatus == "extractor_error" -> colors.accent
-            preflightReady -> colors.success
-            else -> colors.accent
-        }
-
-    SealModalBottomSheet(
-        onDismissRequest = onDismiss,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier =
-                        Modifier.size(48.dp)
-                            .background(colors.accentSoft, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Outlined.AutoAwesome,
-                        contentDescription = null,
-                        tint = colors.accent,
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        if (action == GalleryConfirmAction.DOWNLOAD) {
-                            "Review Gallery Download"
-                        } else {
-                            "Review Queue Item"
-                        },
-                        color = colors.text,
-                        fontSize = 21.sp,
-                        fontWeight = FontWeight.Black,
-                    )
-                    Text(
-                        "Seal-style preflight: inspect first, then choose whether to continue.",
-                        color = colors.muted,
-                        fontSize = 12.sp,
-                    )
-                }
-            }
-
-            if (!info?.thumbnailUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = info?.thumbnailUrl,
-                    contentDescription = "Gallery preview",
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(colors.panelAlt),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-
-            if (!info?.title.isNullOrBlank() || !info?.author.isNullOrBlank()) {
-                Column(
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .background(colors.panelAlt, RoundedCornerShape(14.dp))
-                            .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    if (!info?.title.isNullOrBlank()) {
-                        Text(
-                            info?.title.orEmpty(),
-                            color = colors.text,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (!info?.author.isNullOrBlank()) {
-                        Text(
-                            info?.author.orEmpty(),
-                            color = colors.muted,
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-
-            Box(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .background(colors.panelAlt, RoundedCornerShape(14.dp))
-                        .padding(13.dp),
-            ) {
-                Text(
-                    state.url,
-                    color = colors.text,
-                    fontSize = 12.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            Text(
-                "PREFLIGHT DETAILS",
-                color = colors.accent,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
-            )
-
-            FlatInfoRow("Status", statusLabel, statusColor, colors)
-            FlatInfoRow("Site", host.ifBlank { "Unknown" }, colors.text, colors)
-            when {
-                state.isCheckingExtractor ->
-                    FlatInfoRow("Extractor", "Analyzing…", colors.accent, colors)
-                state.extractorSupported == true ->
-                    FlatInfoRow(
-                        "Extractor",
-                        state.extractorLabel ?: "Supported",
-                        colors.success,
-                        colors,
-                    )
-                state.extractorSupported == false ->
-                    FlatInfoRow("Extractor", "Unsupported", colors.error, colors)
-                else ->
-                    FlatInfoRow("Extractor", "Waiting for preflight", colors.muted, colors)
-            }
-            if (!info?.mediaType.isNullOrBlank()) {
-                FlatInfoRow("Media", info?.mediaType.orEmpty(), colors.text, colors)
-            }
-            FlatInfoRow("Estimated items", itemCountLabel, colors.text, colors)
-            FlatInfoRow(
-                "Authentication",
-                when {
-                    info?.preflightStatus == "login_required" -> "Login / cookies required"
-                    state.cookiesImported -> "Cookies available"
-                    else -> "No cookies imported"
-                },
-                when {
-                    info?.preflightStatus == "login_required" -> colors.error
-                    state.cookiesImported -> colors.success
-                    else -> colors.muted
-                },
-                colors,
-            )
-            FlatInfoRow(
-                "Engine",
-                state.installedVersion?.let { "gallery-dl $it" } ?: "Not installed",
-                if (state.isInstalled) colors.success else colors.error,
-                colors,
-            )
-            FlatInfoRow("Output", outputRoot, colors.text, colors)
-
-            if (info?.largeGallery == true) {
-                Notice(
-                    "Large gallery detected. Metadata preview is intentionally capped; the actual download can contain more items than the preflight scan.",
-                    colors.accent,
-                    colors,
-                )
-            }
-
-            info?.preflightError?.takeIf(String::isNotBlank)?.let { warning ->
-                Notice(
-                    "Preflight note: $warning",
-                    if (info?.preflightStatus == "extractor_error") colors.accent else colors.error,
-                    colors,
-                )
-            }
-
-            Notice(
-                when {
-                    preflightReady && info?.preflightStatus == "ready" ->
-                        "Preflight passed. Only metadata was inspected; the media download has not started."
-                    preflightReady ->
-                        "The extractor matched this URL, but some metadata could not be verified. You can still continue or cancel."
-                    state.extractorSupported == false ->
-                        "This URL is not currently matched by the installed gallery-dl engine."
-                    else ->
-                        "KirinDL is checking the extractor before enabling Continue."
-                },
-                if (preflightReady) colors.success else colors.accent,
-                colors,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f).height(50.dp),
-                ) {
-                    Text("Cancel")
-                }
-                Button(
-                    onClick = onConfirm,
-                    enabled = preflightReady,
-                    modifier = Modifier.weight(1.35f).height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.accent,
-                        contentColor = colors.onAccent,
-                    ),
-                ) {
-                    Icon(
-                        if (action == GalleryConfirmAction.DOWNLOAD) {
-                            Icons.Outlined.Download
-                        } else {
-                            Icons.Outlined.Add
-                        },
-                        contentDescription = null,
-                    )
-                    Spacer(Modifier.width(7.dp))
-                    Text(
-                        if (action == GalleryConfirmAction.DOWNLOAD) {
-                            "Download Now"
-                        } else {
-                            "Add to Queue"
-                        },
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun GalleryBatchConfirmDialog(
-    text: String,
-    colors: KirinGalleryColors,
-    outputRoot: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    val allEntries =
-        remember(text) {
-            text.lines().map(String::trim).filter(String::isNotBlank).distinct()
-        }
-    val urls = remember(allEntries) { allEntries.filter(com.junkfood.seal.util.GalleryDlRunner::isCandidateUrl) }
-    val invalidCount = allEntries.size - urls.size
-    val siteCounts =
-        remember(urls) {
-            urls.mapNotNull { url ->
-                runCatching { Uri.parse(url).host?.removePrefix("www.") }.getOrNull()
-            }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }
-        }
-    val largeBatch = urls.size >= 20
-
-    SealModalBottomSheet(
-        onDismissRequest = onDismiss,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier =
-                        Modifier.size(48.dp)
-                            .background(colors.accentSoft, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.Queue, contentDescription = null, tint = colors.accent)
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        "Review Gallery Batch",
-                        color = colors.text,
-                        fontSize = 21.sp,
-                        fontWeight = FontWeight.Black,
-                    )
-                    Text(
-                        "One confirmation for the whole batch — no popup spam per URL.",
-                        color = colors.muted,
-                        fontSize = 12.sp,
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                GalleryStatCard("Valid URLs", urls.size.toString(), colors, Modifier.weight(1f))
-                GalleryStatCard("Sites", siteCounts.size.toString(), colors, Modifier.weight(1f))
-            }
-            if (invalidCount > 0) {
-                GalleryStatCard("Skipped invalid", invalidCount.toString(), colors, Modifier.fillMaxWidth())
-            }
-
-            if (siteCounts.isNotEmpty()) {
-                Text(
-                    "SITE SUMMARY",
-                    color = colors.accent,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                )
-                siteCounts.take(8).forEach { (site, count) ->
-                    FlatInfoRow(site, "$count URL(s)", colors.text, colors)
-                }
-                if (siteCounts.size > 8) {
-                    FlatInfoRow(
-                        "Other sites",
-                        "+${siteCounts.size - 8}",
-                        colors.muted,
-                        colors,
-                    )
-                }
-            }
-
-            FlatInfoRow("Queue mode", "Separate jobs", colors.text, colors)
-            FlatInfoRow("Failure handling", "Continue remaining URLs", colors.text, colors)
-            FlatInfoRow("Output", outputRoot, colors.text, colors)
-
-            if (largeBatch) {
-                Notice(
-                    "Large batch detected (${urls.size} URLs). KirinDL will queue them as separate jobs so one failed extractor does not cancel the rest.",
-                    colors.accent,
-                    colors,
-                )
-            } else {
-                Notice(
-                    "The confirmed URLs enter the Gallery DL queue as separate jobs. One failed site will not cancel the rest.",
-                    colors.accent,
-                    colors,
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f).height(50.dp),
-                ) {
-                    Text("Review")
-                }
-                Button(
-                    onClick = onConfirm,
-                    enabled = urls.isNotEmpty(),
-                    modifier = Modifier.weight(1.35f).height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.accent,
-                        contentColor = colors.onAccent,
-                    ),
-                ) {
-                    Icon(Icons.Outlined.Queue, contentDescription = null)
-                    Spacer(Modifier.width(7.dp))
-                    Text("Queue ${urls.size}", fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GalleryDashboard(
-    state: GalleryDlViewModel.ViewState,
-    colors: KirinGalleryColors,
-) {
-    val pending = state.queue.count { it.state == "pending" || it.state == "failed" }
-    val completed = state.history.count { it.success }
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            GalleryStatCard(
-                "Engine",
-                state.installedVersion?.let { "v$it" } ?: "Setup",
-                colors,
-                Modifier.weight(1f),
-            )
-            GalleryStatCard("Queue", pending.toString(), colors, Modifier.weight(1f))
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            GalleryStatCard("History", completed.toString(), colors, Modifier.weight(1f))
-            GalleryStatCard(
-                "Cookies",
-                if (state.cookiesImported) "Ready" else "Off",
-                colors,
-                Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun GalleryStatCard(
-    label: String,
-    value: String,
-    colors: KirinGalleryColors,
-    modifier: Modifier = Modifier,
-) {
+private fun GalleryEmptyState(title: String, description: String, colors: KirinGalleryColors) {
     Column(
         modifier =
-            modifier.background(colors.panel, RoundedCornerShape(12.dp)).padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+            Modifier.fillMaxWidth()
+                .background(colors.panel, RoundedCornerShape(16.dp))
+                .padding(22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Text(label, color = colors.muted, fontSize = 10.sp)
-        Text(
-            value,
-            color = colors.text,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Text(title, color = colors.text, fontWeight = FontWeight.Bold)
+        Text(description, color = colors.muted, fontSize = 11.sp)
     }
-}
-
-@Composable
-private fun BatchDialog(
-    colors: KirinGalleryColors,
-    onDismiss: () -> Unit,
-    onAdd: (String) -> Unit,
-) {
-    var text by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "Batch Gallery URLs",
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "One URL per line. Valid links go into the Gallery DL queue.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp,
-                )
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 8,
-                    maxLines = 14,
-                    textStyle =
-                        MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    placeholder = {
-                        Text(
-                            "https://...\nhttps://...\nhttps://...",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onAdd(text) },
-                enabled = text.isNotBlank(),
-            ) {
-                Text("Add to Queue")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
 }

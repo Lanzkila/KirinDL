@@ -38,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,6 +77,7 @@ import com.junkfood.seal.ui.component.PreferenceSwitchWithDivider
 import com.junkfood.seal.ui.page.downloadv2.ActionButton
 import com.junkfood.seal.ui.page.downloadv2.CardStateIndicator
 import com.junkfood.seal.ui.page.downloadv2.VideoCardV2
+import com.junkfood.seal.util.CustomThemeColorPreference
 import com.junkfood.seal.util.DarkThemePreference.Companion.OFF
 import com.junkfood.seal.util.DarkThemePreference.Companion.ON
 import com.junkfood.seal.util.PreferenceUtil
@@ -87,6 +89,7 @@ import com.junkfood.seal.util.STYLE_TONAL_SPOT
 import com.junkfood.seal.util.paletteStyles
 import com.junkfood.seal.util.toDisplayName
 import com.junkfood.seal.ui.theme.KirinColorPresets
+import com.junkfood.seal.ui.theme.KirinCustomColorPresetIndex
 import com.junkfood.seal.ui.theme.kirinBodyColor
 import com.junkfood.seal.ui.theme.kirinButtonColor
 import com.junkfood.seal.ui.theme.readableOnColor
@@ -123,8 +126,10 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     val galleryTheme by GalleryDlThemePreference.style.collectAsState()
     val appSettings by PreferenceUtil.AppSettingsStateFlow.collectAsState()
     val sealPlusFollowTheme by SealPlusThemePreference.followTheme.collectAsState()
+    val customThemeColors by CustomThemeColorPreference.colors.collectAsState()
     var showBodyColorDialog by remember { mutableStateOf(false) }
     var showButtonColorDialog by remember { mutableStateOf(false) }
+    var showCustomThemeDialog by remember { mutableStateOf(false) }
     var showGalleryThemeMenu by remember { mutableStateOf(false) }
     var favoriteColorPair by remember { mutableStateOf(PreferenceUtil.getFavoriteColorPair()) }
     val previewDarkTheme = LocalDarkTheme.current.isDarkTheme()
@@ -245,6 +250,13 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                     icon = Icons.Outlined.Colorize,
                     onClick = { showButtonColorDialog = true },
                 )
+                PreferenceItem(
+                    title = "Custom Light / Dark colors",
+                    description =
+                        "Set separate body + accent colors for Light and Dark mode",
+                    icon = Icons.Outlined.Colorize,
+                    onClick = { showCustomThemeDialog = true },
+                )
                 PreferenceSwitch(
                     title = "SealPlus colors follow KirinDL theme",
                     description =
@@ -262,6 +274,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                     buttonIndex = appSettings.buttonColorPreset,
                     darkTheme = previewDarkTheme,
                     bridgeEnabled = sealPlusFollowTheme,
+                    customColors = customThemeColors,
                 )
                 PreferenceItem(
                     title = "Save favorite color pair",
@@ -392,6 +405,23 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
             },
         )
     }
+    if (showCustomThemeDialog) {
+        KirinCustomThemeColorDialog(
+            colors = customThemeColors,
+            onDismiss = { showCustomThemeDialog = false },
+            onSave = { lightBody, lightAccent, darkBody, darkAccent ->
+                CustomThemeColorPreference.setColors(
+                    lightBody = lightBody,
+                    lightAccent = lightAccent,
+                    darkBody = darkBody,
+                    darkAccent = darkAccent,
+                )
+                PreferenceUtil.modifyBodyColorPreset(KirinCustomColorPresetIndex)
+                PreferenceUtil.modifyButtonColorPreset(KirinCustomColorPresetIndex)
+                showCustomThemeDialog = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -400,9 +430,12 @@ private fun KirinColorPairPreview(
     buttonIndex: Int,
     darkTheme: Boolean,
     bridgeEnabled: Boolean,
+    customColors: CustomThemeColorPreference.Colors,
 ) {
-    val body = kirinBodyColor(bodyIndex, darkTheme) ?: MaterialTheme.colorScheme.background
-    val button = kirinButtonColor(buttonIndex, darkTheme) ?: MaterialTheme.colorScheme.primary
+    val body =
+        kirinBodyColor(bodyIndex, darkTheme, customColors) ?: MaterialTheme.colorScheme.background
+    val button =
+        kirinButtonColor(buttonIndex, darkTheme, customColors) ?: MaterialTheme.colorScheme.primary
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
@@ -435,6 +468,142 @@ private fun KirinColorPairPreview(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun KirinCustomThemeColorDialog(
+    colors: CustomThemeColorPreference.Colors,
+    onDismiss: () -> Unit,
+    onSave: (Int, Int, Int, Int) -> Unit,
+) {
+    var lightBody by remember(colors) {
+        mutableStateOf(CustomThemeColorPreference.toHex(colors.lightBody))
+    }
+    var lightAccent by remember(colors) {
+        mutableStateOf(CustomThemeColorPreference.toHex(colors.lightAccent))
+    }
+    var darkBody by remember(colors) {
+        mutableStateOf(CustomThemeColorPreference.toHex(colors.darkBody))
+    }
+    var darkAccent by remember(colors) {
+        mutableStateOf(CustomThemeColorPreference.toHex(colors.darkAccent))
+    }
+
+    val parsedLightBody = CustomThemeColorPreference.parseHex(lightBody)
+    val parsedLightAccent = CustomThemeColorPreference.parseHex(lightAccent)
+    val parsedDarkBody = CustomThemeColorPreference.parseHex(darkBody)
+    val parsedDarkAccent = CustomThemeColorPreference.parseHex(darkAccent)
+    val valid =
+        parsedLightBody != null &&
+            parsedLightAccent != null &&
+            parsedDarkBody != null &&
+            parsedDarkAccent != null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Custom Light / Dark colors") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    "Use #RRGGBB or #AARRGGBB. Saving selects the Custom preset for both body and accent.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text("Light mode", style = MaterialTheme.typography.titleSmall)
+                OutlinedTextField(
+                    value = lightBody,
+                    onValueChange = { lightBody = it },
+                    label = { Text("Light body") },
+                    singleLine = true,
+                    isError = parsedLightBody == null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = lightAccent,
+                    onValueChange = { lightAccent = it },
+                    label = { Text("Light accent") },
+                    singleLine = true,
+                    isError = parsedLightAccent == null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ColorPreviewBox(parsedLightBody, "Body", Modifier.weight(1f))
+                    ColorPreviewBox(parsedLightAccent, "Accent", Modifier.weight(1f))
+                }
+                Text("Dark mode", style = MaterialTheme.typography.titleSmall)
+                OutlinedTextField(
+                    value = darkBody,
+                    onValueChange = { darkBody = it },
+                    label = { Text("Dark body") },
+                    singleLine = true,
+                    isError = parsedDarkBody == null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = darkAccent,
+                    onValueChange = { darkAccent = it },
+                    label = { Text("Dark accent") },
+                    singleLine = true,
+                    isError = parsedDarkAccent == null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ColorPreviewBox(parsedDarkBody, "Body", Modifier.weight(1f))
+                    ColorPreviewBox(parsedDarkAccent, "Accent", Modifier.weight(1f))
+                }
+                TextButton(onClick = {
+                    lightBody = "#FFF8F9FC"
+                    lightAccent = "#FF6750A4"
+                    darkBody = "#FF111318"
+                    darkAccent = "#FFD0BCFF"
+                }) {
+                    Text("Reset fields")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = valid,
+                onClick = {
+                    onSave(
+                        parsedLightBody!!,
+                        parsedLightAccent!!,
+                        parsedDarkBody!!,
+                        parsedDarkAccent!!,
+                    )
+                },
+            ) {
+                Text("Save & use Custom")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun ColorPreviewBox(colorValue: Int?, label: String, modifier: Modifier = Modifier) {
+    val color = colorValue?.let { Color(it) } ?: MaterialTheme.colorScheme.surfaceVariant
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = color,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 14.dp),
+            color = readableOnColor(color),
+            style = MaterialTheme.typography.labelMedium,
+        )
     }
 }
 
@@ -505,6 +674,12 @@ private fun RowScope.KirinColorPresetTile(
     val previewColor =
         if (index == 0) {
             if (bodyMode) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.primary
+        } else if (preset.custom) {
+            if (bodyMode) {
+                kirinBodyColor(index, darkTheme) ?: MaterialTheme.colorScheme.background
+            } else {
+                kirinButtonColor(index, darkTheme) ?: MaterialTheme.colorScheme.primary
+            }
         } else if (bodyMode) {
             if (darkTheme) preset.bodyDark else preset.bodyLight
         } else {

@@ -7,6 +7,8 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
@@ -21,6 +23,7 @@ import com.junkfood.seal.ui.common.LocalButtonColorPreset
 import com.junkfood.seal.ui.common.LocalFixedColorRoles
 import com.junkfood.seal.ui.common.LocalGradientDarkMode
 import com.junkfood.seal.ui.common.LocalSealPlusFollowKirinTheme
+import com.junkfood.seal.util.CustomThemeColorPreference
 import com.kyant.monet.LocalTonalPalettes
 import com.kyant.monet.dynamicColorScheme
 
@@ -46,6 +49,7 @@ fun SealTheme(
     content: @Composable () -> Unit,
 ) {
     val view = LocalView.current
+    val customThemeColors by CustomThemeColorPreference.colors.collectAsState()
 
     LaunchedEffect(darkTheme) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -128,9 +132,9 @@ fun SealTheme(
             !(isGradientDarkEnabled && darkTheme) &&
             !(isHighContrastModeEnabled && darkTheme)
     val bodyOverride =
-        if (bridgeEnabled) kirinBodyColor(LocalBodyColorPreset.current, darkTheme) else null
+        if (bridgeEnabled) kirinBodyColor(LocalBodyColorPreset.current, darkTheme, customThemeColors) else null
     val accentOverride =
-        if (bridgeEnabled) kirinButtonColor(LocalButtonColorPreset.current, darkTheme) else null
+        if (bridgeEnabled) kirinButtonColor(LocalButtonColorPreset.current, darkTheme, customThemeColors) else null
 
     val colorScheme =
         if (!bridgeEnabled || (bodyOverride == null && accentOverride == null)) {

@@ -2,6 +2,7 @@ package com.junkfood.seal.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.junkfood.seal.util.CustomThemeColorPreference
 
 /** Optional KirinDL body/button overrides. Index 0 always means follow the active Material theme. */
 data class KirinColorPreset(
@@ -10,6 +11,7 @@ data class KirinColorPreset(
     val bodyDark: Color,
     val buttonLight: Color,
     val buttonDark: Color,
+    val custom: Boolean = false,
 )
 
 val KirinColorPresets =
@@ -36,18 +38,40 @@ val KirinColorPresets =
         KirinColorPreset("Pink", Color(0xFFFFF1F8), Color(0xFF241019), Color(0xFFC54382), Color(0xFFFF7DB4)),
         KirinColorPreset("Indigo", Color(0xFFF4F4FF), Color(0xFF111326), Color(0xFF4D58C7), Color(0xFF8993FF)),
         KirinColorPreset("Midnight", Color(0xFFF3F5FA), Color(0xFF080D18), Color(0xFF334D78), Color(0xFF7F9FCE)),
+        KirinColorPreset("Custom Light / Dark", Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified, custom = true),
     )
 
-fun kirinBodyColor(index: Int, darkTheme: Boolean): Color? =
+val KirinCustomColorPresetIndex: Int
+    get() = KirinColorPresets.lastIndex
+
+fun kirinBodyColor(
+    index: Int,
+    darkTheme: Boolean,
+    customColors: CustomThemeColorPreference.Colors = CustomThemeColorPreference.colors.value,
+): Color? =
     KirinColorPresets.getOrNull(index)?.let { preset ->
-        val value = if (darkTheme) preset.bodyDark else preset.bodyLight
-        value.takeUnless { it == Color.Unspecified }
+        if (preset.custom) {
+            if (darkTheme) CustomThemeColorPreference.darkBodyColor(customColors)
+            else CustomThemeColorPreference.lightBodyColor(customColors)
+        } else {
+            val value = if (darkTheme) preset.bodyDark else preset.bodyLight
+            value.takeUnless { it == Color.Unspecified }
+        }
     }
 
-fun kirinButtonColor(index: Int, darkTheme: Boolean): Color? =
+fun kirinButtonColor(
+    index: Int,
+    darkTheme: Boolean,
+    customColors: CustomThemeColorPreference.Colors = CustomThemeColorPreference.colors.value,
+): Color? =
     KirinColorPresets.getOrNull(index)?.let { preset ->
-        val value = if (darkTheme) preset.buttonDark else preset.buttonLight
-        value.takeUnless { it == Color.Unspecified }
+        if (preset.custom) {
+            if (darkTheme) CustomThemeColorPreference.darkAccentColor(customColors)
+            else CustomThemeColorPreference.lightAccentColor(customColors)
+        } else {
+            val value = if (darkTheme) preset.buttonDark else preset.buttonLight
+            value.takeUnless { it == Color.Unspecified }
+        }
     }
 
 fun readableOnColor(color: Color): Color =

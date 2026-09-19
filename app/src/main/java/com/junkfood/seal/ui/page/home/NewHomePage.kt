@@ -33,7 +33,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.contextmenu.modifier.filterTextContextMenuComponents
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -167,15 +166,9 @@ import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
 import com.junkfood.seal.util.makeToast
 import com.junkfood.seal.util.resolveFirstUrlFromInput
-import com.junkfood.seal.util.SPONSOR_DIALOG_FREQUENCY
-import com.junkfood.seal.util.SPONSOR_DIALOG_LAST_SHOWN
-import com.junkfood.seal.util.SPONSOR_FREQ_OFF
-import com.junkfood.seal.util.SPONSOR_FREQ_WEEKLY
 import com.junkfood.seal.util.BatteryUtil
 import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
-import com.junkfood.seal.util.PreferenceUtil.getLong
-import com.junkfood.seal.util.PreferenceUtil.updateLong
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -264,7 +257,6 @@ fun NewHomePage(
     var showNotificationPermissionDialog by remember { mutableStateOf(false) }
     var showBatteryOptimizationDialog by remember { mutableStateOf(false) }
     var permissionsChecked by remember { mutableStateOf(false) }
-    var showSponsorDialog by remember { mutableStateOf(false) }
     
     // Check notification permission
     val hasNotificationPermission = remember(lifecycleRefreshTrigger) {
@@ -333,20 +325,6 @@ fun NewHomePage(
                 showNotificationPermissionDialog = true
             } else if (shouldPromptBatteryDialog()) {
                 showBatteryOptimizationDialog = true
-            }
-        }
-        // Sponsor support dialog — delay slightly so permissions dialogs get priority
-        delay(600L)
-        val frequency = SPONSOR_DIALOG_FREQUENCY.getInt()
-        if (frequency != SPONSOR_FREQ_OFF) {
-            val lastShown = SPONSOR_DIALOG_LAST_SHOWN.getLong()
-            val intervalMs = if (frequency == SPONSOR_FREQ_WEEKLY)
-                7L * 24 * 60 * 60 * 1000
-            else
-                30L * 24 * 60 * 60 * 1000
-            val now = System.currentTimeMillis()
-            if (lastShown == 0L || now - lastShown >= intervalMs) {
-                showSponsorDialog = true
             }
         }
     }
@@ -744,21 +722,6 @@ fun NewHomePage(
         )
     }
 
-    // Sponsor support dialog
-    if (showSponsorDialog) {
-        SponsorSupportDialog(
-            onDismiss = {
-                showSponsorDialog = false
-                SPONSOR_DIALOG_LAST_SHOWN.updateLong(System.currentTimeMillis())
-            },
-            onSupport = {
-                showSponsorDialog = false
-                SPONSOR_DIALOG_LAST_SHOWN.updateLong(System.currentTimeMillis())
-                onNavigateToSupport()
-            },
-        )
-    }
-
     // Exit confirmation dialog
     if (showExitDialog) {
         AlertDialog(
@@ -956,8 +919,21 @@ fun NewHomePage(
                     animatePlaceholder = animateUrlHints,
                 )
             }
-            // Download activity is intentionally kept out of Home.
-            // Media + Gallery jobs now live in the unified Download Center.
+            if (showHomeActivity) {
+                item {
+                    HomeInputLabel("Download Center")
+                }
+                item {
+                    DownloadActivityStrip(
+                        activeCount = runningDownloadCount,
+                        queuedCount = queuedDownloadCount,
+                        pausedCount = pausedDownloadCount,
+                        completedCount = recentDownloads.size,
+                        compact = compactHomeActivity,
+                        onClick = onNavigateToDownloads,
+                    )
+                }
+            }
 
             // Bottom spacing
             item {
@@ -1319,10 +1295,7 @@ fun URLInputField(
         onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
-            // KirinDL keeps paste on Gboard/IME and the dedicated paste icon.
-            // Remove Android's floating Paste/Autofill text toolbar for this media field.
-            .filterTextContextMenuComponents { false },
+            .height(64.dp),
         placeholder = {
             if (animatePlaceholder) {
                 Text(

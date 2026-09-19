@@ -33,13 +33,13 @@ data class Credit(val title: String = "", val license: String? = null, val url: 
 
 private const val GPL_V3 = "GNU General Public License v3.0"
 private const val GPL_V2 = "GNU General Public License v2.0"
-private const val LGPL_V2_1 = "GNU Lesser General Public License, version 2.1"
 private const val APACHE_V2 = "Apache License, Version 2.0"
 private const val UNLICENSE = "The Unlicense"
 private const val BSD = "BSD 3-Clause License"
 
 private const val youtubedlAndroidUrl = "https://github.com/yausername/youtubedl-android"
 private const val ytdlpUrl = "https://github.com/yt-dlp/yt-dlp"
+private const val galleryDlUrl = "https://github.com/mikf/gallery-dl"
 private const val readYou = "https://github.com/Ashinch/ReadYou"
 private const val dvd = "https://github.com/yausername/dvd"
 private const val icons8 = "https://icons8.com/"
@@ -71,6 +71,7 @@ fun CreditsPage(onNavigateBack: () -> Unit) {
     val creditsList =
         listOf(
             Credit("yt-dlp", UNLICENSE, ytdlpUrl),
+            Credit("gallery-dl", GPL_V2, galleryDlUrl),
             Credit("Read You", GPL_V3, readYou),
             Credit("youtubedl-android", GPL_V3, youtubedlAndroidUrl),
             Credit("Termux", GPL_V3, termux),
@@ -120,8 +121,7 @@ fun CreditsPage(onNavigateBack: () -> Unit) {
                                 .clearAndSetSemantics {},
                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                     ) {
-                        val painter =
-                            rememberVectorPainter(image = DynamicColorImageVectors.coder())
+                        val painter = rememberVectorPainter(image = DynamicColorImageVectors.coder())
                         Image(
                             painter = painter,
                             contentDescription = null,
