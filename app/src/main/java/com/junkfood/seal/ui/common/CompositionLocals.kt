@@ -16,6 +16,7 @@ import com.junkfood.seal.ui.theme.DEFAULT_SEED_COLOR
 import com.junkfood.seal.ui.theme.FixedColorRoles
 import com.junkfood.seal.util.DarkThemePreference
 import com.junkfood.seal.util.PreferenceUtil
+import com.junkfood.seal.util.SealPlusThemePreference
 import com.junkfood.seal.util.paletteStyles
 import com.kyant.monet.LocalTonalPalettes
 import com.kyant.monet.PaletteStyle
@@ -29,6 +30,7 @@ val LocalPaletteStyleIndex = compositionLocalOf { 0 }
 val LocalGradientDarkMode = compositionLocalOf { false }
 val LocalBodyColorPreset = compositionLocalOf { 0 }
 val LocalButtonColorPreset = compositionLocalOf { 0 }
+val LocalSealPlusFollowKirinTheme = compositionLocalOf { false }
 val LocalFixedColorRoles = staticCompositionLocalOf {
     FixedColorRoles.fromColorSchemes(
         lightColors = lightColorScheme(),
@@ -38,6 +40,8 @@ val LocalFixedColorRoles = staticCompositionLocalOf {
 
 @Composable
 fun SettingsProvider(windowWidthSizeClass: WindowWidthSizeClass, content: @Composable () -> Unit) {
+    val sealPlusFollowKirinTheme = SealPlusThemePreference.followTheme.collectAsState().value
+
     PreferenceUtil.AppSettingsStateFlow.collectAsState().value.run {
         val tonalPalettes =
             if (isDynamicColorEnabled && Build.VERSION.SDK_INT >= 31)
@@ -58,6 +62,7 @@ fun SettingsProvider(windowWidthSizeClass: WindowWidthSizeClass, content: @Compo
             LocalGradientDarkMode provides isGradientDarkModeEnabled,
             LocalBodyColorPreset provides bodyColorPreset,
             LocalButtonColorPreset provides buttonColorPreset,
+            LocalSealPlusFollowKirinTheme provides sealPlusFollowKirinTheme,
             content = content,
         )
     }

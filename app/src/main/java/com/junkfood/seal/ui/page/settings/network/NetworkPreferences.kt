@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,8 @@ import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateValue
 import com.junkfood.seal.util.PreferenceUtil.updateInt
 import com.junkfood.seal.util.RATE_LIMIT
+import com.junkfood.seal.util.YouTubePoTokenMode
+import com.junkfood.seal.util.YouTubePoTokenPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +63,7 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
     var showConcurrentDownloadDialog by remember { mutableStateOf(false) }
     var showRateLimitDialog by remember { mutableStateOf(false) }
     var showAria2ConnectionsDialog by remember { mutableStateOf(false) }
+    var showYouTubePoTokenDialog by remember { mutableStateOf(false) }
     var aria2c by remember { mutableStateOf(ARIA2C.getBoolean()) }
     var aria2Connections by remember { mutableStateOf(ARIA2C_CONNECTIONS.getInt()) }
     var concurrentFragments by remember {
@@ -68,6 +72,8 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
     var isCookiesEnabled by COOKIES.booleanState
     var forceIpv4 by FORCE_IPV4.booleanState
     var noCheckCertificate by NO_CHECK_CERTIFICATE.booleanState
+    val youtubePoTokenMode by YouTubePoTokenPreference.mode.collectAsState()
+    val youtubePoToken by YouTubePoTokenPreference.token.collectAsState()
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -173,6 +179,37 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
                     }
                 }
                 item {
+                    PreferenceItem(
+                        title = "YouTube PO Token",
+                        description =
+                            when (youtubePoTokenMode) {
+                                YouTubePoTokenMode.OFF -> "Off • normal yt-dlp YouTube clients"
+                                YouTubePoTokenMode.PROVIDER_ASSIST ->
+                                    "Auto provider assist • default + mweb"
+                                YouTubePoTokenMode.MANUAL_GVS ->
+                                    "Manual mweb GVS token • advanced fallback"
+                            },
+                        icon = Icons.Outlined.SecurityUpdateWarning,
+                        enabled = !isCustomCommandEnabled,
+                        onClick = { showYouTubePoTokenDialog = true },
+                    )
+                }
+                if (!isCustomCommandEnabled && youtubePoTokenMode != YouTubePoTokenMode.OFF) {
+                    item {
+                        PreferenceInfo(
+                            text =
+                                when (youtubePoTokenMode) {
+                                    YouTubePoTokenMode.PROVIDER_ASSIST ->
+                                        "Provider assist does not generate a PO Token itself. " +
+                                            "It keeps yt-dlp's default client as fallback and adds mweb so a compatible installed provider can supply the token."
+                                    YouTubePoTokenMode.MANUAL_GVS ->
+                                        "Manual token mode is for troubleshooting. YouTube can expire or bind PO Tokens to content/session data, so replace the token if it stops working."
+                                    else -> ""
+                                },
+                        )
+                    }
+                }
+                item {
                     PreferenceSwitch(
                         title = stringResource(R.string.force_ipv4),
                         description = stringResource(id = R.string.force_ipv4_desc),
@@ -232,6 +269,18 @@ fun NetworkPreferences(navigateToCookieProfilePage: () -> Unit = {}, onNavigateB
                 aria2Connections = value
                 ARIA2C_CONNECTIONS.updateInt(value)
                 showAria2ConnectionsDialog = false
+            },
+        )
+    }
+
+    if (showYouTubePoTokenDialog) {
+        YouTubePoTokenDialog(
+            selectedMode = youtubePoTokenMode,
+            token = youtubePoToken,
+            onDismissRequest = { showYouTubePoTokenDialog = false },
+            onConfirm = { mode, tokenValue ->
+                YouTubePoTokenPreference.set(mode, tokenValue)
+                showYouTubePoTokenDialog = false
             },
         )
     }

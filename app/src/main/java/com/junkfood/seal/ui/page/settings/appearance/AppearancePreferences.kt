@@ -81,6 +81,7 @@ import com.junkfood.seal.util.DarkThemePreference.Companion.ON
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
+import com.junkfood.seal.util.SealPlusThemePreference
 import com.junkfood.seal.util.STYLE_MONOCHROME
 import com.junkfood.seal.util.STYLE_TONAL_SPOT
 import com.junkfood.seal.util.paletteStyles
@@ -121,6 +122,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
 
     val galleryTheme by GalleryDlThemePreference.style.collectAsState()
     val appSettings by PreferenceUtil.AppSettingsStateFlow.collectAsState()
+    val sealPlusFollowTheme by SealPlusThemePreference.followTheme.collectAsState()
     var showBodyColorDialog by remember { mutableStateOf(false) }
     var showButtonColorDialog by remember { mutableStateOf(false) }
     var showGalleryThemeMenu by remember { mutableStateOf(false) }
@@ -243,10 +245,23 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                     icon = Icons.Outlined.Colorize,
                     onClick = { showButtonColorDialog = true },
                 )
+                PreferenceSwitch(
+                    title = "SealPlus colors follow KirinDL theme",
+                    description =
+                        if (sealPlusFollowTheme) {
+                            "On • legacy/SealPlus surfaces and accents inherit the KirinDL body + button colors"
+                        } else {
+                            "Off • keep the original SealPlus colors"
+                        },
+                    icon = Icons.Outlined.Palette,
+                    isChecked = sealPlusFollowTheme,
+                    onClick = { SealPlusThemePreference.toggle() },
+                )
                 KirinColorPairPreview(
                     bodyIndex = appSettings.bodyColorPreset,
                     buttonIndex = appSettings.buttonColorPreset,
                     darkTheme = previewDarkTheme,
+                    bridgeEnabled = sealPlusFollowTheme,
                 )
                 PreferenceItem(
                     title = "Save favorite color pair",
@@ -384,6 +399,7 @@ private fun KirinColorPairPreview(
     bodyIndex: Int,
     buttonIndex: Int,
     darkTheme: Boolean,
+    bridgeEnabled: Boolean,
 ) {
     val body = kirinBodyColor(bodyIndex, darkTheme) ?: MaterialTheme.colorScheme.background
     val button = kirinButtonColor(buttonIndex, darkTheme) ?: MaterialTheme.colorScheme.primary
@@ -405,7 +421,7 @@ private fun KirinColorPairPreview(
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Text(
-                    "Body + independent accent",
+                    if (bridgeEnabled) "SealPlus bridge ON • Body + accent" else "SealPlus bridge OFF • Original colors kept",
                     color = readableOnColor(body).copy(alpha = 0.72f),
                     style = MaterialTheme.typography.bodySmall,
                 )

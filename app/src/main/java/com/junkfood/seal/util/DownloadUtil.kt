@@ -239,6 +239,12 @@ object DownloadUtil {
     }
 
     private const val TAG = "DownloadUtil"
+    private val PO_TOKEN_LOG_PATTERN = Regex("(?i)(po_token=)[^;\\s]+")
+
+    private fun redactSensitiveCommandArg(value: String): String =
+        value.replace(PO_TOKEN_LOG_PATTERN) { match ->
+            "${match.groupValues[1]}<redacted>"
+        }
 
     // KirinDL Bilibili download profile.
     //
@@ -376,6 +382,13 @@ object DownloadUtil {
                         addOption("--restrict-filenames")
                     }
                 }
+                applyKirinYouTubeExtractorArgs(
+                    url = playlistURL,
+                    customExtractorArgs = downloadPreferences.extractorArgs,
+                    skipTranslatedSubs =
+                        downloadPreferences.autoSubtitle &&
+                            !downloadPreferences.autoTranslatedSubtitles,
+                )
             }
             execute(request, playlistURL).out.run {
                 val playlistInfo = jsonFormat.decodeFromString<PlaylistResult>(this)
@@ -430,12 +443,12 @@ object DownloadUtil {
                         addOption("--write-auto-subs")
                     }
                     
-                    // No player_skip or player_client to get all format types
-                    // Format ID consistency will be maintained through caching within the same session
-                    if (autoSubtitle && !autoTranslatedSubtitles) {
-                        addOption("--extractor-args", "youtube:skip=translated_subs")
-                    }
-                    
+                    applyKirinYouTubeExtractorArgs(
+                        url = url,
+                        customExtractorArgs = extractorArgs,
+                        skipTranslatedSubs = autoSubtitle && !autoTranslatedSubtitles,
+                    )
+
                     if (playlistIndex != null) {
                         addOption("--playlist-items", playlistIndex)
                         addOption("--dump-json")
@@ -491,10 +504,11 @@ object DownloadUtil {
             addOption("--write-comments")
             addOption("--dump-single-json")
             addOption("--no-playlist")
-            addOption(
-                "--extractor-args",
-                "youtube:max_comments=$maxComments,all,all,all" +
-                    (if (sortByTop) ";comment_sort=top" else ""),
+            applyKirinYouTubeExtractorArgs(
+                url = url,
+                customExtractorArgs =
+                    "youtube:max_comments=$maxComments,all,all,all" +
+                        (if (sortByTop) ";comment_sort=top" else ""),
             )
             if (COOKIES.getBoolean()) {
                 val userAgentString =
@@ -1018,12 +1032,8 @@ object DownloadUtil {
                     applyFormatSorter(this, toFormatSorter())
                 }
                 
-                // No player_skip - format IDs selected by user are passed explicitly via -f flag
-                // This ensures correct format is downloaded regardless of client selection
-                if (downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles) {
-                    addOption("--extractor-args", "youtube:skip=translated_subs")
-                }
-                
+                // YouTube extractor args, including subtitle skipping and optional PO Token,
+                // are applied once on the parent request to avoid duplicate youtube: blocks.
                 if (downloadSubtitle) {
                     if (autoSubtitle) {
                         addOption("--write-auto-subs")
@@ -1197,11 +1207,8 @@ object DownloadUtil {
             with(preferences) {
                 addOption("-x")
                 
-                // No player_skip for audio - format ID explicitly passed
-                if (downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles) {
-                    addOption("--extractor-args", "youtube:skip=translated_subs")
-                }
-                
+                // YouTube extractor args, including subtitle skipping and optional PO Token,
+                // are applied once on the parent request to avoid duplicate youtube: blocks.
                 if (downloadSubtitle) {
                     addOption("--write-subs")
 
@@ -1465,9 +1472,12 @@ object DownloadUtil {
                     if (debug) {
                         addOption("-v")
                     }
-                    if (extractorArgs.isNotBlank()) {
-                        addOption("--extractor-args", extractorArgs.trim())
-                    }
+                    applyKirinYouTubeExtractorArgs(
+                        url = url,
+                        customExtractorArgs = extractorArgs,
+                        skipTranslatedSubs =
+                            downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles,
+                    )
                     if (liveFromStart) {
                         addOption("--live-from-start")
                     }
@@ -1604,7 +1614,9 @@ object DownloadUtil {
 
                     addOption("-o", outputBuilder.append(output).toString())
 
-                    for (s in request.buildCommand()) Log.d(TAG, s)
+                    for (s in request.buildCommand()) {
+                        Log.d(TAG, redactSensitiveCommandArg(s))
+                    }
 
                     if (cookies) {
                         temporaryCookies = createTemporaryCookiesFile(taskId)
