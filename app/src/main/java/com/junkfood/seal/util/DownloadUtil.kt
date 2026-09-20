@@ -239,12 +239,6 @@ object DownloadUtil {
     }
 
     private const val TAG = "DownloadUtil"
-    private val PO_TOKEN_LOG_PATTERN = Regex("(?i)(po_token=)[^;\\s]+")
-
-    private fun redactSensitiveCommandArg(value: String): String =
-        value.replace(PO_TOKEN_LOG_PATTERN) { match ->
-            "${match.groupValues[1]}<redacted>"
-        }
 
     // KirinDL Bilibili download profile.
     //
@@ -382,14 +376,6 @@ object DownloadUtil {
                         addOption("--restrict-filenames")
                     }
                 }
-                applyKirinYouTubeExtractorArgs(
-                    url = playlistURL,
-                    customExtractorArgs = downloadPreferences.extractorArgs,
-                    skipTranslatedSubs =
-                        downloadPreferences.autoSubtitle &&
-                            !downloadPreferences.autoTranslatedSubtitles,
-                    allowPoToken = false,
-                )
             }
             execute(request, playlistURL).out.run {
                 val playlistInfo = jsonFormat.decodeFromString<PlaylistResult>(this)
@@ -444,12 +430,11 @@ object DownloadUtil {
                         addOption("--write-auto-subs")
                     }
                     
-                    applyKirinYouTubeExtractorArgs(
-                        url = url,
-                        customExtractorArgs = extractorArgs,
-                        skipTranslatedSubs = autoSubtitle && !autoTranslatedSubtitles,
-                        allowPoToken = false,
-                    )
+                    // No player_skip or player_client to get all format types
+                    // Format ID consistency will be maintained through caching within the same session
+                    if (autoSubtitle && !autoTranslatedSubtitles) {
+                        addOption("--extractor-args", "youtube:skip=translated_subs")
+                    }
 
                     if (playlistIndex != null) {
                         addOption("--playlist-items", playlistIndex)
@@ -506,12 +491,10 @@ object DownloadUtil {
             addOption("--write-comments")
             addOption("--dump-single-json")
             addOption("--no-playlist")
-            applyKirinYouTubeExtractorArgs(
-                url = url,
-                customExtractorArgs =
-                    "youtube:max_comments=$maxComments,all,all,all" +
-                        (if (sortByTop) ";comment_sort=top" else ""),
-                allowPoToken = false,
+            addOption(
+                "--extractor-args",
+                "youtube:max_comments=$maxComments,all,all,all" +
+                    (if (sortByTop) ";comment_sort=top" else ""),
             )
             if (COOKIES.getBoolean()) {
                 val userAgentString =
@@ -1035,8 +1018,12 @@ object DownloadUtil {
                     applyFormatSorter(this, toFormatSorter())
                 }
                 
-                // YouTube extractor args, including subtitle skipping and optional PO Token,
-                // are applied once on the parent request to avoid duplicate youtube: blocks.
+                // No player_skip - format IDs selected by user are passed explicitly via -f flag
+                // This ensures correct format is downloaded regardless of client selection
+                if (downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles) {
+                    addOption("--extractor-args", "youtube:skip=translated_subs")
+                }
+                
                 if (downloadSubtitle) {
                     if (autoSubtitle) {
                         addOption("--write-auto-subs")
@@ -1210,8 +1197,11 @@ object DownloadUtil {
             with(preferences) {
                 addOption("-x")
                 
-                // YouTube extractor args, including subtitle skipping and optional PO Token,
-                // are applied once on the parent request to avoid duplicate youtube: blocks.
+                // No player_skip for audio - format ID explicitly passed
+                if (downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles) {
+                    addOption("--extractor-args", "youtube:skip=translated_subs")
+                }
+                
                 if (downloadSubtitle) {
                     addOption("--write-subs")
 
@@ -1433,8 +1423,7 @@ object DownloadUtil {
         playlistItem: Int = 0,
         taskId: String,
         downloadPreferences: DownloadPreferences,
-        allowYouTubePoToken: Boolean = true,
-        progressCallback: ((Float, Long, String) -> Unit)? = null,
+        progressCallback: ((Float, Long, String) -> Unit)?,
     ): Result<List<String>> {
         if (videoInfo == null)
             return Result.failure(Throwable(context.getString(R.string.fetch_info_error_msg)))
@@ -1476,13 +1465,9 @@ object DownloadUtil {
                     if (debug) {
                         addOption("-v")
                     }
-                    applyKirinYouTubeExtractorArgs(
-                        url = url,
-                        customExtractorArgs = extractorArgs,
-                        skipTranslatedSubs =
-                            downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles,
-                        allowPoToken = allowYouTubePoToken,
-                    )
+                    if (extractorArgs.isNotBlank()) {
+                        addOption("--extractor-args", extractorArgs.trim())
+                    }
                     if (liveFromStart) {
                         addOption("--live-from-start")
                     }
@@ -1619,9 +1604,7 @@ object DownloadUtil {
 
                     addOption("-o", outputBuilder.append(output).toString())
 
-                    for (s in request.buildCommand()) {
-                        Log.d(TAG, redactSensitiveCommandArg(s))
-                    }
+                    for (s in request.buildCommand()) Log.d(TAG, s)
 
                     if (cookies) {
                         temporaryCookies = createTemporaryCookiesFile(taskId)
@@ -1643,52 +1626,29 @@ object DownloadUtil {
                     }
                 }
                 .onFailure { th ->
-                    return when {
+                    return if (
                         sponsorBlock &&
                             th.message?.contains("Unable to communicate with SponsorBlock API") ==
-                                true -> {
-                            th.printStackTrace()
-                            onFinishDownloading(
-                                preferences = this,
-                                videoInfo = videoInfo,
-                                downloadPath = pathBuilder.toString(),
-                                sdcardUri = sdcardUri,
-                                downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
-                                averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
+                                true
+                    ) {
+                        th.printStackTrace()
+                        onFinishDownloading(
+                            preferences = this,
+                            videoInfo = videoInfo,
+                            downloadPath = pathBuilder.toString(),
+                            sdcardUri = sdcardUri,
+                            downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
+                            averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
+                        )
+                    } else {
+                        Result.failure(
+                            ExtractorHealthUtil.decorateFailure(
+                                context,
+                                ExtractorHealthUtil.Engine.YT_DLP,
+                                url,
+                                th,
                             )
-                        }
-
-                        th !is YoutubeDL.CanceledException &&
-                            isYouTubeUrl(url) &&
-                            allowYouTubePoToken &&
-                            YouTubePoTokenPreference.currentMode() != YouTubePoTokenMode.OFF -> {
-                            // PO providers/manual tokens can be unavailable, expired, or bound to
-                            // another video/session. Never let that optional path make KirinDL
-                            // unusable: retry once using yt-dlp's normal client selection.
-                            Log.w(
-                                TAG,
-                                "YouTube PO Token path failed; retrying with normal yt-dlp clients: ${th.message}",
-                            )
-                            downloadVideo(
-                                videoInfo = videoInfo,
-                                playlistUrl = playlistUrl,
-                                playlistItem = playlistItem,
-                                taskId = taskId,
-                                downloadPreferences = downloadPreferences,
-                                progressCallback = progressCallback,
-                                allowYouTubePoToken = false,
-                            )
-                        }
-
-                        else ->
-                            Result.failure(
-                                ExtractorHealthUtil.decorateFailure(
-                                    context,
-                                    ExtractorHealthUtil.Engine.YT_DLP,
-                                    url,
-                                    th,
-                                )
-                            )
+                        )
                     }
                 }
             val averageSpeed = computeAvgSpeed(videoInfo, downloadTiming)

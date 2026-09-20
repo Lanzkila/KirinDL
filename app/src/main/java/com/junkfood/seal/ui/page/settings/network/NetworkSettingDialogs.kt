@@ -1,14 +1,12 @@
 package com.junkfood.seal.ui.page.settings.network
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.OfflineBolt
-import androidx.compose.material.icons.outlined.SecurityUpdateWarning
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -16,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +25,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.text.isDigitsOnly
 import com.junkfood.seal.R
@@ -38,7 +34,6 @@ import com.junkfood.seal.ui.component.DialogSingleChoiceItem
 import com.junkfood.seal.ui.component.DialogSingleChoiceItemVariant
 import com.junkfood.seal.util.MAX_RATE
 import com.junkfood.seal.util.PreferenceUtil
-import com.junkfood.seal.util.YouTubePoTokenMode
 import com.junkfood.seal.util.isNumberInRange
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -184,91 +179,3 @@ fun Aria2ConnectionsDialog(
     )
 }
 
-@Composable
-fun YouTubePoTokenDialog(
-    selectedMode: YouTubePoTokenMode,
-    token: String,
-    onDismissRequest: () -> Unit,
-    onConfirm: (YouTubePoTokenMode, String) -> Unit,
-) {
-    var mode by remember(selectedMode) { mutableStateOf(selectedMode) }
-    var tokenValue by remember(token) { mutableStateOf(token) }
-    var tokenError by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        icon = {
-            Icon(
-                Icons.Outlined.SecurityUpdateWarning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        },
-        title = { Text("YouTube PO Token") },
-        text = {
-            Column {
-                Text(
-                    "Optional reliability helper for YouTube. Off keeps normal yt-dlp behavior. " +
-                        "Provider assist is preferred when a compatible PO Token provider exists in the yt-dlp runtime.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-
-                YouTubePoTokenMode.entries.forEach { option ->
-                    DialogSingleChoiceItemVariant(
-                        title = option.title,
-                        desc = option.description,
-                        selected = mode == option,
-                        onClick = {
-                            mode = option
-                            tokenError = false
-                        },
-                    )
-                }
-
-                if (mode == YouTubePoTokenMode.MANUAL_GVS) {
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = tokenValue,
-                        onValueChange = {
-                            tokenValue = it
-                            tokenError = false
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("mweb GVS PO Token") },
-                        singleLine = true,
-                        isError = tokenError,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        supportingText = {
-                            Text(
-                                if (tokenError) {
-                                    "Enter a PO Token or choose another mode."
-                                } else {
-                                    "Stored locally and never copied into queue/history. Manual tokens may expire or become content/session-bound."
-                                },
-                                color =
-                                    if (tokenError) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                    )
-                }
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismissRequest) { Text("Cancel") } },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (mode == YouTubePoTokenMode.MANUAL_GVS && tokenValue.trim().isBlank()) {
-                        tokenError = true
-                    } else {
-                        onConfirm(mode, tokenValue.trim())
-                    }
-                },
-            ) {
-                Text("Save")
-            }
-        },
-    )
-}
