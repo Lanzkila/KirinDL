@@ -23,14 +23,10 @@ object GalleryDlBehaviorPreference {
 
     private val mutableConfirmBeforeDownload =
         MutableStateFlow(preferences.getBoolean(KEY_CONFIRM_BEFORE_DOWNLOAD, true))
-    private val mutableExportFilter = MutableStateFlow(EXPORT_ALL)
+    private val mutableExportFilter =
+        MutableStateFlow(preferences.getInt(KEY_EXPORT_FILTER, EXPORT_ALL))
 
     val confirmBeforeDownload = mutableConfirmBeforeDownload.asStateFlow()
-
-    /**
-     * Kept only for old settings/build compatibility. DevPatch21 removes the Gallery export
-     * filter from the UI and always exports every file returned by gallery-dl.
-     */
     val exportFilter = mutableExportFilter.asStateFlow()
 
     fun setConfirmBeforeDownload(value: Boolean) {
@@ -39,30 +35,44 @@ object GalleryDlBehaviorPreference {
     }
 
     fun setExportFilter(value: Int) {
-        // Compatibility no-op: Gallery DL now always exports all files.
-        preferences.edit().remove(KEY_EXPORT_FILTER).apply()
-        mutableExportFilter.value = EXPORT_ALL
+        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_MEDIA } ?: EXPORT_ALL
+        preferences.edit().putInt(KEY_EXPORT_FILTER, safeValue).apply()
+        mutableExportFilter.value = safeValue
     }
 
-    fun exportFilterLabel(value: Int = EXPORT_ALL): String = "All files"
+    fun exportFilterLabel(value: Int = mutableExportFilter.value): String =
+        when (value) {
+            EXPORT_IMAGES -> "Images only"
+            EXPORT_VIDEOS -> "Videos only"
+            EXPORT_MEDIA -> "Images + videos"
+            else -> "All files"
+        }
 
-    fun siteExportFilter(url: String): Int? = null
+    fun siteExportFilter(url: String): Int? {
+        val key = sitePreferenceKey(url) ?: return null
+        if (!preferences.contains(key)) return null
+        return preferences
+            .getInt(key, EXPORT_ALL)
+            .takeIf { it in EXPORT_ALL..EXPORT_MEDIA }
+    }
 
-    /** Export filtering was removed; old stored filters cannot silently affect new downloads. */
-    fun effectiveExportFilter(url: String): Int = EXPORT_ALL
+    fun effectiveExportFilter(url: String): Int = siteExportFilter(url) ?: mutableExportFilter.value
 
     fun rememberSiteExportFilter(url: String, value: Int) {
-        sitePreferenceKey(url)?.let { key -> preferences.edit().remove(key).apply() }
+        val key = sitePreferenceKey(url) ?: return
+        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_MEDIA } ?: EXPORT_ALL
+        preferences.edit().putInt(key, safeValue).apply()
     }
 
     fun clearSiteExportFilter(url: String) {
-        sitePreferenceKey(url)?.let { key -> preferences.edit().remove(key).apply() }
+        val key = sitePreferenceKey(url) ?: return
+        preferences.edit().remove(key).apply()
     }
 
     fun siteLabel(url: String): String? =
         runCatching {
-                Uri.parse(url.trim()).host.orEmpty().lowercase().removePrefix("www.")
-            }
+            Uri.parse(url.trim()).host.orEmpty().lowercase().removePrefix("www.")
+        }
             .getOrNull()
             ?.takeIf { it.isNotBlank() }
 
@@ -75,7 +85,7 @@ object GalleryDlBehaviorPreference {
 
     fun lastTab(): Int = preferences.getInt(KEY_LAST_TAB, 0).coerceIn(0, 2)
 
-    /** One-shot handoff retained for older Home builds/backups. */
+    /** One-shot handoff used by the compact Gallery DL URL field on Home. */
     fun setPendingHomeUrl(value: String) {
         preferences.edit().putString(KEY_PENDING_HOME_URL, value.trim()).apply()
     }

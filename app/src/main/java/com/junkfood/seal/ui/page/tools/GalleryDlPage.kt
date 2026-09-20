@@ -156,15 +156,18 @@ fun GalleryDlPage(
     val themeStyle by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
     val confirmBeforeDownload by
         GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
+    val exportFilter by GalleryDlBehaviorPreference.exportFilter.collectAsStateWithLifecycle()
     val colors = kirinGalleryColors(themeStyle)
     val clipboard = LocalClipboardManager.current
 
     var selectedTab by rememberSaveable {
         mutableIntStateOf(GalleryDlBehaviorPreference.lastTab())
     }
+    var siteFilterRevision by remember { mutableIntStateOf(0) }
     var showBatchDialog by remember { mutableStateOf(false) }
     var showDownloadCenter by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf<GalleryConfirmAction?>(null) }
+    var pendingBatchText by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.refreshFromDisk()
@@ -173,6 +176,16 @@ fun GalleryDlPage(
             viewModel.checkExtractor()
         }
     }
+
+    val siteExportFilter =
+        remember(state.url, exportFilter, siteFilterRevision) {
+            GalleryDlBehaviorPreference.siteExportFilter(state.url)
+        }
+    val effectiveExportFilter = siteExportFilter ?: exportFilter
+    val gallerySiteLabel =
+        remember(state.url, siteFilterRevision) {
+            GalleryDlBehaviorPreference.siteLabel(state.url)
+        }
 
     Scaffold(
         containerColor = colors.background,
@@ -265,18 +278,38 @@ fun GalleryDlPage(
                         onUrlChanged = viewModel::updateUrl,
                         onCheck = viewModel::checkExtractor,
                         onDownload = {
-                            if (confirmBeforeDownload) confirmAction = GalleryConfirmAction.DOWNLOAD
-                            else viewModel.download()
+                            if (confirmBeforeDownload) {
+                                confirmAction = GalleryConfirmAction.DOWNLOAD
+                                viewModel.checkExtractor()
+                            } else {
+                                viewModel.download()
+                            }
                         },
                         onQueue = {
-                            if (confirmBeforeDownload) confirmAction = GalleryConfirmAction.QUEUE
-                            else {
+                            if (confirmBeforeDownload) {
+                                confirmAction = GalleryConfirmAction.QUEUE
+                                viewModel.checkExtractor()
+                            } else {
                                 viewModel.addCurrentToQueue()
                                 selectedTab = 1
                                 GalleryDlBehaviorPreference.setLastTab(1)
                             }
                         },
                         onBatch = { showBatchDialog = true },
+                        exportFilter = effectiveExportFilter,
+                        siteLabel = gallerySiteLabel,
+                        siteFilterSaved = siteExportFilter != null,
+                        onRememberSiteFilter = {
+                            GalleryDlBehaviorPreference.rememberSiteExportFilter(
+                                state.url,
+                                exportFilter,
+                            )
+                            siteFilterRevision++
+                        },
+                        onClearSiteFilter = {
+                            GalleryDlBehaviorPreference.clearSiteExportFilter(state.url)
+                            siteFilterRevision++
+                        },
                     )
                 1 ->
                     GalleryQueueTab(
@@ -312,11 +345,56 @@ fun GalleryDlPage(
         GalleryBatchDialog(
             colors = colors,
             onDismiss = { showBatchDialog = false },
-            onAdd = {
-                viewModel.addBatch(it)
+            onAdd = { batchText ->
                 showBatchDialog = false
-                selectedTab = 1
-                GalleryDlBehaviorPreference.setLastTab(1)
+                if (confirmBeforeDownload) {
+                    pendingBatchText = batchText
+                } else {
+                    viewModel.addBatch(batchText)
+                    selectedTab = 1
+                    GalleryDlBehaviorPreference.setLastTab(1)
+                }
+            },
+        )
+    }
+
+    pendingBatchText?.let { batchText ->
+        val batchCount =
+            remember(batchText) {
+                batchText.lines()
+                    .map(String::trim)
+                    .filter(String::isNotBlank)
+                    .distinct()
+                    .count(GalleryDlRunner::isCandidateUrl)
+            }
+        AlertDialog(
+            onDismissRequest = { pendingBatchText = null },
+            title = { Text("Add batch to Gallery queue?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("$batchCount valid Gallery URL(s) will be added to the queue.")
+                    Text(
+                        "The same Gallery DL behavior and export filter will be used when each job runs.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.addBatch(batchText)
+                        pendingBatchText = null
+                        selectedTab = 1
+                        GalleryDlBehaviorPreference.setLastTab(1)
+                    },
+                    enabled = batchCount > 0,
+                ) {
+                    Text("Add $batchCount")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingBatchText = null }) { Text("Cancel") }
             },
         )
     }
@@ -338,6 +416,13 @@ fun GalleryDlPage(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (state.isCheckingExtractor) {
+                        Text(
+                            "Checking extractor…",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                     state.extractorLabel?.let {
                         Text(
                             "Extractor: $it",
@@ -345,6 +430,11 @@ fun GalleryDlPage(
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
+                    Text(
+                        "Export: ${GalleryDlBehaviorPreference.exportFilterLabel(effectiveExportFilter)}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             },
             confirmButton = {
@@ -359,7 +449,8 @@ fun GalleryDlPage(
                             }
                         }
                         confirmAction = null
-                    }
+                    },
+                    enabled = !state.isCheckingExtractor && state.extractorSupported != false,
                 ) {
                     Text(if (action == GalleryConfirmAction.DOWNLOAD) "Download" else "Add")
                 }
@@ -453,6 +544,11 @@ private fun GalleryDownloadTab(
     onDownload: () -> Unit,
     onQueue: () -> Unit,
     onBatch: () -> Unit,
+    exportFilter: Int,
+    siteLabel: String?,
+    siteFilterSaved: Boolean,
+    onRememberSiteFilter: () -> Unit,
+    onClearSiteFilter: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
@@ -547,6 +643,59 @@ private fun GalleryDownloadTab(
 
         if (state.isDownloading) {
             GalleryProgress(state = state, colors = colors)
+        }
+
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = colors.panel,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Export filter", color = colors.muted, fontSize = 11.sp)
+                    Text(
+                        GalleryDlBehaviorPreference.exportFilterLabel(exportFilter),
+                        color = colors.accent,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                siteLabel?.let { label ->
+                    Text(
+                        "Site: $label",
+                        color = colors.muted,
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = onRememberSiteFilter,
+                            enabled = state.url.isNotBlank(),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(if (siteFilterSaved) "Update site filter" else "Remember for site")
+                        }
+                        if (siteFilterSaved) {
+                            OutlinedButton(
+                                onClick = onClearSiteFilter,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("Use global")
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         Button(
