@@ -1433,8 +1433,8 @@ object DownloadUtil {
         playlistItem: Int = 0,
         taskId: String,
         downloadPreferences: DownloadPreferences,
-        progressCallback: ((Float, Long, String) -> Unit)?,
         allowYouTubePoToken: Boolean = true,
+        progressCallback: ((Float, Long, String) -> Unit)? = null,
     ): Result<List<String>> {
         if (videoInfo == null)
             return Result.failure(Throwable(context.getString(R.string.fetch_info_error_msg)))
