@@ -195,19 +195,33 @@ jobs:
             -storepass "$KIRIN_KEYSTORE_PASSWORD" \
             -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
-      - name: Build signed Universal Release
+      - name: Build signed Universal and ARM64 Release
         run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
-      - name: Prepare Universal Release artifact
+      - name: Prepare Universal and ARM64 Release APKs
         shell: bash
         run: |
           set -euo pipefail
-          RELEASE_APK="$(find app/build/outputs/apk/generic/release -type f -name '*universal*.apk' | head -n 1)"
-          [[ -n "$RELEASE_APK" ]] || { echo "::error::Universal release APK was not generated."; exit 1; }
-          mkdir -p artifacts/release
-          cp "$RELEASE_APK" artifacts/release/KirinDL-Universal-Release.apk
+          APK_DIR="app/build/outputs/apk/generic/release"
+          UNIVERSAL_APK="$(find "$APK_DIR" -type f -name '*universal*.apk' | head -n 1)"
+          ARM64_APK="$(find "$APK_DIR" -type f -name '*arm64-v8a*.apk' | head -n 1)"
 
-      - name: Verify package identity, version and signature
+          [[ -n "$UNIVERSAL_APK" ]] || {
+            echo "::error::Universal release APK was not generated."
+            exit 1
+          }
+          [[ -n "$ARM64_APK" ]] || {
+            echo "::error::ARM64-v8a release APK was not generated."
+            exit 1
+          }
+
+          mkdir -p artifacts/release
+          cp "$UNIVERSAL_APK" artifacts/release/KirinDL-Universal-Release.apk
+          cp "$ARM64_APK" artifacts/release/KirinDL-ARM64-Release.apk
+
+          ls -lh artifacts/release/
+
+      - name: Verify package identity, version and signatures
         shell: bash
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -216,40 +230,51 @@ jobs:
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
           AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
-          APK="artifacts/release/KirinDL-Universal-Release.apk"
-          BADGING="$("$AAPT" dump badging "$APK")"
-          PACKAGE_ID="$(printf '%s\n' "$BADGING" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
-          VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
 
-          [[ "$PACKAGE_ID" == "com.kirin.downloader" ]] || {
-            echo "::error::Wrong package id: '$PACKAGE_ID'"
-            exit 1
-          }
-          [[ "$VERSION_NAME" == "$RELEASE_VERSION" ]] || {
-            echo "::error::Wrong version name: '$VERSION_NAME'. Expected '$RELEASE_VERSION'"
-            exit 1
-          }
-          echo "Verified stable package: $PACKAGE_ID"
-          echo "Verified stable version: $VERSION_NAME"
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          for APK in \
+            artifacts/release/KirinDL-Universal-Release.apk \
+            artifacts/release/KirinDL-ARM64-Release.apk
+          do
+            BADGING="$("$AAPT" dump badging "$APK")"
+            PACKAGE_ID="$(printf '%s\n' "$BADGING" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
+            VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
 
-      - name: Generate SHA-256 checksum
+            [[ "$PACKAGE_ID" == "com.kirin.downloader" ]] || {
+              echo "::error::Wrong package id in $APK: '$PACKAGE_ID'"
+              exit 1
+            }
+            [[ "$VERSION_NAME" == "$RELEASE_VERSION" ]] || {
+              echo "::error::Wrong version name in $APK: '$VERSION_NAME'. Expected '$RELEASE_VERSION'"
+              exit 1
+            }
+
+            "$APKSIGNER" verify --verbose --print-certs "$APK"
+          done
+
+          echo "Verified Universal + ARM64 Stable APKs."
+
+      - name: Generate SHA-256 checksums
         shell: bash
         run: |
           set -euo pipefail
           cd artifacts/release
           sha256sum KirinDL-Universal-Release.apk > KirinDL-Universal-Release.apk.sha256
+          sha256sum KirinDL-ARM64-Release.apk > KirinDL-ARM64-Release.apk.sha256
           cat KirinDL-Universal-Release.apk.sha256
+          cat KirinDL-ARM64-Release.apk.sha256
 
-      - name: Upload signed Universal Release artifact
+      - name: Upload signed Release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: KirinDL-Universal-Release-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          name: KirinDL-Release-${{ steps.version.outputs.version }}-${{ github.run_number }}
           path: |
             artifacts/release/KirinDL-Universal-Release.apk
             artifacts/release/KirinDL-Universal-Release.apk.sha256
+            artifacts/release/KirinDL-ARM64-Release.apk
+            artifacts/release/KirinDL-ARM64-Release.apk.sha256
           if-no-files-found: error
           retention-days: 30
+          compression-level: 0
 
       - name: Publish GitHub Release
         if: ${{ inputs.publish_release }}
@@ -263,6 +288,8 @@ jobs:
           files: |
             artifacts/release/KirinDL-Universal-Release.apk
             artifacts/release/KirinDL-Universal-Release.apk.sha256
+            artifacts/release/KirinDL-ARM64-Release.apk
+            artifacts/release/KirinDL-ARM64-Release.apk.sha256
 
       - name: Remove signing material
         if: always()

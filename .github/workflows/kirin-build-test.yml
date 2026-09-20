@@ -192,19 +192,30 @@ jobs:
             "-PkirinPrereleaseSuffix=-devpatch${DEV_PATCH}" \
             --stacktrace --no-daemon --no-configuration-cache
 
-      - name: Locate Universal Pre-Release APK
+      - name: Prepare Universal and ARM64 Pre-Release APKs
         shell: bash
         run: |
           set -euo pipefail
-          PRERELEASE_APK="$(find app/build/outputs/apk/generic/prerelease -type f -name '*universal*.apk' | head -n 1)"
-          [[ -n "$PRERELEASE_APK" ]] || {
+          APK_DIR="app/build/outputs/apk/generic/prerelease"
+          UNIVERSAL_APK="$(find "$APK_DIR" -type f -name '*universal*.apk' | head -n 1)"
+          ARM64_APK="$(find "$APK_DIR" -type f -name '*arm64-v8a*.apk' | head -n 1)"
+
+          [[ -n "$UNIVERSAL_APK" ]] || {
             echo "::error::Universal Kirin Pre-Release APK was not generated."
             exit 1
           }
-          mkdir -p artifacts/prerelease
-          cp "$PRERELEASE_APK" artifacts/prerelease/KirinDL-Pre-Release.apk
+          [[ -n "$ARM64_APK" ]] || {
+            echo "::error::ARM64-v8a Kirin Pre-Release APK was not generated."
+            exit 1
+          }
 
-      - name: Verify package identity and signature
+          mkdir -p artifacts/prerelease
+          cp "$UNIVERSAL_APK" artifacts/prerelease/KirinDL-Universal-Pre-Release.apk
+          cp "$ARM64_APK" artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk
+
+          ls -lh artifacts/prerelease/
+
+      - name: Verify package identity and signatures
         shell: bash
         env:
           DEV_TAG: ${{ steps.version.outputs.dev_tag }}
@@ -213,50 +224,57 @@ jobs:
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
           AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
-          APK="artifacts/prerelease/KirinDL-Pre-Release.apk"
-          BADGING="$("$AAPT" dump badging "$APK")"
-
-          PACKAGE_ID="$(printf '%s\n' "$BADGING" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
-          VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
-          APP_LABEL="$(printf '%s\n' "$BADGING" | sed -n "s/application-label:'\([^']*\)'.*/\1/p" | head -n 1)"
           EXPECTED_VERSION="${DEV_TAG#v}"
 
-          [[ "$PACKAGE_ID" == "com.kirin.downloader.prerelease" ]] || {
-            echo "::error::Wrong package id: '$PACKAGE_ID'"
-            exit 1
-          }
-          [[ "$VERSION_NAME" == "$EXPECTED_VERSION" ]] || {
-            echo "::error::Wrong version name: '$VERSION_NAME'. Expected '$EXPECTED_VERSION'"
-            exit 1
-          }
-          [[ "$APP_LABEL" == "Kirin Pre-Release" ]] || {
-            echo "::error::Wrong app label: '$APP_LABEL'"
-            exit 1
-          }
+          for APK in \
+            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk \
+            artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk
+          do
+            BADGING="$("$AAPT" dump badging "$APK")"
+            PACKAGE_ID="$(printf '%s\n' "$BADGING" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
+            VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
+            APP_LABEL="$(printf '%s\n' "$BADGING" | sed -n "s/application-label:'\([^']*\)'.*/\1/p" | head -n 1)"
 
-          echo "Verified package: $PACKAGE_ID"
-          echo "Verified version: $VERSION_NAME"
-          echo "Verified label: $APP_LABEL"
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
+            [[ "$PACKAGE_ID" == "com.kirin.downloader.prerelease" ]] || {
+              echo "::error::Wrong package id in $APK: '$PACKAGE_ID'"
+              exit 1
+            }
+            [[ "$VERSION_NAME" == "$EXPECTED_VERSION" ]] || {
+              echo "::error::Wrong version name in $APK: '$VERSION_NAME'. Expected '$EXPECTED_VERSION'"
+              exit 1
+            }
+            [[ "$APP_LABEL" == "Kirin Pre-Release" ]] || {
+              echo "::error::Wrong app label in $APK: '$APP_LABEL'"
+              exit 1
+            }
+
+            "$APKSIGNER" verify --verbose --print-certs "$APK"
+          done
+
+          echo "Verified Universal + ARM64 Pre-Release APKs."
 
       - name: Generate SHA256
         shell: bash
         run: |
           set -euo pipefail
-          (
-            cd artifacts/prerelease
-            sha256sum KirinDL-Pre-Release.apk > KirinDL-Pre-Release.apk.sha256
-          )
+          cd artifacts/prerelease
+          sha256sum KirinDL-Universal-Pre-Release.apk > KirinDL-Universal-Pre-Release.apk.sha256
+          sha256sum KirinDL-ARM64-Pre-Release.apk > KirinDL-ARM64-Pre-Release.apk.sha256
+          cat KirinDL-Universal-Pre-Release.apk.sha256
+          cat KirinDL-ARM64-Pre-Release.apk.sha256
 
-      - name: Upload Kirin Pre-Release artifact
+      - name: Upload Kirin Pre-Release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: KirinDL-Pre-Release-${{ steps.version.outputs.dev_tag }}-${{ github.run_number }}
           path: |
-            artifacts/prerelease/KirinDL-Pre-Release.apk
-            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
+            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk
+            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk.sha256
+            artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk
+            artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk.sha256
           if-no-files-found: error
           retention-days: 30
+          compression-level: 0
 
       - name: Publish Kirin Pre-Release
         shell: bash
@@ -281,7 +299,9 @@ jobs:
           - Android package: \`com.kirin.downloader.prerelease\`
           - Stable package remains: \`com.kirin.downloader\`
           - Can be installed beside Stable on the same phone.
-          - Signed APK verified with Android apksigner.
+          - **ARM64** is the smaller build for normal modern ARM64 phones.
+          - **Universal** contains all supported ABIs and is larger.
+          - Both APKs are signed and verified with Android apksigner.
 
           > Every Pre-Release workflow run automatically advances the DevPatch number for the next stable patch.
           EOF_NOTES
@@ -291,8 +311,10 @@ jobs:
             --title "$RELEASE_TITLE" \
             --notes-file "$NOTES_FILE" \
             --prerelease \
-            artifacts/prerelease/KirinDL-Pre-Release.apk \
-            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
+            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk \
+            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk.sha256 \
+            artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk \
+            artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk.sha256
 
       - name: Remove signing material
         if: always()
