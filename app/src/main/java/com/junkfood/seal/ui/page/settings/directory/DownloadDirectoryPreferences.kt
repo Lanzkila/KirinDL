@@ -88,9 +88,6 @@ import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.component.PreferenceSwitchWithDivider
 import com.junkfood.seal.ui.component.PreferencesHintCard
 import com.junkfood.seal.ui.component.SealDialog
-import com.junkfood.seal.ui.page.tools.ConverterPreferences
-import com.junkfood.seal.ui.page.tools.MANGA_CONVERTER_DIRECTORY
-import com.junkfood.seal.ui.page.tools.MEDIA_CONVERTER_DIRECTORY
 import com.junkfood.seal.util.COMMAND_DIRECTORY
 import com.junkfood.seal.util.CUSTOM_COMMAND
 import com.junkfood.seal.util.CUSTOM_OUTPUT_TEMPLATE
@@ -111,7 +108,6 @@ import com.junkfood.seal.util.SDCARD_DOWNLOAD
 import com.junkfood.seal.util.SDCARD_URI
 import com.junkfood.seal.util.SUBDIRECTORY_EXTRACTOR
 import com.junkfood.seal.util.SUBDIRECTORY_PLAYLIST_TITLE
-import com.junkfood.seal.util.makeToast
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -134,11 +130,6 @@ enum class Directory {
     GALLERY,
     SDCARD,
     CUSTOM_COMMAND,
-}
-
-private enum class ConverterDirectory {
-    MEDIA,
-    MANGA,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,17 +166,9 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
     var sdcardUri by remember { mutableStateOf(SDCARD_URI.getString()) }
     var customCommandDirectory by COMMAND_DIRECTORY.stringState
     var galleryDirectoryText by GALLERY_DL_DIRECTORY.stringState
-    var mediaConverterDirectoryText by MEDIA_CONVERTER_DIRECTORY.stringState
-    var mangaConverterDirectoryText by MANGA_CONVERTER_DIRECTORY.stringState
 
     val defaultGalleryDirectory = remember {
         File(FileUtil.getExternalDownloadDirectory(), "GalleryDL").absolutePath
-    }
-    val defaultMediaConverterDirectory = remember {
-        ConverterPreferences.defaultMediaDirectory().absolutePath
-    }
-    val defaultMangaConverterDirectory = remember {
-        ConverterPreferences.defaultMangaDirectory().absolutePath
     }
 
     var sdcardDownload by remember { mutableStateOf(SDCARD_DOWNLOAD.getBoolean()) }
@@ -194,7 +177,6 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
     var showCustomCommandDirectoryDialog by remember { mutableStateOf(false) }
 
     var editingDirectory by remember { mutableStateOf(Directory.VIDEO) }
-    var editingConverterDirectory by remember { mutableStateOf<ConverterDirectory?>(null) }
 
     val isCustomCommandEnabled by remember { mutableStateOf(CUSTOM_COMMAND.getBoolean()) }
 
@@ -208,8 +190,6 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
             (!audioDirectoryText.isValidDirectory() ||
                 !videoDirectoryText.isValidDirectory() ||
                 !galleryDirectoryText.isValidDirectory() ||
-                !mediaConverterDirectoryText.isValidDirectory() ||
-                !mangaConverterDirectoryText.isValidDirectory() ||
                 !customCommandDirectory.isValidDirectory())
 
     val launcher =
@@ -256,46 +236,6 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
             }
         }
 
-    val converterLauncher =
-        rememberLauncherForActivityResult(
-            object : ActivityResultContracts.OpenDocumentTree() {
-                override fun createIntent(context: Context, input: Uri?): Intent {
-                    return (super.createIntent(context, input)).apply {
-                        flags =
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                    }
-                }
-            }
-        ) { uri ->
-            if (uri != null) {
-                if (!FileUtil.isPrimaryStorageUri(uri)) {
-                    context.makeToast(R.string.directory_not_supported)
-                } else {
-                    runCatching {
-                        context.contentResolver.takePersistableUriPermission(
-                            uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-                        )
-                    }
-                    val path = FileUtil.getRealPath(uri)
-                    when (editingConverterDirectory) {
-                        ConverterDirectory.MEDIA -> {
-                            ConverterPreferences.setMediaDirectory(path)
-                            mediaConverterDirectoryText = path
-                        }
-                        ConverterDirectory.MANGA -> {
-                            ConverterPreferences.setMangaDirectory(path)
-                            mangaConverterDirectoryText = path
-                        }
-                        null -> Unit
-                    }
-                }
-            }
-        }
-
     fun openDirectoryChooser(directory: Directory = Directory.VIDEO) {
         editingDirectory = directory
         if (Build.VERSION.SDK_INT > 29 ||
@@ -305,18 +245,6 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
             ) == PackageManager.PERMISSION_GRANTED
         )
             launcher.launch(null)
-        else storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    }
-
-    fun openConverterDirectoryChooser(directory: ConverterDirectory) {
-        editingConverterDirectory = directory
-        if (Build.VERSION.SDK_INT > 29 ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-            converterLauncher.launch(null)
         else storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 
@@ -419,66 +347,6 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
                     }
                 }
 
-            }
-            item {
-                PreferenceSubtitle(text = stringResource(R.string.converter_output_directories))
-            }
-            item {
-                PreferenceItem(
-                    title = stringResource(R.string.media_converter_directory),
-                    description =
-                        if (mediaConverterDirectoryText.isBlank()) {
-                            "Default • $defaultMediaConverterDirectory"
-                        } else {
-                            "Custom • $mediaConverterDirectoryText"
-                        },
-                    icon = Icons.Outlined.VideoLibrary,
-                ) {
-                    openConverterDirectoryChooser(ConverterDirectory.MEDIA)
-                }
-            }
-            if (mediaConverterDirectoryText.isNotBlank()) {
-                item {
-                    PreferenceItem(
-                        title = stringResource(R.string.reset_media_converter_directory),
-                        description = "Return to default • $defaultMediaConverterDirectory",
-                        icon = Icons.Outlined.FolderDelete,
-                    ) {
-                        ConverterPreferences.resetMediaDirectory()
-                        mediaConverterDirectoryText = ""
-                    }
-                }
-            }
-            item {
-                PreferenceItem(
-                    title = stringResource(R.string.manga_converter_directory),
-                    description =
-                        if (mangaConverterDirectoryText.isBlank()) {
-                            "Default • $defaultMangaConverterDirectory"
-                        } else {
-                            "Custom • $mangaConverterDirectoryText"
-                        },
-                    icon = Icons.Outlined.FolderSpecial,
-                ) {
-                    openConverterDirectoryChooser(ConverterDirectory.MANGA)
-                }
-            }
-            if (mangaConverterDirectoryText.isNotBlank()) {
-                item {
-                    PreferenceItem(
-                        title = stringResource(R.string.reset_manga_converter_directory),
-                        description = "Return to default • $defaultMangaConverterDirectory",
-                        icon = Icons.Outlined.FolderDelete,
-                    ) {
-                        ConverterPreferences.resetMangaDirectory()
-                        mangaConverterDirectoryText = ""
-                    }
-                }
-            }
-            item {
-                PreferenceInfo(
-                    text = stringResource(R.string.converter_directory_hint),
-                )
             }
             item {
                 PreferenceItem(
