@@ -388,6 +388,7 @@ object DownloadUtil {
                     skipTranslatedSubs =
                         downloadPreferences.autoSubtitle &&
                             !downloadPreferences.autoTranslatedSubtitles,
+                    allowPoToken = false,
                 )
             }
             execute(request, playlistURL).out.run {
@@ -447,6 +448,7 @@ object DownloadUtil {
                         url = url,
                         customExtractorArgs = extractorArgs,
                         skipTranslatedSubs = autoSubtitle && !autoTranslatedSubtitles,
+                        allowPoToken = false,
                     )
 
                     if (playlistIndex != null) {
@@ -509,6 +511,7 @@ object DownloadUtil {
                 customExtractorArgs =
                     "youtube:max_comments=$maxComments,all,all,all" +
                         (if (sortByTop) ";comment_sort=top" else ""),
+                allowPoToken = false,
             )
             if (COOKIES.getBoolean()) {
                 val userAgentString =
@@ -1431,6 +1434,7 @@ object DownloadUtil {
         taskId: String,
         downloadPreferences: DownloadPreferences,
         progressCallback: ((Float, Long, String) -> Unit)?,
+        allowYouTubePoToken: Boolean = true,
     ): Result<List<String>> {
         if (videoInfo == null)
             return Result.failure(Throwable(context.getString(R.string.fetch_info_error_msg)))
@@ -1477,6 +1481,7 @@ object DownloadUtil {
                         customExtractorArgs = extractorArgs,
                         skipTranslatedSubs =
                             downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles,
+                        allowPoToken = allowYouTubePoToken,
                     )
                     if (liveFromStart) {
                         addOption("--live-from-start")
@@ -1638,29 +1643,52 @@ object DownloadUtil {
                     }
                 }
                 .onFailure { th ->
-                    return if (
+                    return when {
                         sponsorBlock &&
                             th.message?.contains("Unable to communicate with SponsorBlock API") ==
-                                true
-                    ) {
-                        th.printStackTrace()
-                        onFinishDownloading(
-                            preferences = this,
-                            videoInfo = videoInfo,
-                            downloadPath = pathBuilder.toString(),
-                            sdcardUri = sdcardUri,
-                            downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
-                            averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
-                        )
-                    } else {
-                        Result.failure(
-                            ExtractorHealthUtil.decorateFailure(
-                                context,
-                                ExtractorHealthUtil.Engine.YT_DLP,
-                                url,
-                                th,
+                                true -> {
+                            th.printStackTrace()
+                            onFinishDownloading(
+                                preferences = this,
+                                videoInfo = videoInfo,
+                                downloadPath = pathBuilder.toString(),
+                                sdcardUri = sdcardUri,
+                                downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
+                                averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
                             )
-                        )
+                        }
+
+                        th !is YoutubeDL.CanceledException &&
+                            isYouTubeUrl(url) &&
+                            allowYouTubePoToken &&
+                            YouTubePoTokenPreference.currentMode() != YouTubePoTokenMode.OFF -> {
+                            // PO providers/manual tokens can be unavailable, expired, or bound to
+                            // another video/session. Never let that optional path make KirinDL
+                            // unusable: retry once using yt-dlp's normal client selection.
+                            Log.w(
+                                TAG,
+                                "YouTube PO Token path failed; retrying with normal yt-dlp clients: ${th.message}",
+                            )
+                            downloadVideo(
+                                videoInfo = videoInfo,
+                                playlistUrl = playlistUrl,
+                                playlistItem = playlistItem,
+                                taskId = taskId,
+                                downloadPreferences = downloadPreferences,
+                                progressCallback = progressCallback,
+                                allowYouTubePoToken = false,
+                            )
+                        }
+
+                        else ->
+                            Result.failure(
+                                ExtractorHealthUtil.decorateFailure(
+                                    context,
+                                    ExtractorHealthUtil.Engine.YT_DLP,
+                                    url,
+                                    th,
+                                )
+                            )
                     }
                 }
             val averageSpeed = computeAvgSpeed(videoInfo, downloadTiming)

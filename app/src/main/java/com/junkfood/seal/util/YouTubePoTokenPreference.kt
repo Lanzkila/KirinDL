@@ -110,6 +110,7 @@ private fun mergeSkipTranslatedSubs(parts: MutableList<String>) {
 private fun buildKirinYouTubeArgs(
     existingYoutubeBody: String,
     skipTranslatedSubs: Boolean,
+    allowPoToken: Boolean,
 ): String {
     val parts =
         existingYoutubeBody
@@ -120,27 +121,32 @@ private fun buildKirinYouTubeArgs(
 
     if (skipTranslatedSubs) mergeSkipTranslatedSubs(parts)
 
-    val existingKeys = parts.map { it.extractorArgKey() }.toMutableSet()
-    when (YouTubePoTokenPreference.currentMode()) {
-        YouTubePoTokenMode.OFF -> Unit
-        YouTubePoTokenMode.PROVIDER_ASSIST -> {
-            if ("player_client" !in existingKeys) {
-                parts += "player_client=default,mweb"
-                existingKeys += "player_client"
-            }
-        }
-        YouTubePoTokenMode.MANUAL_GVS -> {
-            val token = YouTubePoTokenPreference.currentToken()
-            // Never force mweb when the saved manual token is empty/corrupt. This keeps the
-            // normal yt-dlp path working instead of selecting a client which expects a token.
-            if (token.isNotBlank()) {
+    // Metadata probes must stay independent from PO Token availability. A provider/token can
+    // expire, be missing from the Android runtime, or be bound to a different video/session.
+    // KirinDL therefore opts into PO handling only for the actual media transfer.
+    if (allowPoToken) {
+        val existingKeys = parts.map { it.extractorArgKey() }.toMutableSet()
+        when (YouTubePoTokenPreference.currentMode()) {
+            YouTubePoTokenMode.OFF -> Unit
+            YouTubePoTokenMode.PROVIDER_ASSIST -> {
                 if ("player_client" !in existingKeys) {
                     parts += "player_client=default,mweb"
                     existingKeys += "player_client"
                 }
-                if ("po_token" !in existingKeys) {
-                    parts += "po_token=mweb.gvs+$token"
-                    existingKeys += "po_token"
+            }
+            YouTubePoTokenMode.MANUAL_GVS -> {
+                val token = YouTubePoTokenPreference.currentToken()
+                // Never force mweb when the saved manual token is empty/corrupt. This keeps the
+                // normal yt-dlp path working instead of selecting a client which expects a token.
+                if (token.isNotBlank()) {
+                    if ("player_client" !in existingKeys) {
+                        parts += "player_client=default,mweb"
+                        existingKeys += "player_client"
+                    }
+                    if ("po_token" !in existingKeys) {
+                        parts += "po_token=mweb.gvs+$token"
+                        existingKeys += "po_token"
+                    }
                 }
             }
         }
@@ -157,6 +163,7 @@ internal fun YoutubeDLRequest.applyKirinYouTubeExtractorArgs(
     url: String,
     customExtractorArgs: String = "",
     skipTranslatedSubs: Boolean = false,
+    allowPoToken: Boolean = true,
 ): YoutubeDLRequest {
     val custom = customExtractorArgs.trim()
     if (!isYouTubeUrl(url)) {
@@ -170,7 +177,12 @@ internal fun YoutubeDLRequest.applyKirinYouTubeExtractorArgs(
     }
 
     val existingBody = if (isCustomYouTube) custom.substringAfter(':') else ""
-    val youtubeBody = buildKirinYouTubeArgs(existingBody, skipTranslatedSubs)
+    val youtubeBody =
+        buildKirinYouTubeArgs(
+            existingYoutubeBody = existingBody,
+            skipTranslatedSubs = skipTranslatedSubs,
+            allowPoToken = allowPoToken,
+        )
     if (youtubeBody.isNotBlank()) {
         addOption("--extractor-args", "youtube:$youtubeBody")
     } else if (isCustomYouTube) {
