@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Publish a GitHub Release after the signed build succeeds"
+        description: "Publish the automatically generated next stable patch after the signed build succeeds"
         required: true
         default: false
         type: boolean
@@ -35,8 +35,6 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
-          # setup-android v4 still defaults to the removed legacy `tools` package.
-          # Request only platform-tools; command-line tools are provided by the action.
           packages: "platform-tools"
 
       - name: Set up Python 3.11
@@ -50,36 +48,102 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      - name: Resolve KirinDL version
+      - name: Resolve next stable patch
         id: version
         shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          raw = subprocess.check_output(
+              ["gh", "api", f"repos/{repo}/releases?per_page=100"],
+              text=True,
+          )
+          releases = json.loads(raw)
+
+          stable_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+          stable_versions = []
+          for release in releases:
+              if release.get("draft") or release.get("prerelease"):
+                  continue
+              match = stable_re.fullmatch(release.get("tag_name", ""))
+              if match:
+                  stable_versions.append(tuple(map(int, match.groups())))
+
+          if stable_versions:
+              major, minor, patch = max(stable_versions)
+          else:
+              text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
+              match = re.search(
+                  r"Version\.Stable\(\s*versionMajor\s*=\s*(\d+),"
+                  r"\s*versionMinor\s*=\s*(\d+),"
+                  r"\s*versionPatch\s*=\s*(\d+)\s*\)",
+                  text,
+                  re.S,
+              )
+              if not match:
+                  raise SystemExit("Could not resolve a stable KirinDL base version")
+              major, minor, patch = map(int, match.groups())
+
+          patch += 1
+          version = f"{major}.{minor}.{patch}"
+          version_code = major * 100_000_000 + minor * 1_000_000 + patch * 10_000 + 400
+          release_notes_path = f"release-notes/v{version}.md"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"version={version}\n")
+              out.write(f"version_code={version_code}\n")
+              out.write(f"release_notes_path={release_notes_path}\n")
+
+          print(f"Next KirinDL Stable: v{version}")
+          print(f"Version code: {version_code}")
+          print(f"Release notes: {release_notes_path}")
+
+      - name: Stage generated version
+        shell: python
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
         run: |
           import os
           import re
           from pathlib import Path
 
-          text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
-          match = re.search(
-              r"Version\.(?:Stable|Alpha|Beta|ReleaseCandidate)\("
-              r"\s*versionMajor\s*=\s*(\d+),"
-              r"\s*versionMinor\s*=\s*(\d+),"
-              r"\s*versionPatch\s*=\s*(\d+)",
+          major, minor, patch = os.environ["RELEASE_VERSION"].split(".")
+          version_code = os.environ["VERSION_CODE"]
+
+          version_file = Path("buildSrc/src/main/kotlin/Version.kt")
+          text = version_file.read_text(encoding="utf-8")
+          text, count = re.subn(
+              r"Version\.Stable\(\s*versionMajor\s*=\s*\d+,\s*versionMinor\s*=\s*\d+,\s*versionPatch\s*=\s*\d+\s*\)",
+              f"Version.Stable(versionMajor = {major}, versionMinor = {minor}, versionPatch = {patch})",
               text,
-              re.S,
+              count=1,
           )
+          if count != 1:
+              raise SystemExit("Unable to stage Version.kt")
+          version_file.write_text(text, encoding="utf-8")
 
-          if not match:
-              raise SystemExit("Could not resolve currentVersion from Version.kt")
+          gradle_file = Path("app/build.gradle.kts")
+          gradle = gradle_file.read_text(encoding="utf-8")
+          gradle, count = re.subn(
+              r"versionCode\s*=\s*[0-9_]+",
+              f"versionCode = {version_code}",
+              gradle,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Unable to stage app versionCode")
+          gradle_file.write_text(gradle, encoding="utf-8")
 
-          version = ".".join(match.groups())
-          release_notes_path = f"release-notes/v{version}.md"
-
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-              out.write(f"version={version}\n")
-              out.write(f"release_notes_path={release_notes_path}\n")
-
-          print(f"KirinDL version: {version}")
-          print(f"Release notes: {release_notes_path}")
+          print(f"Staged stable version {os.environ['RELEASE_VERSION']} ({version_code})")
 
       - name: Validate release notes
         if: ${{ inputs.publish_release }}
@@ -89,23 +153,19 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-
           if [[ ! -f "$RELEASE_NOTES_PATH" ]]; then
             echo "::error::Missing release notes: $RELEASE_NOTES_PATH"
             echo "::error::Create release-notes/v$RELEASE_VERSION.md before publishing."
             exit 1
           fi
-
           if [[ ! -s "$RELEASE_NOTES_PATH" ]]; then
             echo "::error::Release notes file is empty: $RELEASE_NOTES_PATH"
             exit 1
           fi
-
           if ! grep -Fq "KirinDL v$RELEASE_VERSION" "$RELEASE_NOTES_PATH"; then
-            echo "::error::$RELEASE_NOTES_PATH does not contain the expected version heading: KirinDL v$RELEASE_VERSION"
+            echo "::error::$RELEASE_NOTES_PATH does not contain the expected heading: KirinDL v$RELEASE_VERSION"
             exit 1
           fi
-
           echo "Release notes validated: $RELEASE_NOTES_PATH"
 
       - name: Prepare KirinDL release signing
@@ -117,7 +177,6 @@ jobs:
           KIRIN_KEY_PASSWORD: ${{ secrets.KIRIN_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-
           for name in KIRIN_KEYSTORE_BASE64 KIRIN_KEYSTORE_PASSWORD KIRIN_KEY_ALIAS KIRIN_KEY_PASSWORD
           do
             if [[ -z "${!name:-}" ]]; then
@@ -128,10 +187,13 @@ jobs:
 
           printf '%s' "$KIRIN_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/kirin-release.jks"
           chmod 600 "$GITHUB_WORKSPACE/kirin-release.jks"
-
-          printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n'             "$KIRIN_KEY_ALIAS" "$KIRIN_KEY_PASSWORD" "$KIRIN_KEYSTORE_PASSWORD"             > "$GITHUB_WORKSPACE/keystore.properties"
-
-          keytool -list             -keystore "$GITHUB_WORKSPACE/kirin-release.jks"             -storepass "$KIRIN_KEYSTORE_PASSWORD"             -alias "$KIRIN_KEY_ALIAS" >/dev/null
+          printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n' \
+            "$KIRIN_KEY_ALIAS" "$KIRIN_KEY_PASSWORD" "$KIRIN_KEYSTORE_PASSWORD" \
+            > "$GITHUB_WORKSPACE/keystore.properties"
+          keytool -list \
+            -keystore "$GITHUB_WORKSPACE/kirin-release.jks" \
+            -storepass "$KIRIN_KEYSTORE_PASSWORD" \
+            -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
       - name: Build signed Universal Release
         run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
@@ -145,12 +207,31 @@ jobs:
           mkdir -p artifacts/release
           cp "$RELEASE_APK" artifacts/release/KirinDL-Universal-Release.apk
 
-      - name: Verify Universal Release signature
+      - name: Verify package identity, version and signature
         shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
-          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --verbose --print-certs             artifacts/release/KirinDL-Universal-Release.apk
+          AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+          APK="artifacts/release/KirinDL-Universal-Release.apk"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          PACKAGE_ID="$(printf '%s\n' "$BADGING" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
+          VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
+
+          [[ "$PACKAGE_ID" == "com.kirin.downloader" ]] || {
+            echo "::error::Wrong package id: '$PACKAGE_ID'"
+            exit 1
+          }
+          [[ "$VERSION_NAME" == "$RELEASE_VERSION" ]] || {
+            echo "::error::Wrong version name: '$VERSION_NAME'. Expected '$RELEASE_VERSION'"
+            exit 1
+          }
+          echo "Verified stable package: $PACKAGE_ID"
+          echo "Verified stable version: $VERSION_NAME"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
 
       - name: Generate SHA-256 checksum
         shell: bash
