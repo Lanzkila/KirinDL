@@ -21,12 +21,12 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.UpdateDisabled
 import androidx.compose.material.icons.outlined.VolunteerActivism
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
@@ -37,10 +37,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,7 +53,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.UrlAnnotation
@@ -68,9 +67,14 @@ import com.junkfood.seal.App.Companion.packageInfo
 import com.junkfood.seal.R
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.ConfirmButton
+import com.junkfood.seal.ui.page.UpdateDialog
+import com.junkfood.seal.util.APP_UPDATE_CHECK_TIME
 import com.junkfood.seal.util.AUTO_UPDATE
 import com.junkfood.seal.util.PreferenceUtil
+import com.junkfood.seal.util.PreferenceUtil.updateLong
 import com.junkfood.seal.util.UpdateUtil
+import com.junkfood.seal.util.makeToast
+import kotlinx.coroutines.launch
 
 private const val releaseURL = "https://github.com/Lanzkila/KirinDL/releases"
 private const val repoUrl = "https://github.com/Lanzkila/KirinDL/blob/main/README.md"
@@ -98,34 +102,22 @@ fun AboutPage(
             canScroll = { true },
         )
     val context = LocalContext.current
-    var isAutoUpdateEnabled by remember { mutableStateOf(PreferenceUtil.isAutoUpdateEnabled()) }
-    var appUpdateStatus by remember {
-        mutableStateOf("v${packageInfo.versionName ?: "Unknown"} • Check updates & release notes")
-    }
+    val scope = rememberCoroutineScope()
+    val installedVersion = packageInfo.versionName ?: "Unknown"
 
-    LaunchedEffect(Unit) {
-        if (PreferenceUtil.isNetworkAvailableForDownload()) {
-            UpdateUtil.checkForUpdateResult(context)
-                .onSuccess { available ->
-                    appUpdateStatus =
-                        if (available != null) {
-                            val version = available.tagName ?: available.name ?: "New version"
-                            "NEW • $version available"
-                        } else {
-                            "v${packageInfo.versionName ?: "Unknown"} • Up to date"
-                        }
-                }
-                .onFailure {
-                    appUpdateStatus =
-                        "v${packageInfo.versionName ?: "Unknown"} • Tap to check manually"
-                }
-        }
+    var isAutoUpdateEnabled by remember { mutableStateOf(PreferenceUtil.isAutoUpdateEnabled()) }
+    var availableRelease by remember { mutableStateOf<UpdateUtil.Release?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var appUpdateStatus by remember {
+        mutableStateOf("v$installedVersion • Tap to check for updates")
     }
 
     val uriHandler = LocalUriHandler.current
     fun openUrl(url: String) {
         uriHandler.openUri(url)
     }
+
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -143,11 +135,69 @@ fun AboutPage(
             ) {
                 item {
                     Card(
-                        onClick = onNavigateToUpdatePage,
+                        onClick = {
+                            when {
+                                isCheckingUpdate -> Unit
+                                availableRelease != null -> showUpdateDialog = true
+                                else -> {
+                                    scope.launch {
+                                        isCheckingUpdate = true
+                                        appUpdateStatus =
+                                            "v$installedVersion • Checking for updates…"
+
+                                        if (!PreferenceUtil.isNetworkAvailableForDownload()) {
+                                            appUpdateStatus =
+                                                "v$installedVersion • Offline — tap to retry"
+                                            context.makeToast("No network connection")
+                                            isCheckingUpdate = false
+                                            return@launch
+                                        }
+
+                                        // Manual check from About intentionally ignores the startup
+                                        // cooldown, matching Komikku's force-check behaviour.
+                                        UpdateUtil.checkForUpdateResult(context)
+                                            .onSuccess { release ->
+                                                availableRelease = release
+                                                if (release != null) {
+                                                    val version =
+                                                        release.tagName
+                                                            ?: release.name
+                                                            ?: "New version"
+                                                    appUpdateStatus =
+                                                        "Installed v$installedVersion  →  $version available"
+                                                    showUpdateDialog = true
+                                                } else {
+                                                    appUpdateStatus =
+                                                        "v$installedVersion • Up to date"
+                                                    context.makeToast("KirinDL is up to date")
+                                                }
+                                            }
+                                            .onFailure { error ->
+                                                APP_UPDATE_CHECK_TIME.updateLong(0L)
+                                                error.printStackTrace()
+                                                availableRelease = null
+                                                appUpdateStatus =
+                                                    "v$installedVersion • Check failed — tap to retry"
+                                                context.makeToast(
+                                                    "Could not check for KirinDL updates"
+                                                )
+                                            }
+
+                                        isCheckingUpdate = false
+                                    }
+                                }
+                            }
+                        },
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-                        ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    if (availableRelease != null) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                                    },
+                            ),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -162,7 +212,12 @@ fun AboutPage(
                             Spacer(modifier = Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "App Update",
+                                    text =
+                                        if (availableRelease != null) {
+                                            "New Update"
+                                        } else {
+                                            "App Update"
+                                        },
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface,
@@ -173,22 +228,40 @@ fun AboutPage(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (availableRelease != null && !isCheckingUpdate) {
+                                    Spacer(modifier = Modifier.height(5.dp))
+                                    Text(
+                                        text = "Tap to reopen update details",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
                             }
-                            Icon(
-                                imageVector = Icons.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            if (isCheckingUpdate) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Filled.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
 
                 item {
                     Card(
+                        onClick = onNavigateToUpdatePage,
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            ),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -228,9 +301,10 @@ fun AboutPage(
                     Card(
                         onClick = onNavigateToOnboarding,
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            ),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -355,16 +429,44 @@ fun AboutPage(
                 item {
                     Text(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                        text = "Version ${packageInfo.versionName ?: ""}  \u2022  ${context.packageName}",
+                        text = "Version ${packageInfo.versionName ?: ""}  •  ${context.packageName}",
                         style = MaterialTheme.typography.bodySmall,
-                        color =
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         textAlign = TextAlign.Center,
                     )
                 }
             }
         },
     )
+
+    if (showUpdateDialog) {
+        availableRelease?.let { release ->
+            UpdateDialog(
+                onDismissRequest = { showUpdateDialog = false },
+                release = release,
+                isUpdateAvailable = true,
+                onBackgroundUpdate =
+                    if (UpdateUtil.hasBackgroundAppUpdate(release)) {
+                        {
+                            UpdateUtil.enqueueBackgroundAppUpdate(context, release)
+                                .onSuccess {
+                                    context.makeToast(
+                                        "KirinDL update is downloading in the background"
+                                    )
+                                }
+                                .onFailure { error ->
+                                    error.printStackTrace()
+                                    context.makeToast(
+                                        "Could not start the background update"
+                                    )
+                                }
+                        }
+                    } else {
+                        null
+                    },
+            )
+        }
+    }
 }
 
 @Composable
@@ -379,9 +481,10 @@ private fun CommunityCard(
         onClick = onClick,
         modifier = modifier.heightIn(min = 168.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -415,8 +518,7 @@ private fun CommunityCard(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color =
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
             )
         }
     }
@@ -454,7 +556,13 @@ fun AutoUpdateUnavailableDialog(onDismissRequest: () -> Unit = {}) {
         confirmButton = {
             ConfirmButton(stringResource(id = R.string.got_it)) { onDismissRequest() }
         },
-        icon = { Icon(Icons.Outlined.UpdateDisabled, null, tint = MaterialTheme.colorScheme.primary) },
+        icon = {
+            Icon(
+                Icons.Outlined.UpdateDisabled,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
         title = {
             Text(
                 text = stringResource(id = R.string.feature_unavailable),

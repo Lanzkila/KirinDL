@@ -2,12 +2,12 @@ package com.junkfood.seal.ui.page
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
@@ -41,8 +41,13 @@ import com.junkfood.seal.R
 import com.junkfood.seal.util.UpdateUtil
 
 private const val KIRIN_RELEASES_URL = "https://github.com/Lanzkila/KirinDL/releases"
-private val releaseLinkPattern = Regex("""\[([^\]]+)]\((https?://[^)]+)\)|(https?://\S+)""")
-private val releaseVersionPattern = Regex("""v?(\d+\.\d+\.\d+(?:-(?:(?:alpha|beta|rc)\.\d+|devpatch\d+))?)""", RegexOption.IGNORE_CASE)
+private val releaseLinkPattern =
+    Regex("""\[([^\]]+)]\((https?://[^)]+)\)|(https?://\S+)""")
+private val releaseVersionPattern =
+    Regex(
+        """v?(\d+\.\d+\.\d+(?:-(?:(?:alpha|beta|rc)\.\d+|devpatch\d+))?)""",
+        RegexOption.IGNORE_CASE,
+    )
 
 @Composable
 fun UpdateDialog(
@@ -52,12 +57,22 @@ fun UpdateDialog(
     onBackgroundUpdate: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val currentVersion = App.packageInfo.versionName?.substringBefore("-") ?: "Unknown"
+    // Keep the complete version name here. Pre-release builds must not be shown as Stable.
+    val currentVersion = App.packageInfo.versionName ?: "Unknown"
     val releaseVersion = release.versionLabel()
+    val releaseTitle =
+        release.name?.takeIf { it.isNotBlank() }
+            ?: release.tagName?.takeIf { it.isNotBlank() }
+            ?: if (isUpdateAvailable) "KirinDL $releaseVersion" else "KirinDL release"
+    val channelLabel = if (release.preRelease == true) "Pre-release" else "Stable"
+    val availableBuilds = release.availableApkVariants()
 
     UpdateDialogImpl(
         onDismissRequest = onDismissRequest,
-        title = release.name ?: release.tagName ?: if (isUpdateAvailable) "KirinDL update" else "What's new",
+        dialogTitle = if (isUpdateAvailable) "New KirinDL Update" else "What's New",
+        releaseTitle = releaseTitle,
+        channelLabel = channelLabel,
+        availableBuilds = availableBuilds,
         currentVersion = currentVersion,
         releaseVersion = releaseVersion,
         publishedDate = release.publishedAt?.take(10) ?: release.createdAt?.take(10),
@@ -87,7 +102,10 @@ fun UpdateDialog(
 @Composable
 fun UpdateDialogImpl(
     onDismissRequest: () -> Unit,
-    title: String,
+    dialogTitle: String,
+    releaseTitle: String,
+    channelLabel: String,
+    availableBuilds: String?,
     currentVersion: String,
     releaseVersion: String,
     publishedDate: String?,
@@ -98,14 +116,34 @@ fun UpdateDialogImpl(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text(title) },
-        icon = { Icon(Icons.Outlined.NewReleases, null, tint = MaterialTheme.colorScheme.primary) },
+        title = {
+            Column {
+                Text(
+                    text = dialogTitle,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = releaseTitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        icon = {
+            Icon(
+                Icons.Outlined.NewReleases,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
         confirmButton = {
             Button(onClick = onConfirmUpdate) {
                 Text(
                     when {
                         backgroundUpdateMode -> "Update"
-                        isUpdateAvailable -> "View update"
+                        isUpdateAvailable -> "Open update"
                         else -> "Open release"
                     }
                 )
@@ -113,14 +151,18 @@ fun UpdateDialogImpl(
         },
         dismissButton = {
             OutlinedButton(onClick = onDismissRequest) {
-                Text(text = if (isUpdateAvailable) "Later" else stringResource(id = R.string.dismiss))
+                Text(
+                    text =
+                        if (isUpdateAvailable) {
+                            "Later"
+                        } else {
+                            stringResource(id = R.string.dismiss)
+                        }
+                )
             }
         },
         text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
+            Column {
                 if (isUpdateAvailable) {
                     Text(
                         text = "Installed v$currentVersion  →  Available v$releaseVersion",
@@ -137,15 +179,32 @@ fun UpdateDialogImpl(
                     )
                 }
 
-                publishedDate?.let {
+                Spacer(modifier = Modifier.height(6.dp))
+
+                val releaseMeta =
+                    buildList {
+                        add(channelLabel)
+                        publishedDate?.let { add("Published $it") }
+                    }.joinToString("  •  ")
+
+                Text(
+                    text = releaseMeta,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                availableBuilds?.let {
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
-                        text = "Published $it",
+                        text = "APK builds: $it",
                         style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
                 if (backgroundUpdateMode) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text =
                             "Tap Update to download the APK in the background. " +
@@ -155,15 +214,31 @@ fun UpdateDialogImpl(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider()
+                Spacer(modifier = Modifier.height(10.dp))
+
                 Text(
                     text = "Release notes",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
-                ReleaseNotesContent(
-                    releaseNote.ifBlank { "A new KirinDL release is available." }
-                )
+                Spacer(modifier = Modifier.height(7.dp))
+
+                // Only the release-note area scrolls. Header, version comparison and buttons
+                // stay visible even when GitHub contains a long changelog.
+                Column(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .heightIn(max = 360.dp)
+                            .verticalScroll(rememberScrollState()),
+                ) {
+                    ReleaseNotesContent(
+                        releaseNote.ifBlank {
+                            "No release notes were published for this KirinDL version."
+                        }
+                    )
+                }
             }
         },
     )
@@ -186,36 +261,47 @@ private fun ReleaseNotesContent(markdown: String) {
 
             trimmed.isBlank() -> Spacer(modifier = Modifier.height(2.dp))
 
-            trimmed == "---" -> HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            trimmed == "---" -> {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            }
 
             inCodeBlock -> {
                 Text(
                     text = trimmed,
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    style =
+                        MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace
+                        ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            trimmed.startsWith("### ") -> ReleaseNoteLine(
-                text = trimmed.removePrefix("### "),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                onOpenUrl = uriHandler::openUri,
-            )
+            trimmed.startsWith("### ") -> {
+                ReleaseNoteLine(
+                    text = trimmed.removePrefix("### "),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    onOpenUrl = uriHandler::openUri,
+                )
+            }
 
-            trimmed.startsWith("## ") -> ReleaseNoteLine(
-                text = trimmed.removePrefix("## "),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                onOpenUrl = uriHandler::openUri,
-            )
+            trimmed.startsWith("## ") -> {
+                ReleaseNoteLine(
+                    text = trimmed.removePrefix("## "),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    onOpenUrl = uriHandler::openUri,
+                )
+            }
 
-            trimmed.startsWith("# ") -> ReleaseNoteLine(
-                text = trimmed.removePrefix("# "),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                onOpenUrl = uriHandler::openUri,
-            )
+            trimmed.startsWith("# ") -> {
+                ReleaseNoteLine(
+                    text = trimmed.removePrefix("# "),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    onOpenUrl = uriHandler::openUri,
+                )
+            }
 
             trimmed.startsWith("- ") || trimmed.startsWith("* ") -> {
                 Row(modifier = Modifier.fillMaxWidth()) {
@@ -234,11 +320,32 @@ private fun ReleaseNotesContent(markdown: String) {
                 }
             }
 
-            else -> ReleaseNoteLine(
-                text = trimmed,
-                style = MaterialTheme.typography.bodyMedium,
-                onOpenUrl = uriHandler::openUri,
-            )
+            trimmed.matches(Regex("""\d+\.\s+.*""")) -> {
+                val marker = trimmed.substringBefore(" ") + " "
+                val body = trimmed.substringAfter(" ", "")
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = marker,
+                        modifier = Modifier.padding(end = 4.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    ReleaseNoteLine(
+                        text = body,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        onOpenUrl = uriHandler::openUri,
+                    )
+                }
+            }
+
+            else -> {
+                ReleaseNoteLine(
+                    text = trimmed,
+                    style = MaterialTheme.typography.bodyMedium,
+                    onOpenUrl = uriHandler::openUri,
+                )
+            }
         }
     }
 }
@@ -256,10 +363,11 @@ private fun ReleaseNoteLine(
     ClickableText(
         modifier = modifier,
         text = annotated,
-        style = style.copy(
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = fontWeight,
-        ),
+        style =
+            style.copy(
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = fontWeight,
+            ),
         onClick = { index ->
             annotated.getUrlAnnotations(index, index).firstOrNull()?.let { annotation ->
                 onOpenUrl(annotation.item.url)
@@ -289,7 +397,10 @@ private fun buildReleaseAnnotatedString(source: String): AnnotatedString {
             val end = length
             addUrlAnnotation(UrlAnnotation(url), start, end)
             addStyle(
-                SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+                SpanStyle(
+                    color = linkColor,
+                    textDecoration = TextDecoration.Underline,
+                ),
                 start,
                 end,
             )
@@ -306,7 +417,27 @@ private fun cleanInlineMarkdown(text: String): String =
 
 private fun UpdateUtil.Release.versionLabel(): String {
     val source = tagName ?: name.orEmpty()
-    return releaseVersionPattern.find(source)?.groupValues?.get(1) ?: source.removePrefix("v")
+    val parsed = releaseVersionPattern.find(source)?.groupValues?.get(1)
+    return parsed?.takeIf { it.isNotBlank() }
+        ?: source.removePrefix("v").takeIf { it.isNotBlank() }
+        ?: "Unknown"
+}
+
+private fun UpdateUtil.Release.availableApkVariants(): String? {
+    val names =
+        assets.mapNotNull { it.name }
+            .filter { it.endsWith(".apk", ignoreCase = true) }
+
+    if (names.isEmpty()) return null
+
+    return buildList {
+        if (names.any { it.contains("arm64", ignoreCase = true) }) {
+            add("ARM64")
+        }
+        if (names.any { it.contains("universal", ignoreCase = true) }) {
+            add("Universal")
+        }
+    }.takeIf { it.isNotEmpty() }?.joinToString(" • ")
 }
 
 @Preview
@@ -314,13 +445,20 @@ private fun UpdateUtil.Release.versionLabel(): String {
 private fun Preview() {
     UpdateDialogImpl(
         onDismissRequest = {},
-        title = "KirinDL v3.1.2",
-        currentVersion = "3.1.1",
-        releaseVersion = "3.1.2",
-        publishedDate = "2026-09-03",
+        dialogTitle = "New KirinDL Update",
+        releaseTitle = "KirinDL v3.1.6",
+        channelLabel = "Stable",
+        availableBuilds = "ARM64 • Universal",
+        currentVersion = "3.1.5",
+        releaseVersion = "3.1.6",
+        publishedDate = "2026-09-20",
         isUpdateAvailable = true,
-        backgroundUpdateMode = true,
+        backgroundUpdateMode = false,
         onConfirmUpdate = {},
-        releaseNote = "## Highlights\n- Better updater\n- Cleaner settings",
+        releaseNote =
+            "## Highlights\n" +
+                "- Better updater popup\n" +
+                "- Cleaner About update card\n" +
+                "- ARM64 and Universal builds",
     )
 }

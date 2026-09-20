@@ -5,28 +5,32 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.junkfood.seal.util.APP_UPDATE_CHECK_TIME
 import com.junkfood.seal.util.PreferenceUtil
+import com.junkfood.seal.util.PreferenceUtil.getLong
+import com.junkfood.seal.util.PreferenceUtil.updateLong
 import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.makeToast
+import java.util.concurrent.TimeUnit
 
-private const val UPDATE_POPUP_PREFS = "kirindl_update_popup"
-private const val LAST_AUTO_POPUP_RELEASE_STABLE = "last_auto_popup_release_stable"
-private const val LAST_AUTO_POPUP_RELEASE_PRERELEASE = "last_auto_popup_release_prerelease"
-
-private fun UpdateUtil.Release.autoPopupKey(): String =
-    listOfNotNull(tagName, name, publishedAt, htmlUrl)
-        .firstOrNull { it.isNotBlank() }
-        .orEmpty()
+// Komikku-style automatic update trigger:
+// - check once when the app UI starts
+// - throttle automatic checks so every app launch does not hit GitHub
+// - About/manual checks are intentionally NOT throttled
+private val AUTO_UPDATE_CHECK_INTERVAL_MS = TimeUnit.DAYS.toMillis(2)
 
 /**
- * Lightweight update checker for KirinDL.
+ * KirinDL app update trigger.
  *
- * The app intentionally does not request package-install permission and does not install APKs
- * itself. The automatic update popup can hand the official release APK to Android DownloadManager
- * for a background download; installation remains a normal user-controlled Android action.
+ * This follows Komikku's update flow: a lightweight check runs when the app enters its main UI,
+ * but repeated automatic checks are rate-limited. If the user dismisses or misses the popup, the
+ * About page can always perform a fresh manual check and reopen the same update dialog.
+ *
+ * KirinDL does not silently install APKs. The update action only hands the official release APK
+ * to Android DownloadManager; installation remains user-controlled.
  */
 @Composable
 fun AppUpdater() {
@@ -42,37 +46,37 @@ fun AppUpdater() {
             return@LaunchedEffect
         }
 
-        runCatching {
-                UpdateUtil.checkForUpdate()?.let { candidate ->
-                    val popupKey = candidate.autoPopupKey()
-                    val popupPrefs =
-                        context.getSharedPreferences(
-                            UPDATE_POPUP_PREFS,
-                            android.content.Context.MODE_PRIVATE,
-                        )
-                    val storageKey =
-                        if (candidate.preRelease == true) LAST_AUTO_POPUP_RELEASE_PRERELEASE
-                        else LAST_AUTO_POPUP_RELEASE_STABLE
-                    val alreadyShown =
-                        popupKey.isNotBlank() &&
-                            popupPrefs.getString(storageKey, null) == popupKey
+        val now = System.currentTimeMillis()
+        val lastChecked = APP_UPDATE_CHECK_TIME.getLong()
+        val checkedRecently =
+            lastChecked > 0L &&
+                now >= lastChecked &&
+                now - lastChecked < AUTO_UPDATE_CHECK_INTERVAL_MS
 
-                    if (!alreadyShown) {
-                        release = candidate
-                        showUpdateDialog = true
-                        if (popupKey.isNotBlank()) {
-                            popupPrefs.edit().putString(storageKey, popupKey).apply()
-                        }
-                    }
+        if (checkedRecently) {
+            return@LaunchedEffect
+        }
+
+        UpdateUtil.checkForUpdateResult(context)
+            .onSuccess { candidate ->
+                if (candidate != null) {
+                    release = candidate
+                    showUpdateDialog = true
                 }
             }
-            .onFailure { it.printStackTrace() }
+            .onFailure { error ->
+                // UpdateUtil records the attempt time. A failed network/API request should not
+                // silence automatic checks for the whole cooldown window, so clear it again.
+                APP_UPDATE_CHECK_TIME.updateLong(0L)
+                error.printStackTrace()
+            }
     }
 
     if (showUpdateDialog) {
         UpdateDialog(
             onDismissRequest = { showUpdateDialog = false },
             release = release,
+            isUpdateAvailable = true,
             onBackgroundUpdate =
                 if (UpdateUtil.hasBackgroundAppUpdate(release)) {
                     {
