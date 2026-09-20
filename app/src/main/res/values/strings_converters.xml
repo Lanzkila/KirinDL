@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="media_converter">Media Converter</string>
+    <string name="media_converter_short_desc">Convert local video and audio files</string>
+    <string name="media_converter_desc">Convert local video and audio files with format, codec, bitrate, resolution, FPS, quality, trim, remux, metadata, subtitle and audio controls. Batch conversion and presets are included.</string>
+
+    <string name="manga_converter">Manga Converter</string>
+    <string name="manga_converter_short_desc">Convert ZIP and CBZ manga archives</string>
+    <string name="manga_converter_desc">Convert ZIP to CBZ, CBZ to ZIP, ZIP to PDF, or CBZ to PDF with natural page sorting, junk-file cleanup, optional ComicInfo metadata and batch conversion.</string>
+
+    <string name="converter_output_directories">Converter output directories</string>
+    <string name="media_converter_directory">Media Converter output</string>
+    <string name="manga_converter_directory">Manga Converter output</string>
+    <string name="reset_media_converter_directory">Reset Media Converter output</string>
+    <string name="reset_manga_converter_directory">Reset Manga Converter output</string>
+    <string name="converter_directory_hint">Media Converter and Manga Converter keep independent output folders. Custom folders are remembered until you reset them.</string>
+</resources>

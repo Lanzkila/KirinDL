@@ -1,5 +1,6 @@
 package com.junkfood.seal.ui.page.tools
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -9,7 +10,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -78,6 +79,8 @@ import com.junkfood.seal.ui.common.ThemedIconColors
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.ConfirmButton
 import com.junkfood.seal.ui.component.SealDialog
+import com.junkfood.seal.ui.page.tools.mangaconverter.MangaConverterPage
+import com.junkfood.seal.ui.page.tools.mediaconverter.MediaConverterPage
 import com.junkfood.seal.ui.theme.GradientBrushes
 import com.junkfood.seal.ui.theme.GradientDarkColors
 import com.junkfood.seal.util.makeToast
@@ -96,10 +99,28 @@ private data class ToolItem(
 /** Each tool cycles through one of these theme-derived gradient pairs for its icon badge. */
 private enum class AccentStyle { PRIMARY, SECONDARY, TERTIARY }
 
-// Display order: Batch URL Import, Thumbnail Download, Video Info Download, Comment Download.
-// IDs are stable identifiers used for click routing (see the `when (tool.id)` dispatch below) —
-// they intentionally stay unchanged here; only this list's ordering (i.e. display order) moved.
+private const val TOOL_MEDIA_CONVERTER = 6
+private const val TOOL_MANGA_CONVERTER = 7
+
+// Converter tools stay at the top because they are full utilities rather than small actions.
+// Existing IDs remain stable so old click routing is not changed.
 private val tools = listOf(
+    ToolItem(
+        id = TOOL_MEDIA_CONVERTER,
+        titleRes = R.string.media_converter,
+        shortDescRes = R.string.media_converter_short_desc,
+        descRes = R.string.media_converter_desc,
+        icon = Icons.Outlined.VideoLibrary,
+        isComingSoon = false,
+    ),
+    ToolItem(
+        id = TOOL_MANGA_CONVERTER,
+        titleRes = R.string.manga_converter,
+        shortDescRes = R.string.manga_converter_short_desc,
+        descRes = R.string.manga_converter_desc,
+        icon = Icons.Outlined.Image,
+        isComingSoon = false,
+    ),
     ToolItem(
         id = 1,
         titleRes = R.string.batch_url_import,
@@ -152,6 +173,19 @@ fun MoreToolsPage(
     onNavigateToCommentDownload: (() -> Unit)? = null,
     onNavigateToGalleryDl: (() -> Unit)? = null,
 ) {
+    var activeConverter by remember { mutableStateOf<Int?>(null) }
+    BackHandler(enabled = activeConverter != null) { activeConverter = null }
+    when (activeConverter) {
+        TOOL_MEDIA_CONVERTER -> {
+            MediaConverterPage(onNavigateBack = { activeConverter = null })
+            return
+        }
+        TOOL_MANGA_CONVERTER -> {
+            MangaConverterPage(onNavigateBack = { activeConverter = null })
+            return
+        }
+    }
+
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
@@ -186,8 +220,6 @@ fun MoreToolsPage(
         },
         containerColor = backgroundColor,
     ) { paddingValues ->
-        // Adaptive column count: scales from a single column on narrow phones up to several
-        // columns on tablets/foldables/landscape, instead of a hardcoded fixed count.
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 176.dp),
             contentPadding = PaddingValues(
@@ -213,6 +245,8 @@ fun MoreToolsPage(
                         useGradientColors = useGradientColors,
                         onClick = {
                             when (tool.id) {
+                                TOOL_MEDIA_CONVERTER -> activeConverter = TOOL_MEDIA_CONVERTER
+                                TOOL_MANGA_CONVERTER -> activeConverter = TOOL_MANGA_CONVERTER
                                 1 -> onNavigateToBatchUrlImport?.invoke()
                                 2 -> onNavigateToVideoInfoDownload?.invoke()
                                 3 -> onNavigateToCommentDownload?.invoke()
@@ -246,11 +280,6 @@ fun MoreToolsPage(
     }
 }
 
-/**
- * Compact hero banner introducing the page. Uses the same gradient language as the rest of
- * the app (GradientBrushes in Gradient Dark mode, theme container colors otherwise) so it
- * feels native rather than bolted-on.
- */
 @Composable
 private fun HeroBanner(useGradientColors: Boolean) {
     var visible by remember { mutableStateOf(false) }
@@ -321,10 +350,6 @@ private fun HeroBanner(useGradientColors: Boolean) {
                         },
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    // No maxLines/ellipsis here on purpose — the previous 2-line cap clipped
-                    // the tail of the description on narrower phones and in longer-translation
-                    // locales. The hero banner's height isn't fixed, so letting the text wrap
-                    // to as many lines as it needs shows the full sentence on every screen size.
                     Text(
                         text = stringResource(R.string.more_tools_desc),
                         style = MaterialTheme.typography.bodySmall,
@@ -340,12 +365,6 @@ private fun HeroBanner(useGradientColors: Boolean) {
     }
 }
 
-/**
- * Resolves the same colorful, theme-aware tint used for icons in the navigation drawer
- * ([ThemedIconColors]) for a given accent slot, so a tool's icon color reads as consistent
- * with the rest of the app (primary/secondary/tertiary role colors) instead of a bespoke
- * gradient invented just for this page.
- */
 @Composable
 private fun accentColor(style: AccentStyle): Color = when (style) {
     AccentStyle.PRIMARY -> ThemedIconColors.primary
@@ -388,7 +407,6 @@ private fun ToolCard(
         ),
         label = "card_offset",
     )
-    // Spring-based press feedback reads as noticeably smoother/snappier than a linear tween.
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
         animationSpec = spring(
@@ -453,10 +471,6 @@ private fun ToolCard(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        // Soft tinted container behind a full-strength colored icon — the same
-                        // colorful primary/secondary/tertiary language used for icons in the
-                        // navigation drawer, applied consistently here instead of the page's
-                        // own one-off gradient badges.
                         .background(iconColor.copy(alpha = if (useGradientColors) 0.18f else 0.12f)),
                     contentAlignment = Alignment.Center,
                 ) {
