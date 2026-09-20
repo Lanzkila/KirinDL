@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.contextmenu.modifier.filterTextContextMenuComponents
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -1295,7 +1296,10 @@ fun URLInputField(
         onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp),
+            .height(64.dp)
+            // Keep paste available from the dedicated button / keyboard while suppressing the
+            // buggy floating Android Paste/Autofill toolbar on this media URL field.
+            .filterTextContextMenuComponents { false },
         placeholder = {
             if (animatePlaceholder) {
                 Text(

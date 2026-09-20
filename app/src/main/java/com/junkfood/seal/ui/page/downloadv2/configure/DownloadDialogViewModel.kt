@@ -252,6 +252,11 @@ class DownloadDialogViewModel(private val downloader: DownloaderV2) : ViewModel(
 
             else -> {}
         }
+
+        // Do not leave Configure/Error/Loading behind after the sheet is gone. AppEntry uses
+        // Configure to host the shared sheet on Home; a stale Configure state could immediately
+        // pop navigation back to Home, making Download Center look unclickable while downloading.
+        mSheetStateFlow.update { SheetState.InputUrl }
     }
 
     private fun showDialog(action: Action.ShowSheet) {
