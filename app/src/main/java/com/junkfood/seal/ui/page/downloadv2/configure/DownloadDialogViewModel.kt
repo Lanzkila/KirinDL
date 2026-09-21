@@ -241,6 +241,8 @@ class DownloadDialogViewModel(private val downloader: DownloaderV2) : ViewModel(
                 preferences = preferences,
             )
         downloader.enqueue(task)
+        // Match Preset behaviour after enqueue: close and reset Configure immediately.
+        hideDialog()
     }
 
     private fun hideDialog() {

@@ -952,6 +952,9 @@ fun NewHomePage(
     
     LaunchedEffect(sheetValue) {
         if (sheetValue == DownloadDialogViewModel.SheetValue.Expanded) {
+            // Rebuild the popup snapshot every time it opens so Preset/Custom never reuse
+            // stale cookies, format, subtitle or other download preferences from the last sheet.
+            preferences = DownloadUtil.DownloadPreferences.createFromPreferences()
             showDialog = true
         } else {
             launch { sheetState.hide() }.invokeOnCompletion { showDialog = false }

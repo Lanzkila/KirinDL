@@ -1,5 +1,6 @@
 package com.junkfood.seal.ui.page.tools
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -77,6 +79,8 @@ import com.junkfood.seal.ui.common.ThemedIconColors
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.ConfirmButton
 import com.junkfood.seal.ui.component.SealDialog
+import com.junkfood.seal.ui.page.tools.mangaconverter.MangaConverterPage
+import com.junkfood.seal.ui.page.tools.mediaconverter.MediaConverterPage
 import com.junkfood.seal.ui.theme.GradientBrushes
 import com.junkfood.seal.ui.theme.GradientDarkColors
 import com.junkfood.seal.util.makeToast
@@ -95,9 +99,28 @@ private data class ToolItem(
 /** Each tool cycles through one of these theme-derived gradient pairs for its icon badge. */
 private enum class AccentStyle { PRIMARY, SECONDARY, TERTIARY }
 
-// Display order restored to the v3.1.3 Stable layout.
-// Batch URL Import, Thumbnail Download, Video Info Download, Comment Download, Gallery DL.
+private const val TOOL_MEDIA_CONVERTER = 6
+private const val TOOL_MANGA_CONVERTER = 7
+
+// Converter tools stay at the top because they are full utilities rather than small actions.
+// Existing IDs remain stable so old click routing is not changed.
 private val tools = listOf(
+    ToolItem(
+        id = TOOL_MEDIA_CONVERTER,
+        titleRes = R.string.media_converter,
+        shortDescRes = R.string.media_converter_short_desc,
+        descRes = R.string.media_converter_desc,
+        icon = Icons.Outlined.VideoLibrary,
+        isComingSoon = false,
+    ),
+    ToolItem(
+        id = TOOL_MANGA_CONVERTER,
+        titleRes = R.string.manga_converter,
+        shortDescRes = R.string.manga_converter_short_desc,
+        descRes = R.string.manga_converter_desc,
+        icon = Icons.Outlined.Image,
+        isComingSoon = false,
+    ),
     ToolItem(
         id = 1,
         titleRes = R.string.batch_url_import,
@@ -150,6 +173,19 @@ fun MoreToolsPage(
     onNavigateToCommentDownload: (() -> Unit)? = null,
     onNavigateToGalleryDl: (() -> Unit)? = null,
 ) {
+    var activeConverter by remember { mutableStateOf<Int?>(null) }
+    BackHandler(enabled = activeConverter != null) { activeConverter = null }
+    when (activeConverter) {
+        TOOL_MEDIA_CONVERTER -> {
+            MediaConverterPage(onNavigateBack = { activeConverter = null })
+            return
+        }
+        TOOL_MANGA_CONVERTER -> {
+            MangaConverterPage(onNavigateBack = { activeConverter = null })
+            return
+        }
+    }
+
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
@@ -209,6 +245,8 @@ fun MoreToolsPage(
                         useGradientColors = useGradientColors,
                         onClick = {
                             when (tool.id) {
+                                TOOL_MEDIA_CONVERTER -> activeConverter = TOOL_MEDIA_CONVERTER
+                                TOOL_MANGA_CONVERTER -> activeConverter = TOOL_MANGA_CONVERTER
                                 1 -> onNavigateToBatchUrlImport?.invoke()
                                 2 -> onNavigateToVideoInfoDownload?.invoke()
                                 3 -> onNavigateToCommentDownload?.invoke()
