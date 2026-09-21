@@ -768,13 +768,6 @@ fun NewHomePage(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToSearch) {
-                        Icon(
-                            imageVector = Icons.Outlined.Search,
-                            contentDescription = "Kirin Search",
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
                     IconButton(onClick = onNavigateToSupport) {
                         Icon(
                             imageVector = Icons.Outlined.AttachMoney,

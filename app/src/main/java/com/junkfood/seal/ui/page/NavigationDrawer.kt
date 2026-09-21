@@ -1,5 +1,6 @@
 package com.junkfood.seal.ui.page
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,26 +20,22 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Subscriptions
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.VolunteerActivism
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,38 +47,31 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.compose.foundation.Image
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import com.junkfood.seal.App
 import com.junkfood.seal.R
 import com.junkfood.seal.ui.common.LocalDarkTheme
 import com.junkfood.seal.ui.common.LocalWindowWidthState
 import com.junkfood.seal.ui.common.Route
 import com.junkfood.seal.ui.common.ThemedIconColors
-import com.junkfood.seal.ui.page.downloadv2.DownloadPageImplV2
 import com.junkfood.seal.ui.page.security.LockScreen
 import com.junkfood.seal.util.AuthenticationManager
 import com.junkfood.seal.util.makeToast
@@ -105,208 +95,192 @@ fun NavigationDrawer(
     var hiddenContentAuthDone by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    when (windowWidth) {
-        WindowWidthSizeClass.Compact,
-        WindowWidthSizeClass.Medium -> {
-            ModalNavigationDrawer(
-                gesturesEnabled = gesturesEnabled,
-                drawerState = drawerState,
-                drawerContent = {
-                    ModalDrawerSheet(drawerState = drawerState, modifier = modifier.width(360.dp)) {
-                        NavigationDrawerSheetContent(
-                            modifier = Modifier,
-                            currentRoute = currentRoute,
-                            showQuickSettings = showQuickSettings,
-                            onNavigateToRoute = onNavigateToRoute,
-                            onDismissRequest = onDismissRequest,
-                            onShowHiddenContentAuth = {
-                                hiddenContentAuthDone = false
-                                showHiddenContentAuthScreen = true
-                            },
-                        )
-                    }
-                },
-                content = content,
-            )
-        }
-        WindowWidthSizeClass.Expanded -> {
-            ModalNavigationDrawer(
-                gesturesEnabled = drawerState.isOpen,
-                drawerState = drawerState,
-                drawerContent = {
-                    ModalDrawerSheet(drawerState = drawerState, modifier = modifier.width(360.dp)) {
-                        NavigationDrawerSheetContent(
-                            modifier = Modifier,
-                            currentRoute = currentRoute,
-                            showQuickSettings = showQuickSettings,
-                            onNavigateToRoute = onNavigateToRoute,
-                            onDismissRequest = onDismissRequest,
-                            onShowHiddenContentAuth = {
-                                hiddenContentAuthDone = false
-                                showHiddenContentAuthScreen = true
-                            },
-                        )
-                    }
-                },
-            ) {
-                Row {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        modifier = Modifier.zIndex(1f),
-                    ) {
-                        Column(
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxHeight().systemBarsPadding().width(92.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+        when (windowWidth) {
+            WindowWidthSizeClass.Compact,
+            WindowWidthSizeClass.Medium -> {
+                ModalNavigationDrawer(
+                    gesturesEnabled = gesturesEnabled,
+                    drawerState = drawerState,
+                    drawerContent = {
+                        ModalDrawerSheet(
+                            drawerState = drawerState,
+                            modifier = modifier.width(360.dp),
                         ) {
-                            Spacer(Modifier.height(8.dp))
-                            IconButton(
-                                onClick = { scope.launch { drawerState.open() } },
-                                modifier = Modifier.align(Alignment.CenterHorizontally),
-                            ) {
-                                Icon(Icons.Outlined.Menu, null, tint = ThemedIconColors.primary)
-                            }
-                            Spacer(Modifier.weight(1f))
-                            NavigationRailContent(
+                            NavigationDrawerSheetContent(
                                 modifier = Modifier,
-                                currentTopDestination = currentTopDestination,
+                                currentRoute = currentRoute,
+                                showQuickSettings = showQuickSettings,
                                 onNavigateToRoute = onNavigateToRoute,
+                                onDismissRequest = onDismissRequest,
+                                onShowHiddenContentAuth = {
+                                    hiddenContentAuthDone = false
+                                    showHiddenContentAuthScreen = true
+                                },
                             )
-                            Spacer(Modifier.weight(1f))
                         }
+                    },
+                    content = content,
+                )
+            }
+
+            WindowWidthSizeClass.Expanded -> {
+                ModalNavigationDrawer(
+                    gesturesEnabled = drawerState.isOpen,
+                    drawerState = drawerState,
+                    drawerContent = {
+                        ModalDrawerSheet(
+                            drawerState = drawerState,
+                            modifier = modifier.width(360.dp),
+                        ) {
+                            NavigationDrawerSheetContent(
+                                modifier = Modifier,
+                                currentRoute = currentRoute,
+                                showQuickSettings = showQuickSettings,
+                                onNavigateToRoute = onNavigateToRoute,
+                                onDismissRequest = onDismissRequest,
+                                onShowHiddenContentAuth = {
+                                    hiddenContentAuthDone = false
+                                    showHiddenContentAuthScreen = true
+                                },
+                            )
+                        }
+                    },
+                ) {
+                    Row {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier.zIndex(1f),
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.Center,
+                                modifier =
+                                    Modifier.fillMaxHeight()
+                                        .systemBarsPadding()
+                                        .width(92.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Spacer(Modifier.height(8.dp))
+                                IconButton(
+                                    onClick = { scope.launch { drawerState.open() } },
+                                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Menu,
+                                        contentDescription = "Menu",
+                                        tint = ThemedIconColors.primary,
+                                    )
+                                }
+                                Spacer(Modifier.weight(1f))
+                                NavigationRailContent(
+                                    currentTopDestination = currentTopDestination,
+                                    onNavigateToRoute = onNavigateToRoute,
+                                )
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
+                        content()
                     }
-                    content()
                 }
             }
         }
-    }
 
-    // Full-screen LockScreen overlay — rendered outside the narrow ModalDrawerSheet
-    // so it covers the entire display.
-    if (showHiddenContentAuthScreen && !hiddenContentAuthDone) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            LockScreen(
-                onUnlocked = {
-                    hiddenContentAuthDone = true
-                    showHiddenContentAuthScreen = false
-                    scope.launch { onDismissRequest() }
-                        .invokeOnCompletion { onNavigateToRoute(Route.HIDDEN_CONTENT) }
-                },
-                useBiometric = AuthenticationManager.useBiometric()
-            )
+        if (showHiddenContentAuthScreen && !hiddenContentAuthDone) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                LockScreen(
+                    onUnlocked = {
+                        hiddenContentAuthDone = true
+                        showHiddenContentAuthScreen = false
+                        scope.launch { onDismissRequest() }
+                            .invokeOnCompletion {
+                                onNavigateToRoute(Route.HIDDEN_CONTENT)
+                            }
+                    },
+                    useBiometric = AuthenticationManager.useBiometric(),
+                )
+            }
         }
     }
-    } // end outer Box
 }
 
 @Composable
-fun DrawerHeader(
-    modifier: Modifier = Modifier
-) {
+fun DrawerHeader(modifier: Modifier = Modifier) {
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
-    
-    // Create gradient based on theme
-    val headerGradient = if (isDarkTheme) {
+    val headerGradient =
         Brush.verticalGradient(
-            colors = listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
-                MaterialTheme.colorScheme.surface
-            )
+            colors =
+                if (isDarkTheme) {
+                    listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.30f),
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.20f),
+                        MaterialTheme.colorScheme.surface,
+                    )
+                } else {
+                    listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.10f),
+                        MaterialTheme.colorScheme.surface,
+                    )
+                }
         )
-    } else {
-        Brush.verticalGradient(
-            colors = listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
-                MaterialTheme.colorScheme.surface
-            )
-        )
-    }
-    
+
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(headerGradient)
-            .padding(vertical = 22.dp),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier.fillMaxWidth()
+                .background(headerGradient)
+                .padding(vertical = 22.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // App Logo - left side, vertically centered, reduced for balance
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Image(
                 painter = painterResource(id = R.drawable.splash_logo),
                 contentDescription = "KirinDL Logo",
-                modifier = Modifier.size(76.dp)
+                modifier = Modifier.size(76.dp),
             )
-            
-            // Fixed spacing between logo and text
             Spacer(modifier = Modifier.width(16.dp))
-            
-            // Text content column - strictly left-aligned text stack
-            Column(
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.Top
-            ) {
-                // App Name - refined typography with tighter line height
+            Column(horizontalAlignment = Alignment.Start) {
                 Text(
                     text = "KirinDL",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 20.sp,
-                        lineHeight = 22.sp
-                    ),
+                    style =
+                        MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 20.sp,
+                            lineHeight = 22.sp,
+                        ),
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
+                    maxLines = 1,
                 )
-                
-                // Reduced spacing between title and tagline
                 Spacer(modifier = Modifier.height(4.dp))
-                
-                // Tagline - enhanced hierarchy with improved opacity
                 Text(
                     text = "Download Manager",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                    maxLines = 1
+                    color =
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                    maxLines = 1,
                 )
-                
-                // Increased spacing before version badge for better hierarchy
                 Spacer(modifier = Modifier.height(10.dp))
-                
-                // Version badge with gradient background - premium pill appearance
                 Box(
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.medium)
-                        .background(
-                            if (isDarkTheme) {
+                    modifier =
+                        Modifier.clip(MaterialTheme.shapes.medium)
+                            .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    )
+                                    colors =
+                                        listOf(
+                                            MaterialTheme.colorScheme.primaryContainer,
+                                            MaterialTheme.colorScheme.secondaryContainer,
+                                        )
                                 )
-                            } else {
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                                    )
-                                )
-                            }
-                        )
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
                     Text(
                         text = "v${App.packageInfo.versionName}",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 10.sp
-                        ),
+                        style =
+                            MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 10.sp,
+                            ),
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        maxLines = 1
+                        maxLines = 1,
                     )
                 }
             }
@@ -324,159 +298,166 @@ fun NavigationDrawerSheetContent(
     onShowHiddenContentAuth: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    fun navigate(route: String) {
+        scope.launch { onDismissRequest() }
+            .invokeOnCompletion { onNavigateToRoute(route) }
+    }
+
     Column(
         modifier =
-            modifier
-                .fillMaxHeight()
+            modifier.fillMaxHeight()
                 .verticalScroll(rememberScrollState())
                 .systemBarsPadding()
     ) {
-        // Modern gradient header
         DrawerHeader()
-        
         Spacer(Modifier.height(16.dp))
 
-        // Group 1: Primary Destinations
         Column(modifier = Modifier.padding(horizontal = 12.dp)) {
             ProvideTextStyle(MaterialTheme.typography.labelLarge) {
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.home)) },
-                    icon = { Icon(Icons.Filled.Download, null, tint = ThemedIconColors.primary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.HOME) }
+                    icon = {
+                        Icon(
+                            Icons.Filled.Download,
+                            null,
+                            tint = ThemedIconColors.primary,
+                        )
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    onClick = { navigate(Route.HOME) },
+                    selected = currentRoute == Route.HOME,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
                 NavigationDrawerItem(
                     label = { Text("Download Center") },
-                    icon = { Icon(Icons.Outlined.Subscriptions, null, tint = ThemedIconColors.secondary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.DOWNLOADS) }
+                    icon = {
+                        Icon(
+                            Icons.Outlined.Subscriptions,
+                            null,
+                            tint = ThemedIconColors.secondary,
+                        )
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    onClick = { navigate(Route.DOWNLOADS) },
+                    selected = currentRoute == Route.DOWNLOADS,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
-                NavigationDrawerItem(
-                    label = { Text("Kirin Search") },
-                    icon = { Icon(Icons.Outlined.Search, null, tint = ThemedIconColors.tertiary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.KIRIN_SEARCH) }
-                    },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
-                )
-                NavigationDrawerItem(
-                    label = { Text("Global Feed") },
-                    icon = { Icon(Icons.Outlined.FolderOpen, null, tint = ThemedIconColors.primary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.SAVED_SOURCES) }
-                    },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
-                )
+
+                // Kirin Search and Global Feed intentionally removed from Stable.
+
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.hidden_content)) },
-                    icon = { Icon(Icons.Outlined.VisibilityOff, null, tint = ThemedIconColors.secondary) },
+                    icon = {
+                        Icon(
+                            Icons.Outlined.VisibilityOff,
+                            null,
+                            tint = ThemedIconColors.secondary,
+                        )
+                    },
                     onClick = {
-                        if (AuthenticationManager.isSecurityEnabled() && AuthenticationManager.isPinSet()) {
+                        if (
+                            AuthenticationManager.isSecurityEnabled() &&
+                                AuthenticationManager.isPinSet()
+                        ) {
                             onShowHiddenContentAuth()
                         } else {
                             context.makeToast(R.string.hidden_content_requires_app_lock)
                         }
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    selected = currentRoute == Route.HIDDEN_CONTENT,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.custom_command)) },
-                    icon = { Icon(Icons.Outlined.Terminal, null, tint = ThemedIconColors.tertiary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.TASK_LIST) }
+                    icon = {
+                        Icon(
+                            Icons.Outlined.Terminal,
+                            null,
+                            tint = ThemedIconColors.tertiary,
+                        )
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    onClick = { navigate(Route.TASK_LIST) },
+                    selected = currentRoute == Route.TASK_LIST,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.more_tools)) },
-                    icon = { Icon(Icons.Outlined.Build, null, tint = ThemedIconColors.primary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.MORE_TOOLS) }
+                    icon = {
+                        Icon(
+                            Icons.Outlined.Build,
+                            null,
+                            tint = ThemedIconColors.primary,
+                        )
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    onClick = { navigate(Route.MORE_TOOLS) },
+                    selected = currentRoute == Route.MORE_TOOLS,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
             }
         }
 
-        // Divider between groups
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
-            color = MaterialTheme.colorScheme.outlineVariant
+            color = MaterialTheme.colorScheme.outlineVariant,
         )
 
-        // Group 2: Utilities & Support
         Column(modifier = Modifier.padding(horizontal = 12.dp)) {
             ProvideTextStyle(MaterialTheme.typography.labelLarge) {
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.settings)) },
-                    icon = { Icon(Icons.Outlined.Settings, null, tint = ThemedIconColors.primary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.SETTINGS) }
+                    icon = {
+                        Icon(
+                            Icons.Outlined.Settings,
+                            null,
+                            tint = ThemedIconColors.primary,
+                        )
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    onClick = { navigate(Route.SETTINGS) },
+                    selected = currentRoute == Route.SETTINGS_PAGE,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.trouble_shooting)) },
-                    icon = { Icon(Icons.Rounded.BugReport, null, tint = ThemedIconColors.secondary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.TROUBLESHOOTING) }
+                    icon = {
+                        Icon(
+                            Icons.Rounded.BugReport,
+                            null,
+                            tint = ThemedIconColors.secondary,
+                        )
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    onClick = { navigate(Route.TROUBLESHOOTING) },
+                    selected = currentRoute == Route.TROUBLESHOOTING,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.sponsor)) },
-                    icon = { Icon(Icons.Outlined.VolunteerActivism, null, tint = ThemedIconColors.tertiary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.DONATE) }
+                    icon = {
+                        Icon(
+                            Icons.Outlined.VolunteerActivism,
+                            null,
+                            tint = ThemedIconColors.tertiary,
+                        )
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    onClick = { navigate(Route.DONATE) },
+                    selected = currentRoute == Route.DONATE,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.about)) },
-                    icon = { Icon(Icons.Rounded.Info, null, tint = ThemedIconColors.primary) },
-                    onClick = {
-                        scope
-                            .launch { onDismissRequest() }
-                            .invokeOnCompletion { onNavigateToRoute(Route.ABOUT) }
+                    icon = {
+                        Icon(
+                            Icons.Rounded.Info,
+                            null,
+                            tint = ThemedIconColors.primary,
+                        )
                     },
-                    selected = false,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    onClick = { navigate(Route.ABOUT) },
+                    selected = currentRoute == Route.ABOUT,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
             }
         }
+
         Spacer(Modifier.weight(1f))
     }
 }
@@ -490,8 +471,7 @@ fun NavigationRailItemVariant(
 ) {
     Box(
         modifier =
-            modifier
-                .size(56.dp)
+            modifier.size(56.dp)
                 .clip(MaterialTheme.shapes.large)
                 .background(
                     if (selected) MaterialTheme.colorScheme.secondaryContainer
@@ -521,104 +501,80 @@ fun NavigationRailContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        val scope = rememberCoroutineScope()
         NavigationRailItemVariant(
             icon = {
                 Icon(
-                    if (currentTopDestination == Route.HOME) Icons.Filled.Download
-                    else Icons.Outlined.Download,
+                    if (currentTopDestination == Route.HOME) {
+                        Icons.Filled.Download
+                    } else {
+                        Icons.Outlined.Download
+                    },
                     stringResource(R.string.home),
                     tint = ThemedIconColors.primary,
                 )
             },
-            modifier = Modifier,
             selected = currentTopDestination == Route.HOME,
             onClick = { onNavigateToRoute(Route.HOME) },
         )
-
         NavigationRailItemVariant(
             icon = {
                 Icon(
-                    if (currentTopDestination == Route.DOWNLOADS) Icons.Filled.Subscriptions
-                    else Icons.Outlined.Subscriptions,
+                    if (currentTopDestination == Route.DOWNLOADS) {
+                        Icons.Filled.Subscriptions
+                    } else {
+                        Icons.Outlined.Subscriptions
+                    },
                     "Download Center",
                     tint = ThemedIconColors.secondary,
                 )
             },
-            modifier = Modifier,
             selected = currentTopDestination == Route.DOWNLOADS,
             onClick = { onNavigateToRoute(Route.DOWNLOADS) },
         )
-
         NavigationRailItemVariant(
             icon = {
                 Icon(
-                    if (currentTopDestination == Route.TASK_LIST) Icons.Filled.Terminal
-                    else Icons.Outlined.Terminal,
+                    if (currentTopDestination == Route.TASK_LIST) {
+                        Icons.Filled.Terminal
+                    } else {
+                        Icons.Outlined.Terminal
+                    },
                     stringResource(R.string.custom_command),
                     tint = ThemedIconColors.tertiary,
                 )
             },
-            modifier = Modifier,
             selected = currentTopDestination == Route.TASK_LIST,
             onClick = { onNavigateToRoute(Route.TASK_LIST) },
         )
-
         NavigationRailItemVariant(
             icon = {
                 Icon(
-                    if (currentTopDestination == Route.MORE_TOOLS) Icons.Filled.Build
-                    else Icons.Outlined.Build,
+                    if (currentTopDestination == Route.MORE_TOOLS) {
+                        Icons.Filled.Build
+                    } else {
+                        Icons.Outlined.Build
+                    },
                     stringResource(R.string.more_tools),
                     tint = ThemedIconColors.primary,
                 )
             },
-            modifier = Modifier,
             selected = currentTopDestination == Route.MORE_TOOLS,
             onClick = { onNavigateToRoute(Route.MORE_TOOLS) },
         )
-
         NavigationRailItemVariant(
             icon = {
                 Icon(
-                    if (currentTopDestination == Route.SETTINGS_PAGE) Icons.Filled.Settings
-                    else Icons.Outlined.Settings,
+                    if (currentTopDestination == Route.SETTINGS_PAGE) {
+                        Icons.Filled.Settings
+                    } else {
+                        Icons.Outlined.Settings
+                    },
                     stringResource(R.string.settings),
                     tint = ThemedIconColors.primary,
                 )
             },
-            modifier = Modifier,
             selected = currentTopDestination == Route.SETTINGS_PAGE,
             onClick = { onNavigateToRoute(Route.SETTINGS_PAGE) },
         )
-    }
-}
-
-@Preview(device = "spec:width=673dp,height=841dp")
-@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
-@Composable
-private fun ExpandedPreview() {
-    val widthDp = LocalConfiguration.current.screenWidthDp
-    var currentRoute = remember { mutableStateOf(Route.HOME) }
-
-    CompositionLocalProvider(
-        LocalWindowWidthState provides
-            if (widthDp > 480) WindowWidthSizeClass.Expanded
-            else if (widthDp > 360) WindowWidthSizeClass.Medium else WindowWidthSizeClass.Compact
-    ) {
-        Row {
-            val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-            NavigationDrawer(
-                currentRoute = currentRoute.value,
-                currentTopDestination = currentRoute.value,
-                drawerState = drawerState,
-                onNavigateToRoute = { currentRoute.value = it },
-                onDismissRequest = {},
-            ) {
-                DownloadPageImplV2(taskDownloadStateMap = remember { mutableStateMapOf() }) { _, _
-                    ->
-                }
-            }
-        }
     }
 }
