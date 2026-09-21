@@ -33,13 +33,6 @@ android {
     compileSdk = 37
 
     signingConfigs {
-        // Public debug-only key committed with the fork.
-        //
-        // This is intentional: GitHub Actions runners are ephemeral and otherwise create a new
-        // ~/.android/debug.keystore on different runs. Android then rejects the next debug APK as
-        // an update because its certificate changed.
-        //
-        // NEVER use this config for release builds.
         create("kirinDebug") {
             keyAlias = "kirin-debug"
             keyPassword = "kirindebug"
@@ -65,7 +58,7 @@ android {
         applicationId = "com.kirin.downloader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 301_070_400
+        versionCode = 301_090_400
         check(versionCode == currentVersionCode)
 
         versionName = baseVersionName
@@ -73,8 +66,6 @@ android {
         vectorDrawables { useSupportLibrary = true }
         manifestPlaceholders["appLabel"] = "@string/app_name"
 
-        // Chaquopy embeds a native Python runtime, so it needs an explicit ABI list.
-        // Keep this identical to the existing APK split coverage.
         ndk {
             abiFilters += if (splitApks) {
                 listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
@@ -135,32 +126,22 @@ android {
                 "proguard-rules.pro",
             )
 
-            // Release signing stays completely separate from the public debug key.
-            // A real release is signed only when this fork later provides its own
-            // keystore.properties.
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("githubPublish")
             }
         }
 
         debug {
-            // Stable certificate for every GitHub Actions debug build of this fork.
             signingConfig = signingConfigs.getByName("kirinDebug")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
 
-        // Kirin Pre-Release is intentionally a separate install from Stable.
-        // It keeps the generic flavor/resources but receives its own Android package identity.
-        // This lets com.kirin.downloader (Stable) and this build coexist on one phone.
         create("prerelease") {
             initWith(getByName("release"))
             applicationIdSuffix = ".prerelease"
             versionNameSuffix = prereleaseVersionSuffix
             manifestPlaceholders["appLabel"] = "Kirin Pre-Release"
-
-            // Library/project dependencies usually expose release/debug only.
-            // Fall back to their release variant when resolving this custom build type.
             matchingFallbacks += listOf("release")
         }
     }
@@ -192,10 +173,8 @@ android {
 
 chaquopy {
     defaultConfig {
-        // Python 3.11 keeps both 32-bit and 64-bit Android ABIs available.
         version = "3.11"
         pip {
-            // requests is the required Python dependency bundled for gallery-dl.
             install("requests==2.32.5")
         }
     }
@@ -213,37 +192,23 @@ kotlin {
 
 dependencies {
     implementation(project(":color"))
-
     implementation(libs.bundles.core)
-
     implementation(libs.androidx.lifecycle.runtimeCompose)
-
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.androidxCompose)
-
     implementation(libs.coil.kt.compose)
     implementation(libs.coil.kt.network.okhttp)
-
     implementation(libs.kotlinx.serialization.json)
-
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
-
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
-
     implementation(libs.okhttp)
-
     implementation(libs.bundles.youtubedlAndroid)
-
     implementation(libs.mmkv)
-
     implementation(libs.androidx.documentfile)
-
-    // AndroidX WebKit — provides WebViewCompat.addDocumentStartJavaScript().
     implementation("androidx.webkit:webkit:1.16.0")
-
     testImplementation(libs.junit4)
     androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.androidx.test.espresso.core)
