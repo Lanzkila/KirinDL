@@ -175,20 +175,51 @@ class DownloadDialogViewModel(private val downloader: DownloaderV2) : ViewModel(
     private fun fetchFormat(action: Action.FetchFormats) {
         val (url, audioOnly, preferences) = action
 
-        // Check network availability before fetching
+        // Custom Video/Audio needs metadata first so the format picker can be built.
         if (!PreferenceUtil.isNetworkAvailableForDownload()) {
             val message = PreferenceUtil.getNetworkErrorMessage()
             App.context.makeToast(message)
             return
         }
 
+        val taskKey = "FetchFormat_$url"
         val job =
             viewModelScope.launch(Dispatchers.IO) {
-                DownloadUtil.fetchVideoInfoFromUrl(
+                val primaryPreferences = preferences.copy(extractAudio = audioOnly)
+                val primaryResult =
+                    DownloadUtil.fetchVideoInfoFromUrl(
                         url = url,
-                        preferences = preferences.copy(extractAudio = audioOnly),
-                        taskKey = "FetchFormat_$url",
+                        preferences = primaryPreferences,
+                        taskKey = taskKey,
                     )
+
+                // Preset can enqueue without this metadata pass, but Custom cannot.
+                // Retry format discovery once with a clean metadata-only profile so stale
+                // cookies/subtitle/sorter/forced-IPv4 settings do not make Custom fail while
+                // the actual download path is otherwise healthy.
+                val result =
+                    if (
+                        primaryResult.isFailure &&
+                            primaryResult.exceptionOrNull() !is YoutubeDL.CanceledException
+                    ) {
+                        DownloadUtil.fetchVideoInfoFromUrl(
+                            url = url,
+                            preferences =
+                                primaryPreferences.copy(
+                                    cookies = false,
+                                    autoSubtitle = false,
+                                    autoTranslatedSubtitles = false,
+                                    formatSorting = false,
+                                    forceIpv4 = false,
+                                    userAgentString = "",
+                                ),
+                            taskKey = taskKey,
+                        )
+                    } else {
+                        primaryResult
+                    }
+
+                result
                     .onSuccess { info ->
                         withContext(Dispatchers.Main) {
                             mSelectionStateFlow.update {
@@ -204,7 +235,7 @@ class DownloadDialogViewModel(private val downloader: DownloaderV2) : ViewModel(
                     }
             }
 
-        mSheetStateFlow.update { SheetState.Loading(taskKey = "FetchFormat_$url", job = job) }
+        mSheetStateFlow.update { SheetState.Loading(taskKey = taskKey, job = job) }
     }
 
     private fun downloadWithPreset(
