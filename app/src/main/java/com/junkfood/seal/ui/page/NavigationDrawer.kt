@@ -27,7 +27,9 @@ import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Subscriptions
 import androidx.compose.material.icons.outlined.Terminal
@@ -343,7 +345,32 @@ fun NavigationDrawerSheetContent(
                     modifier = Modifier.padding(vertical = 2.dp),
                 )
 
-                // Kirin Search and Global Feed intentionally removed from Stable.
+                NavigationDrawerItem(
+                    label = { Text("Kirin Search") },
+                    icon = {
+                        Icon(
+                            Icons.Outlined.Search,
+                            null,
+                            tint = ThemedIconColors.tertiary,
+                        )
+                    },
+                    onClick = { navigate(Route.KIRIN_SEARCH) },
+                    selected = currentRoute == Route.KIRIN_SEARCH,
+                    modifier = Modifier.padding(vertical = 2.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("Global Feed") },
+                    icon = {
+                        Icon(
+                            Icons.Outlined.FolderOpen,
+                            null,
+                            tint = ThemedIconColors.primary,
+                        )
+                    },
+                    onClick = { navigate(Route.SAVED_SOURCES) },
+                    selected = currentRoute == Route.SAVED_SOURCES,
+                    modifier = Modifier.padding(vertical = 2.dp),
+                )
 
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.hidden_content)) },
