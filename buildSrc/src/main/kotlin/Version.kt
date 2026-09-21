@@ -44,7 +44,6 @@ sealed class Version(val major: Int, val minor: Int, val patch: Int, val build: 
     }
 }
 
-// private const val ABI = 1L
 private const val BUILD = 10L
 private const val VARIANT = 100L
 private const val PATCH = 10_000L
@@ -57,4 +56,4 @@ private const val BETA = VARIANT * 2
 private const val RELEASE_CANDIDATE = VARIANT * 3
 
 val currentVersion: Version =
-    Version.Stable(versionMajor = 3, versionMinor = 1, versionPatch = 7)
+    Version.Stable(versionMajor = 3, versionMinor = 1, versionPatch = 9)
