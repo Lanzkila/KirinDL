@@ -1748,8 +1748,7 @@ object DownloadUtil {
         downloadPreferences.run {
             val taskId = Downloader.makeKey(url = url, templateName = template.name)
             val notificationId = taskId.toNotificationId()
-            val urlList = url.split(Regex("[
- ]")).filter { it.isNotBlank() }
+            val urlList = url.split(Regex("[\\n ]")).filter { it.isNotBlank() }
 
             App.applicationScope.launch(Dispatchers.Main) {
                 context.makeToast(R.string.start_execute)
@@ -1803,8 +1802,7 @@ object DownloadUtil {
                                 progress = progress,
                             )
                         }
-                    onTaskEnded(template, url, response.out + "
-" + response.err)
+                    onTaskEnded(template, url, response.out + "\\n" + response.err)
                 }
                 .onFailure {
                     it.printStackTrace()
