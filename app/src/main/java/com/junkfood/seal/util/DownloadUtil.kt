@@ -34,10 +34,8 @@ import com.junkfood.seal.util.FileUtil.moveFilesToSdcard
 import com.junkfood.seal.util.PreferenceUtil.COOKIE_HEADER
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getInt
-import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
-import com.junkfood.seal.util.PreferenceUtil.updateLong
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -240,79 +238,6 @@ object DownloadUtil {
 
     private const val TAG = "DownloadUtil"
 
-    // KirinDL Bilibili download profile.
-    //
-    // Bilibili commonly exposes DASH streams, so KirinDL keeps a dedicated transfer
-    // profile for Bilibili/b23.tv. Other extractors continue using the normal global
-    // concurrent-fragment and Aria2 preferences without any profile override.
-    private const val BILIBILI_AUTO_CONCURRENT_FRAGMENTS = 12
-    private const val BILIBILI_BALANCED_CONCURRENT_FRAGMENTS = 4
-    private const val BILIBILI_FAST_CONCURRENT_FRAGMENTS = 12
-
-    private data class BilibiliSpeedProfile(
-        val concurrentFragments: Int,
-        val aria2ConnectionCap: Int,
-        val socketTimeoutSeconds: Int,
-    )
-
-    private fun getBilibiliSpeedProfile(
-        mode: Int,
-        customFragments: Int,
-    ): BilibiliSpeedProfile {
-        val safeCustomFragments =
-            customFragments.takeIf { it == 1 || it == 4 || it == 8 || it == 12 || it == 16 } ?: 8
-        val lastAverageSpeed = BILIBILI_LAST_AVG_SPEED.getLong()
-        // Auto learns from the previous successful Bilibili transfer. Slow routes get
-        // more parallel DASH/HLS fragments, while already-fast routes use fewer
-        // connections to avoid needless CDN pressure and throttling.
-        val adaptiveFragments =
-            when {
-                lastAverageSpeed <= 0L -> BILIBILI_AUTO_CONCURRENT_FRAGMENTS
-                lastAverageSpeed < 2L * 1024L * 1024L -> 16
-                lastAverageSpeed < 6L * 1024L * 1024L -> 12
-                else -> 8
-            }
-
-        return when (mode) {
-            BILIBILI_SPEED_BALANCED ->
-                BilibiliSpeedProfile(
-                    concurrentFragments = BILIBILI_BALANCED_CONCURRENT_FRAGMENTS,
-                    aria2ConnectionCap = BILIBILI_BALANCED_CONCURRENT_FRAGMENTS,
-                    socketTimeoutSeconds = 25,
-                )
-            BILIBILI_SPEED_FAST ->
-                BilibiliSpeedProfile(
-                    concurrentFragments = BILIBILI_FAST_CONCURRENT_FRAGMENTS,
-                    aria2ConnectionCap = BILIBILI_FAST_CONCURRENT_FRAGMENTS,
-                    socketTimeoutSeconds = 20,
-                )
-            BILIBILI_SPEED_CUSTOM ->
-                BilibiliSpeedProfile(
-                    concurrentFragments = safeCustomFragments,
-                    aria2ConnectionCap = safeCustomFragments,
-                    socketTimeoutSeconds = 20,
-                )
-            else ->
-                BilibiliSpeedProfile(
-                    concurrentFragments = adaptiveFragments,
-                    aria2ConnectionCap = adaptiveFragments,
-                    socketTimeoutSeconds = 20,
-                )
-        }
-    }
-
-    internal fun isBilibiliUrl(url: String): Boolean {
-        val host =
-            runCatching { Uri.parse(url).host.orEmpty().lowercase(Locale.US) }
-                .getOrDefault("")
-        return host == "b23.tv" ||
-            host.endsWith(".b23.tv") ||
-            host == "bilibili.com" ||
-            host.endsWith(".bilibili.com") ||
-            host == "bilibili.tv" ||
-            host.endsWith(".bilibili.tv")
-    }
-
     const val BASENAME = "%(title).200B"
 
     const val EXTENSION = ".%(ext)s"
@@ -435,7 +360,7 @@ object DownloadUtil {
                     if (autoSubtitle && !autoTranslatedSubtitles) {
                         addOption("--extractor-args", "youtube:skip=translated_subs")
                     }
-
+                    
                     if (playlistIndex != null) {
                         addOption("--playlist-items", playlistIndex)
                         addOption("--dump-json")
@@ -448,28 +373,7 @@ object DownloadUtil {
                     addOption("-R", "3")
                     addOption("--socket-timeout", "15")
                 }
-            val result = getVideoInfo(request, taskKey)
-            return result.fold(
-                onSuccess = { info ->
-                    ExtractorHealthUtil.remember(
-                        context,
-                        ExtractorHealthUtil.Engine.YT_DLP,
-                        url,
-                        info.extractorKey.ifBlank { info.extractor.orEmpty() },
-                    )
-                    Result.success(info)
-                },
-                onFailure = { error ->
-                    Result.failure(
-                        ExtractorHealthUtil.decorateFailure(
-                            context,
-                            ExtractorHealthUtil.Engine.YT_DLP,
-                            url,
-                            error,
-                        )
-                    )
-                },
-            )
+            return getVideoInfo(request, taskKey)
         }
     }
 
@@ -562,18 +466,6 @@ object DownloadUtil {
         val mergeAudioStream: Boolean,
         val mergeToMkv: Boolean,
         val downloadDocs: Boolean = false,
-        // Defaults keep older serialized/queued tasks compatible after this update.
-        val bilibiliSpeedMode: Int = BILIBILI_SPEED_AUTO,
-        val bilibiliCustomFragments: Int = 8,
-        val audioCodec: Int = AUDIO_CODEC_AUTO,
-        val audioCoverMode: Int = AUDIO_COVER_LEGACY,
-        val audioCoverFormat: Int = AUDIO_COVER_FORMAT_AUTO,
-        val videoCodec: Int = VIDEO_CODEC_AUTO,
-        val videoContainer: Int = VIDEO_CONTAINER_AUTO,
-        val extractorArgs: String = "",
-        val liveFromStart: Boolean = false,
-        val hlsSplitDiscontinuity: Boolean = false,
-        val writeAllThumbnails: Boolean = false,
     ) {
         companion object {
             val EMPTY =
@@ -687,25 +579,11 @@ object DownloadUtil {
                     mergeAudioStream = false,
                     mergeToMkv =
                         (downloadSubtitle && embedSubtitle) || MERGE_OUTPUT_MKV.getBoolean(),
-                    bilibiliSpeedMode = BILIBILI_SPEED_MODE.getInt(),
-                    bilibiliCustomFragments = BILIBILI_CUSTOM_FRAGMENTS.getInt(),
-                    audioCodec = AUDIO_CODEC.getInt(),
-                    audioCoverMode = AUDIO_COVER_MODE.getInt(),
-                    audioCoverFormat = AUDIO_COVER_FORMAT.getInt(),
-                    videoCodec = VIDEO_CODEC.getInt(),
-                    videoContainer = VIDEO_CONTAINER.getInt(),
-                    extractorArgs = EXTRACTOR_ARGS.getString(),
-                    liveFromStart = LIVE_FROM_START.getBoolean(),
-                    hlsSplitDiscontinuity = HLS_SPLIT_DISCONTINUITY.getBoolean(),
-                    writeAllThumbnails = WRITE_ALL_THUMBNAILS.getBoolean(),
                 )
             }
         }
     }
 
-    // Stable compatibility path: use the normal persistent cookies.txt directly.
-    // v3.1.3 introduced a per-task temporary cookie copy right before execution; refresh
-    // and attach the normal cookie file so Preset/Custom share one consistent path.
     private fun YoutubeDLRequest.enableCookies(userAgentString: String): YoutubeDLRequest {
         refreshCookiesFile()
         return this.addOption("--cookies", context.getCookiesFile().absolutePath).apply {
@@ -899,7 +777,7 @@ object DownloadUtil {
     fun getCookiesContentFromDatabase(): Result<String> =
         getCookieListFromDatabase().mapCatching { it.toCookiesFileContent() }
 
-    private fun YoutubeDLRequest.enableAria2c(connectionCap: Int? = null): YoutubeDLRequest {
+    private fun YoutubeDLRequest.enableAria2c(): YoutubeDLRequest {
         // FIX: addOption() builds a raw argv array — no shell quoting involved.
         // The old value  aria2c:"-x 8 ..."  passes literal " characters to yt-dlp.
         // Python's shlex.split() inside yt-dlp treats the whole quoted block as ONE
@@ -920,10 +798,7 @@ object DownloadUtil {
         // --file-allocation=none   = no preallocation (faster on Android / SAF temp dirs)
         // --max-tries / --retry-wait = resilience against transient network errors
         // --console-log-level=warn = keep logs clean without breaking progress parsing
-        val configuredConnections = ARIA2C_CONNECTIONS.getInt()
-        val connections =
-            connectionCap?.let { configuredConnections.coerceAtMost(it) }
-                ?: configuredConnections
+        val connections = ARIA2C_CONNECTIONS.getInt()
         return this.addOption("--downloader", "http,https,ftp,ftps:libaria2c.so")
             .addOption(
                 "--external-downloader-args",
@@ -1014,29 +889,9 @@ object DownloadUtil {
                         else -> {}
                     }
                 }
-                when (videoContainer) {
-                    VIDEO_CONTAINER_MP4 -> addOption("--merge-output-format", "mp4")
-                    VIDEO_CONTAINER_WEBM -> addOption("--merge-output-format", "webm")
-                    VIDEO_CONTAINER_MKV -> {
-                        addOption("--remux-video", "mkv")
-                        addOption("--merge-output-format", "mkv")
-                    }
-                    VIDEO_CONTAINER_MOV -> {
-                        addOption("--remux-video", "mov")
-                        addOption("--merge-output-format", "mov")
-                    }
-                    VIDEO_CONTAINER_AVI -> {
-                        addOption("--remux-video", "avi")
-                        addOption("--merge-output-format", "avi")
-                    }
-                    VIDEO_CONTAINER_FLV -> {
-                        addOption("--remux-video", "flv")
-                        addOption("--merge-output-format", "flv")
-                    }
-                    else -> if (mergeToMkv) {
-                        addOption("--remux-video", "mkv")
-                        addOption("--merge-output-format", "mkv")
-                    }
+                if (mergeToMkv) {
+                    addOption("--remux-video", "mkv")
+                    addOption("--merge-output-format", "mkv")
                 }
                 if (embedThumbnail) {
                     addOption("--embed-thumbnail")
@@ -1051,34 +906,18 @@ object DownloadUtil {
             if (!useCustomAudioPreset) return@run ""
             val format =
                 when (audioFormat) {
-                    M4A -> "ext:m4a"
+                    M4A -> "acodec:aac"
                     OPUS -> "acodec:opus"
-                    else -> ""
-                }
-            val codec =
-                when (audioCodec) {
-                    AUDIO_CODEC_AAC -> "acodec:aac"
-                    AUDIO_CODEC_OPUS -> "acodec:opus"
-                    AUDIO_CODEC_VORBIS -> "acodec:vorbis"
-                    AUDIO_CODEC_MP3 -> "acodec:mp3"
-                    AUDIO_CODEC_FLAC -> "acodec:flac"
-                    AUDIO_CODEC_ALAC -> "acodec:alac"
                     else -> ""
                 }
             val quality =
                 when (audioQuality) {
-                    AUDIO_320 -> "abr~320"
-                    AUDIO_256 -> "abr~256"
                     HIGH -> "abr~192"
-                    AUDIO_160 -> "abr~160"
                     MEDIUM -> "abr~128"
-                    AUDIO_96 -> "abr~96"
                     LOW -> "abr~64"
-                    ULTRA_LOW -> "abr~32"
-                    AUDIO_LOWEST -> "+abr"
                     else -> ""
                 }
-            return@run connectWithDelimiter(format, codec, quality, delimiter = ",")
+            return@run connectWithDelimiter(format, quality, delimiter = ",")
         }
 
     @CheckResult
@@ -1086,33 +925,14 @@ object DownloadUtil {
         this.run {
             val format =
                 when (videoFormat) {
-                    FORMAT_COMPATIBILITY ->
-                        if (videoCodec == VIDEO_CODEC_AUTO) "proto,vcodec:h264" else "proto"
+                    FORMAT_COMPATIBILITY -> "proto,vcodec:h264,ext"
                     FORMAT_QUALITY ->
-                        if (videoCodec != VIDEO_CODEC_AUTO) {
-                            ""
-                        } else if (supportAv1HardwareDecoding) {
+                        if (supportAv1HardwareDecoding) {
                             "vcodec:av01"
                         } else {
                             "vcodec:vp9.2"
                         }
-                    else -> ""
-                }
-            val codec =
-                when (videoCodec) {
-                    VIDEO_CODEC_H264 -> "vcodec:h264"
-                    VIDEO_CODEC_VP9 -> "vcodec:vp9.2"
-                    VIDEO_CODEC_AV1 -> "vcodec:av01"
-                    VIDEO_CODEC_HEVC -> "vcodec:h265"
-                    else -> ""
-                }
-            val container =
-                when (videoContainer) {
-                    VIDEO_CONTAINER_MP4 -> "ext:mp4"
-                    VIDEO_CONTAINER_WEBM -> "ext:webm"
-                    VIDEO_CONTAINER_MOV -> "ext:mov"
-                    VIDEO_CONTAINER_AVI -> "ext:avi"
-                    VIDEO_CONTAINER_FLV -> "ext:flv"
+
                     else -> ""
                 }
             val res =
@@ -1124,16 +944,12 @@ object DownloadUtil {
                     5 -> "res:480"
                     6 -> "res:360"
                     7 -> "+res"
-                    8 -> "res:4320"
-                    9 -> "res:2880"
-                    10 -> "res:240"
-                    11 -> "res:144"
                     else -> ""
                 }
             val sorter = if (videoFormat == FORMAT_COMPATIBILITY) {
-                connectWithDelimiter(container, codec, format, res, delimiter = ",")
+                connectWithDelimiter(format, res, delimiter = ",")
             } else {
-                connectWithDelimiter(res, codec, format, container, delimiter = ",")
+                connectWithDelimiter(res, format, delimiter = ",")
             }
             return@run sorter
         }
@@ -1194,32 +1010,14 @@ object DownloadUtil {
                 } else {
                     addOption("-f", "ba/b")
                     if (convertAudio) {
-                        val targetAudioFormat =
-                            when (audioConvertFormat) {
-                                CONVERT_M4A -> "m4a"
-                                CONVERT_OPUS -> "opus"
-                                CONVERT_FLAC -> "flac"
-                                CONVERT_WAV -> "wav"
-                                CONVERT_VORBIS -> "vorbis"
-                                CONVERT_AAC -> "aac"
-                                CONVERT_ALAC -> "alac"
-                                else -> "mp3"
+                        when (audioConvertFormat) {
+                            CONVERT_MP3 -> {
+                                addOption("--audio-format", "mp3")
                             }
-                        addOption("--audio-format", targetAudioFormat)
-                        val targetAudioBitrate =
-                            when (audioQuality) {
-                                AUDIO_320 -> "320K"
-                                AUDIO_256 -> "256K"
-                                HIGH -> "192K"
-                                AUDIO_160 -> "160K"
-                                MEDIUM -> "128K"
-                                AUDIO_96 -> "96K"
-                                LOW -> "64K"
-                                ULTRA_LOW -> "32K"
-                                else -> ""
+
+                            CONVERT_M4A -> {
+                                addOption("--audio-format", "m4a")
                             }
-                        if (targetAudioBitrate.isNotEmpty() && targetAudioFormat !in listOf("flac", "wav", "alac")) {
-                            addOption("--audio-quality", targetAudioBitrate)
                         }
                     }
                     applyFormatSorter(preferences, toAudioFormatSorter())
@@ -1227,26 +1025,10 @@ object DownloadUtil {
 
                 if (embedMetadata) {
                     addOption("--embed-metadata")
-                }
+                    addOption("--embed-thumbnail")
+                    addOption("--convert-thumbnails", "jpg")
 
-                val shouldEmbedCover =
-                    audioCoverMode == AUDIO_COVER_EMBED ||
-                        audioCoverMode == AUDIO_COVER_BOTH ||
-                        (audioCoverMode == AUDIO_COVER_LEGACY && embedMetadata)
-                val shouldSaveCover =
-                    audioCoverMode == AUDIO_COVER_SAVE || audioCoverMode == AUDIO_COVER_BOTH
-                if (shouldEmbedCover || shouldSaveCover) {
-                    if (shouldEmbedCover) addOption("--embed-thumbnail")
-                    if (shouldSaveCover) addOption("--write-thumbnail")
-                    when (audioCoverFormat) {
-                        AUDIO_COVER_FORMAT_JPG -> addOption("--convert-thumbnails", "jpg")
-                        AUDIO_COVER_FORMAT_PNG -> addOption("--convert-thumbnails", "png")
-                        AUDIO_COVER_FORMAT_WEBP -> addOption("--convert-thumbnails", "webp")
-                    }
-                }
-
-                if (embedMetadata) {
-                    if (cropArtwork && shouldEmbedCover) {
+                    if (cropArtwork) {
                         val configFile = context.getConfigFile(id)
                         FileUtil.writeContentToFile(CROP_ARTWORK_COMMAND, configFile)
                         addOption("--config", configFile.absolutePath)
@@ -1313,7 +1095,7 @@ object DownloadUtil {
                 appendLine()
             }
             appendLine("═══════════════════════════════════════")
-            appendLine("  Generated by KirinDL")
+            appendLine("  Generated by Seal Plus")
             appendLine("═══════════════════════════════════════")
         }
         FileUtil.writeContentToFile(content, file)
@@ -1404,7 +1186,6 @@ object DownloadUtil {
                             Throwable(context.getString(R.string.fetch_info_error_msg))
                         )
                 }
-            val isBilibili = isBilibiliUrl(url)
             val request = YoutubeDLRequest(url)
             val pathBuilder = StringBuilder()
             val outputBuilder = StringBuilder()
@@ -1431,18 +1212,6 @@ object DownloadUtil {
                     }
                     if (debug) {
                         addOption("-v")
-                    }
-                    if (extractorArgs.isNotBlank()) {
-                        addOption("--extractor-args", extractorArgs.trim())
-                    }
-                    if (liveFromStart) {
-                        addOption("--live-from-start")
-                    }
-                    if (hlsSplitDiscontinuity) {
-                        addOption("--hls-split-discontinuity")
-                    }
-                    if (writeAllThumbnails) {
-                        addOption("--write-all-thumbnails")
                     }
                     if (useDownloadArchive) {
                         val archiveFile = context.getArchiveFile()
@@ -1479,36 +1248,13 @@ object DownloadUtil {
 
                     // aria2c is scoped to contiguous protocols (see enableAria2c), so
                     // concurrent fragments can run alongside it for DASH/HLS streams.
-                    // Bilibili gets its own profile; all other sites keep the global values.
-                    val bilibiliProfile =
-                        if (isBilibili) {
-                            getBilibiliSpeedProfile(
-                                mode = bilibiliSpeedMode,
-                                customFragments = bilibiliCustomFragments,
-                            )
-                        } else {
-                            null
-                        }
-                    val effectiveConcurrentFragments =
-                        bilibiliProfile?.concurrentFragments ?: concurrentFragments
-
                     if (aria2c) {
-                        enableAria2c(connectionCap = bilibiliProfile?.aria2ConnectionCap)
-                    }
-
-                    if (effectiveConcurrentFragments > 1) {
-                        addOption("--concurrent-fragments", effectiveConcurrentFragments)
-                    }
-
-                    // Keep timeout tuning site-scoped. Balanced gets extra patience on
-                    // slower Bilibili routes while Auto/Fast/Custom use the normal 20s.
-                    bilibiliProfile?.let { profile ->
-                        addOption("--socket-timeout", profile.socketTimeoutSeconds)
-                        // Bilibili/CDN routes can fluctuate heavily. Give fragmented
-                        // transfers extra recovery room without changing other sites.
-                        addOption("--fragment-retries", "20")
-                        addOption("--retries", "15")
-                        addOption("--retry-sleep", "fragment:exp=1:20")
+                        enableAria2c()
+                        if (concurrentFragments > 1) {
+                            addOption("--concurrent-fragments", concurrentFragments)
+                        }
+                    } else if (concurrentFragments > 1) {
+                        addOption("--concurrent-fragments", concurrentFragments)
                     }
 
                     if (extractAudio || (videoInfo.vcodec == "none")) {
@@ -1577,10 +1323,7 @@ object DownloadUtil {
                     val dlStartTime = System.currentTimeMillis()
                     YoutubeDL.getInstance()
                         .execute(request = this, processId = taskId, callback = progressCallback)
-                        .also {
-                            downloadTiming[0] = dlStartTime
-                            downloadTiming[1] = System.currentTimeMillis()
-                        }
+                        .also { downloadTiming[0] = dlStartTime; downloadTiming[1] = System.currentTimeMillis() }
                 }
                 .onFailure { th ->
                     return if (
@@ -1597,28 +1340,15 @@ object DownloadUtil {
                             downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
                             averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
                         )
-                    } else {
-                        Result.failure(
-                            ExtractorHealthUtil.decorateFailure(
-                                context,
-                                ExtractorHealthUtil.Engine.YT_DLP,
-                                url,
-                                th,
-                            )
-                        )
-                    }
+                    } else Result.failure(th)
                 }
-            val averageSpeed = computeAvgSpeed(videoInfo, downloadTiming)
-            if (isBilibili && averageSpeed > 0L) {
-                BILIBILI_LAST_AVG_SPEED.updateLong(averageSpeed)
-            }
             return onFinishDownloading(
                 preferences = this,
                 videoInfo = videoInfo,
                 downloadPath = pathBuilder.toString(),
                 sdcardUri = sdcardUri,
                 downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
-                averageSpeedBytesPerSec = averageSpeed,
+                averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
             )
         }
     }
@@ -1730,13 +1460,6 @@ object DownloadUtil {
         return runCatching {
             YoutubeDL.getInstance()
                 .execute(request = request, processId = taskId, callback = progressCallback)
-        }.recoverCatching { error ->
-            throw ExtractorHealthUtil.decorateFailure(
-                context,
-                ExtractorHealthUtil.Engine.YT_DLP,
-                urlList.firstOrNull().orEmpty(),
-                error,
-            )
         }
     }
 
@@ -1748,7 +1471,7 @@ object DownloadUtil {
         downloadPreferences.run {
             val taskId = Downloader.makeKey(url = url, templateName = template.name)
             val notificationId = taskId.toNotificationId()
-            val urlList = url.split(Regex("[\\n ]")).filter { it.isNotBlank() }
+            val urlList = url.split(Regex("[\n ]")).filter { it.isNotBlank() }
 
             App.applicationScope.launch(Dispatchers.Main) {
                 context.makeToast(R.string.start_execute)
@@ -1802,7 +1525,7 @@ object DownloadUtil {
                                 progress = progress,
                             )
                         }
-                    onTaskEnded(template, url, response.out + "\\n" + response.err)
+                    onTaskEnded(template, url, response.out + "\n" + response.err)
                 }
                 .onFailure {
                     it.printStackTrace()
