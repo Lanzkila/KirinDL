@@ -1590,36 +1590,17 @@ fun ActiveDownloadCard(
         else -> 0f
     }
     
-    // DownloaderV2 now exposes a stable phase while keeping raw yt-dlp output in
-    // progressText for speed/ETA parsing below. This avoids each UI surface guessing
-    // video/audio/fragment/merge state independently.
-    val progressText =
-        if (downloadState is Task.DownloadState.Running) downloadState.progressText else ""
-
     val statusText = when (downloadState) {
-        is Task.DownloadState.Running -> {
-            val pct = if (progress >= 0) " ${(progress * 100).toInt()}%" else ""
-            when (downloadState.phase) {
-                Task.TransferPhase.Preparing -> "Preparing download..."
-                Task.TransferPhase.Video -> "Downloading video...$pct"
-                Task.TransferPhase.Audio -> "Downloading audio...$pct"
-                Task.TransferPhase.Fragments -> "Downloading fragments...$pct"
-                Task.TransferPhase.Merging -> stringResource(R.string.status_merging)
-                Task.TransferPhase.RetryingNative -> "Retrying with native yt-dlp..."
-                Task.TransferPhase.Downloading ->
-                    if (progress >= 0) "Downloading... ${(progress * 100).toInt()}%"
-                    else stringResource(R.string.status_downloading)
-            }
-        }
+        is Task.DownloadState.Running ->
+            if (progress >= 0) stringResource(R.string.status_downloading) + " ${(progress * 100).toInt()}%"
+            else stringResource(R.string.status_downloading)
         is Task.DownloadState.Paused ->
-            if (progress >= 0)
-                stringResource(R.string.status_paused) + " ${(progress * 100).toInt()}%"
+            if (progress >= 0) stringResource(R.string.status_paused) + " ${(progress * 100).toInt()}%"
             else stringResource(R.string.status_paused)
         is Task.DownloadState.Canceled -> stringResource(R.string.status_canceled)
         is Task.DownloadState.Error -> stringResource(R.string.download_error)
         is Task.DownloadState.Completed -> stringResource(R.string.completed) + " 100%"
         is Task.DownloadState.FetchingInfo -> stringResource(R.string.fetching_info)
-        // Idle = waiting for a download slot; ReadyWithInfo = metadata ready, waiting to start.
         Task.DownloadState.Idle,
         Task.DownloadState.ReadyWithInfo -> stringResource(R.string.queue_status)
         else -> ""
