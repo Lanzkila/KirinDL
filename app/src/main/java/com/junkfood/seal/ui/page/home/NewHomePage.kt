@@ -1621,7 +1621,9 @@ fun ActiveDownloadCard(
 
     // Parse speed and ETA from yt-dlp progressText.
     // Example line: "45.3% of 10.00MiB at 2.50MiB/s ETA 00:03"
-    val speedEtaText = if (downloadState is Task.DownloadState.Running && progressText.isNotEmpty()) {
+    val speedEtaText: String? = null
+    /*
+    if (downloadState is Task.DownloadState.Running && progressText.isNotEmpty()) {
         val speed = Regex("""at\s+([\d.]+\s*\S+/s)""").find(progressText)?.groupValues?.get(1)
         val eta = Regex("""ETA\s+(\d+:\d+)""").find(progressText)?.groupValues?.get(1)
         when {
@@ -1631,6 +1633,7 @@ fun ActiveDownloadCard(
             else -> null
         }
     } else null
+    */
     
     Card(
         modifier = modifier.fillMaxWidth(),
