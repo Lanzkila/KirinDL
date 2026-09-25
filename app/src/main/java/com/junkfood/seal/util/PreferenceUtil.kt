@@ -979,10 +979,9 @@ object PreferenceStrings {
                             ),
                         )
                     val preferredResolution = getVideoResolutionDesc(videoResolution)
-                    val preferredCodec =
-                        videoCodec.takeIf { it != VIDEO_CODEC_AUTO }?.let(::getVideoCodecDesc)
-                    val preferredContainer =
-                        videoContainer.takeIf { it != VIDEO_CONTAINER_AUTO }?.let(::getVideoContainerDesc)
+                    val preferredCodec: String? = null
+                    val preferredContainer: String? = null
+                    
                     listOfNotNull(preferredFormat, preferredResolution, preferredCodec, preferredContainer)
                         .joinToString(separator = ", ")
                 }
