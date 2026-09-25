@@ -569,6 +569,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                     else ->
                         "Resolution • ${PreferenceStrings.getVideoResolutionDesc(preferences.videoResolution)}"
                 }
+            /*
             val codecSummary =
                 if (preferences.extractAudio) {
                     PreferenceStrings.getAudioCodecDesc(preferences.audioCodec)
@@ -576,6 +577,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                     "${PreferenceStrings.getVideoCodecDesc(preferences.videoCodec)} • " +
                         PreferenceStrings.getVideoContainerDesc(preferences.videoContainer)
                 }
+                */
             val storageSummary =
                 when {
                     preferences.sdcard -> "SD card"
@@ -598,6 +600,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    /*
                     if (
                         viewState.url.contains("bilibili", true) ||
                             viewState.url.contains("b23.tv", true)
@@ -612,7 +615,9 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
+                    */
                 },
+                
                 leadingIcon = {
                     Icon(
                         Icons.Outlined.Settings,
