@@ -44,6 +44,17 @@ data class Task(
     }
 
     @Serializable
+    enum class TransferPhase {
+        Preparing,
+        Downloading,
+        Video,
+        Audio,
+        Fragments,
+        Merging,
+        RetryingNative,
+    }
+
+    @Serializable
     sealed interface TypeInfo {
 
         @Serializable data class Playlist(val index: Int = 0) : TypeInfo
@@ -91,6 +102,7 @@ data class Task(
             override val taskId: String,
             val progress: Float = PROGRESS_INDETERMINATE,
             val progressText: String = "",
+            val phase: TransferPhase = TransferPhase.Downloading,
         ) : DownloadState, Cancelable {
             override val action: RestartableAction = RestartableAction.Download
         }
