@@ -590,10 +590,9 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                     Text("Download configuration", style = MaterialTheme.typography.titleSmall)
                     Text("$mediaMode • $formatSummary", style = MaterialTheme.typography.bodySmall)
                     Text(
-                        "$codecSummary • $engine • " +
-                            "${preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                         "\(engine •\){preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
+                         style = MaterialTheme.typography.bodySmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         "Output • $storageSummary",
