@@ -240,15 +240,6 @@ fun Title(imageModel: Any?, title: String, author: String, downloadState: Downlo
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        /*        AsyncImageImpl(
-            model = imageModel,
-            modifier =
-                Modifier.height(64.dp).aspectRatio(16f / 9f, matchHeightConstraintsFirst = true),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-        )*/
-        //        Spacer(Modifier.width(12.dp))
-
         Column(modifier = Modifier.height(IntrinsicSize.Min)) {
             Column(Modifier) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
@@ -490,7 +481,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Text(
-                        "${duration.toDurationText()} · ${fileSizeApprox.toFileSizeText()}",
+                        "\({duration.toDurationText()} ·\){fileSizeApprox.toFileSizeText()}",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 },
@@ -505,7 +496,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                 val bitRateText = fmt.vbr.toBitrateText()
                 val codecText = fmt.vcodec?.substringBefore(delimiter = ".") ?: ""
 
-                val title = "${stringResource(R.string.video)} #$index: ${fmt.formatNote}"
+                val title = "\({stringResource(R.string.video)} #\)index: ${fmt.formatNote}"
                 val details =
                     listOf(codecText, fmt.resolution, bitRateText, fileSizeText)
                         .filterNot { it.isNullOrBlank() }
@@ -522,7 +513,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                 )
             }
 
-            val audioFormats: List<Format> = buildList {
+            val audioFormats: List = buildList {
                 videoFormats?.filter { it.containsAudio() }?.let { addAll(it) }
                 audioOnlyFormats?.let { addAll(it) }
             }
@@ -533,7 +524,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                 val bitRateText = fmt.abr.toBitrateText()
                 val codecText = fmt.acodec?.substringBefore(delimiter = ".") ?: ""
 
-                val title = "${stringResource(R.string.audio)} #$index: ${fmt.formatNote}"
+                val title = "\({stringResource(R.string.audio)} #\)index: ${fmt.formatNote}"
                 val details =
                     listOf(codecText, bitRateText, fileSizeText)
                         .filterNot { it.isBlank() }
@@ -569,15 +560,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                     else ->
                         "Resolution • ${PreferenceStrings.getVideoResolutionDesc(preferences.videoResolution)}"
                 }
-            /*
-            val codecSummary =
-                if (preferences.extractAudio) {
-                    PreferenceStrings.getAudioCodecDesc(preferences.audioCodec)
-                } else {
-                    "${PreferenceStrings.getVideoCodecDesc(preferences.videoCodec)} • " +
-                        PreferenceStrings.getVideoContainerDesc(preferences.videoContainer)
-                }
-                */
+
             val storageSummary =
                 when {
                     preferences.sdcard -> "SD card"
@@ -588,33 +571,17 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
             ActionSheetItem(
                 text = {
                     Text("Download configuration", style = MaterialTheme.typography.titleSmall)
-                    Text("$mediaMode • $formatSummary", style = MaterialTheme.typography.bodySmall)
+                    Text("\(mediaMode •\)formatSummary", style = MaterialTheme.typography.bodySmall)
                     Text(
-                         "\(engine •\){preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
-                         style = MaterialTheme.typography.bodySmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        "\(engine •\){preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         "Output • $storageSummary",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    /*
-                    if (
-                        viewState.url.contains("bilibili", true) ||
-                            viewState.url.contains("b23.tv", true)
-                    ) {
-                        Text(
-                            "Bilibili • " +
-                                bilibiliSpeedLabel(
-                                    preferences.bilibiliSpeedMode,
-                                    preferences.bilibiliCustomFragments,
-                                ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    */
                 },
                 
                 leadingIcon = {
