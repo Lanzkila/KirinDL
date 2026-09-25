@@ -952,8 +952,7 @@ object PreferenceStrings {
                             AUDIO_LOWEST -> stringResource(R.string.lowest_bitrate)
                             else -> stringResource(R.string.best_quality)
                         }
-                    val preferredCodec =
-                        audioCodec.takeIf { it != AUDIO_CODEC_AUTO }?.let(::getAudioCodecDesc)
+                    val preferredCodec: String? = null
                     listOfNotNull(preferredFormat, preferredCodec, preferredQuality)
                         .joinToString(separator = ", ")
                 }
