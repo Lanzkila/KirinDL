@@ -33,9 +33,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,13 +49,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.junkfood.seal.R
 import com.junkfood.seal.download.FakeDownloaderV2
 import com.junkfood.seal.download.Task
-import com.junkfood.seal.download.Task.DownloadState
+import com.junkfood.seal.download.Task.*
 import com.junkfood.seal.download.Task.DownloadState.Canceled
 import com.junkfood.seal.download.Task.DownloadState.Completed
 import com.junkfood.seal.download.Task.DownloadState.Error
@@ -62,7 +65,6 @@ import com.junkfood.seal.download.Task.DownloadState.Idle
 import com.junkfood.seal.download.Task.DownloadState.Paused
 import com.junkfood.seal.download.Task.DownloadState.ReadyWithInfo
 import com.junkfood.seal.download.Task.DownloadState.Running
-import com.junkfood.seal.download.Task.ViewState
 import com.junkfood.seal.ui.common.LocalFixedColorRoles
 import com.junkfood.seal.ui.component.ActionSheetItem
 import com.junkfood.seal.ui.component.ActionSheetPrimaryButton
@@ -70,12 +72,12 @@ import com.junkfood.seal.ui.component.SealModalBottomSheet
 import com.junkfood.seal.ui.page.downloadv2.configure.PreferencesMock
 import com.junkfood.seal.ui.theme.ErrorTonalPalettes
 import com.junkfood.seal.ui.theme.SealTheme
-import com.junkfood.seal.util.BILIBILI_SPEED_AUTO
-import com.junkfood.seal.util.BILIBILI_SPEED_BALANCED
-import com.junkfood.seal.util.BILIBILI_SPEED_CUSTOM
-import com.junkfood.seal.util.BILIBILI_SPEED_FAST
 import com.junkfood.seal.util.Format
 import com.junkfood.seal.util.PreferenceStrings
+import com.junkfood.seal.util.BILIBILI_SPEED_AUTO
+import com.junkfood.seal.util.BILIBILI_SPEED_BALANCED
+import com.junkfood.seal.util.BILIBILI_SPEED_FAST
+import com.junkfood.seal.util.BILIBILI_SPEED_CUSTOM
 import com.junkfood.seal.util.toBitrateText
 import com.junkfood.seal.util.toDurationText
 import com.junkfood.seal.util.toFileSizeText
@@ -233,10 +235,20 @@ private fun OpenThumbnailURLButton(modifier: Modifier = Modifier, onClick: () ->
 
 @Composable
 fun Title(imageModel: Any?, title: String, author: String, downloadState: DownloadState) {
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        /*        AsyncImageImpl(
+            model = imageModel,
+            modifier =
+                Modifier.height(64.dp).aspectRatio(16f / 9f, matchHeightConstraintsFirst = true),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+        )*/
+        //        Spacer(Modifier.width(12.dp))
+
         Column(modifier = Modifier.height(IntrinsicSize.Min)) {
             Column(Modifier) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
@@ -263,6 +275,7 @@ fun SheetContent(
     onDismissRequest: () -> Unit,
     onActionPost: (Task, UiAction) -> Unit,
 ) {
+
     LazyColumn {
         item {
             Title(
@@ -405,9 +418,9 @@ private fun SheetPreview() {
     val fakeStateList =
         listOf(
             Running(Job(), "", 0.58f),
-            Error(throwable = Throwable(), Task.RestartableAction.Download),
+            Error(throwable = Throwable(), RestartableAction.Download),
             FetchingInfo(Job(), ""),
-            Canceled(Task.RestartableAction.Download),
+            Canceled(RestartableAction.Download),
             ReadyWithInfo,
             Idle,
             Completed(null),
@@ -442,7 +455,7 @@ private fun SheetPreview() {
         )
 
     SealTheme {
-        Surface {
+        Surface() {
             SealModalBottomSheet(
                 contentPadding = PaddingValues(),
                 onDismissRequest = {},
@@ -453,8 +466,8 @@ private fun SheetPreview() {
                     viewState = viewState,
                     downloadState = downloadState,
                     onDismissRequest = { scope.launch { sheetState.hide() } },
-                    onActionPost = { _, _ -> },
-                )
+                ) { task, action ->
+                }
             }
         }
     }
@@ -466,73 +479,37 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
         Column(modifier = modifier) {
             HorizontalDivider()
             Text(
-                text = stringResource(R.string.media_info),
+                stringResource(R.string.media_info),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
             )
             ActionSheetItem(
                 text = {
                     Text(
-                        text = task.timeCreated.toLocalizedString(),
+                        task.timeCreated.toLocalizedString(),
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Text(
-                        text = "\({duration.toDurationText()} •\){fileSizeApprox.toFileSizeText()}",
+                        "${duration.toDurationText()} · ${fileSizeApprox.toFileSizeText()}",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 },
                 leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.FileDownload,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+                    Icon(imageVector = Icons.Outlined.FileDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 },
             )
 
-            videoFormats?.let { formats ->
-                for ((index, fmt) in formats.withIndex()) {
-                    val fileSizeText = (fmt.fileSize ?: fmt.fileSizeApprox).toFileSizeText()
-                    val bitRateText = fmt.vbr.toBitrateText()
-                    val codecText = fmt.vcodec?.substringBefore(delimiter = ".") ?: ""
-
-                    val title = "\({stringResource(R.string.video)} #\){index + 1}: ${fmt.formatNote.orEmpty()}"
-                    val details =
-                        listOf(codecText, fmt.resolution, bitRateText, fileSizeText)
-                            .filterNot { it.isNullOrBlank() }
-                            .joinToString(separator = " • ")
-
-                    ActionSheetItem(
-                        text = {
-                            Text(title, style = MaterialTheme.typography.titleSmall)
-                            Text(details, style = MaterialTheme.typography.bodySmall)
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.VideoFile,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                    )
-                }
-            }
-
-            val audioFormats = buildList {
-                videoFormats?.filter { it.containsAudio() }?.let { addAll(it) }
-                audioOnlyFormats?.let { addAll(it) }
-            }
-
-            for ((index, fmt) in audioFormats.withIndex()) {
+            videoFormats?.forEachIndexed { _index, fmt ->
+                val index = _index + 1
                 val fileSizeText = (fmt.fileSize ?: fmt.fileSizeApprox).toFileSizeText()
-                val bitRateText = fmt.abr.toBitrateText()
-                val codecText = fmt.acodec?.substringBefore(delimiter = ".") ?: ""
+                val bitRateText = fmt.vbr.toBitrateText()
+                val codecText = fmt.vcodec?.substringBefore(delimiter = ".") ?: ""
 
-                val title = "\({stringResource(R.string.audio)} #\){index + 1}: ${fmt.formatNote.orEmpty()}"
+                val title = "${stringResource(R.string.video)} #$index: ${fmt.formatNote}"
                 val details =
-                    listOf(codecText, bitRateText, fileSizeText)
-                        .filterNot { it.isBlank() }
-                        .joinToString(separator = " • ")
+                    listOf(codecText, fmt.resolution, bitRateText, fileSizeText)
+                        .filterNot { it.isNullOrBlank() }
+                        .joinToString(separator = " · ")
 
                 ActionSheetItem(
                     text = {
@@ -540,11 +517,35 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                         Text(details, style = MaterialTheme.typography.bodySmall)
                     },
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.AudioFile,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                        Icon(imageVector = Icons.Outlined.VideoFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                )
+            }
+
+            val audioFormats: List<Format> = buildList {
+                videoFormats?.filter { it.containsAudio() }?.let { addAll(it) }
+                audioOnlyFormats?.let { addAll(it) }
+            }
+
+            audioFormats.forEachIndexed { _index, fmt ->
+                val index = _index + 1
+                val fileSizeText = (fmt.fileSize ?: fmt.fileSizeApprox).toFileSizeText()
+                val bitRateText = fmt.abr.toBitrateText()
+                val codecText = fmt.acodec?.substringBefore(delimiter = ".") ?: ""
+
+                val title = "${stringResource(R.string.audio)} #$index: ${fmt.formatNote}"
+                val details =
+                    listOf(codecText, bitRateText, fileSizeText)
+                        .filterNot { it.isBlank() }
+                        .joinToString(separator = " · ")
+
+                ActionSheetItem(
+                    text = {
+                        Text(title, style = MaterialTheme.typography.titleSmall)
+                        Text(details, style = MaterialTheme.typography.bodySmall)
+                    },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Outlined.AudioFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     },
                 )
             }
@@ -568,7 +569,13 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                     else ->
                         "Resolution • ${PreferenceStrings.getVideoResolutionDesc(preferences.videoResolution)}"
                 }
-
+            val codecSummary =
+                if (preferences.extractAudio) {
+                    PreferenceStrings.getAudioCodecDesc(preferences.audioCodec)
+                } else {
+                    "${PreferenceStrings.getVideoCodecDesc(preferences.videoCodec)} • " +
+                        PreferenceStrings.getVideoContainerDesc(preferences.videoContainer)
+                }
             val storageSummary =
                 when {
                     preferences.sdcard -> "SD card"
@@ -579,9 +586,10 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
             ActionSheetItem(
                 text = {
                     Text("Download configuration", style = MaterialTheme.typography.titleSmall)
-                    Text("\(mediaMode •\)formatSummary", style = MaterialTheme.typography.bodySmall)
+                    Text("$mediaMode • $formatSummary", style = MaterialTheme.typography.bodySmall)
                     Text(
-                        "\(engine •\){preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
+                        "$codecSummary • $engine • " +
+                            "${preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -590,10 +598,24 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (
+                        viewState.url.contains("bilibili", true) ||
+                            viewState.url.contains("b23.tv", true)
+                    ) {
+                        Text(
+                            "Bilibili • " +
+                                bilibiliSpeedLabel(
+                                    preferences.bilibiliSpeedMode,
+                                    preferences.bilibiliCustomFragments,
+                                ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.Settings,
+                        Icons.Outlined.Settings,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                     )
@@ -605,13 +627,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
                     Text(text = extractorKey, style = MaterialTheme.typography.titleSmall)
                     Text(text = url, style = MaterialTheme.typography.bodySmall)
                 },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Link,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
-                    )
-                },
+                leadingIcon = { Icon(imageVector = Icons.Outlined.Link, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary) },
             )
         }
     }
