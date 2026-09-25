@@ -1,0 +1,32 @@
+diff --git a/app/src/main/java/com/junkfood/seal/ui/page/downloadv2/ActionSheet.kt b/app/src/main/java/com/junkfood/seal/ui/page/downloadv2/ActionSheet.kt
+--- a/app/src/main/java/com/junkfood/seal/ui/page/downloadv2/ActionSheet.kt
++++ b/app/src/main/java/com/junkfood/seal/ui/page/downloadv2/ActionSheet.kt
+@@ -451,7 +451,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
+                     Text(
+-                        text = "\({duration.toDurationText()} •\){fileSizeApprox.toFileSizeText()}",
++                        text = "${duration.toDurationText()} • ${fileSizeApprox.toFileSizeText()}",
+                         style = MaterialTheme.typography.bodySmall,
+                     )
+@@ -468,7 +468,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
+                     val bitRateText = fmt.vbr.toBitrateText()
+                     val codecText = fmt.vcodec?.substringBefore(delimiter = ".") ?: ""
+-                    val title = "\({stringResource(R.string.video)} #\){index + 1}: ${fmt.formatNote.orEmpty()}"
++                    val title = "${stringResource(R.string.video)} #${index + 1}: ${fmt.formatNote.orEmpty()}"
+                     val details =
+@@ -496,7 +496,7 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
+                 val bitRateText = fmt.abr.toBitrateText()
+                 val codecText = fmt.acodec?.substringBefore(delimiter = ".") ?: ""
+-                val title = "\({stringResource(R.string.audio)} #\){index + 1}: ${fmt.formatNote.orEmpty()}"
++                val title = "${stringResource(R.string.audio)} #${index + 1}: ${fmt.formatNote.orEmpty()}"
+                 val details =
+@@ -543,10 +543,10 @@ fun ActionSheetInfo(modifier: Modifier = Modifier, task: Task, viewState: ViewSt
+                 text = {
+                     Text("Download configuration", style = MaterialTheme.typography.titleSmall)
+-                    Text("\(mediaMode •\)formatSummary", style = MaterialTheme.typography.bodySmall)
++                    Text("$mediaMode • $formatSummary", style = MaterialTheme.typography.bodySmall)
+                     Text(
+-                        "\(engine •\){preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
++                        "$engine • ${preferences.concurrentFragments.coerceAtLeast(1)} fragment(s)",
+                         style = MaterialTheme.typography.bodySmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                     )
