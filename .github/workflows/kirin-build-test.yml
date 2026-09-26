@@ -276,15 +276,13 @@ jobs:
           retention-days: 30
           compression-level: 0
 
-      - name: Publish Kirin Pre-Release
+      - name: Prepare Kirin Pre-Release notes
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           DEV_TAG: ${{ steps.version.outputs.dev_tag }}
           BASE_VERSION: ${{ steps.version.outputs.base_version }}
         run: |
           set -euo pipefail
-          RELEASE_TITLE="KirinDL ${DEV_TAG#v} Pre-Release"
           NOTES_FILE="$RUNNER_TEMP/kirindl-prerelease-notes.md"
 
           cat > "$NOTES_FILE" <<EOF_NOTES
@@ -292,12 +290,12 @@ jobs:
 
           Automatically generated test build for the next KirinDL stable patch.
 
-          - Target stable version: \`$BASE_VERSION\`
-          - Tag: \`$DEV_TAG\`
-          - Commit: \`$GITHUB_SHA\`
-          - Workflow run: \`#$GITHUB_RUN_NUMBER\`
-          - Android package: \`com.kirin.downloader.prerelease\`
-          - Stable package remains: \`com.kirin.downloader\`
+          - Target stable version: `$BASE_VERSION`
+          - Tag: `$DEV_TAG`
+          - Commit: `$GITHUB_SHA`
+          - Workflow run: `#$GITHUB_RUN_NUMBER`
+          - Android package: `com.kirin.downloader.prerelease`
+          - Stable package remains: `com.kirin.downloader`
           - Can be installed beside Stable on the same phone.
           - **ARM64** is the smaller build for normal modern ARM64 phones.
           - **Universal** contains all supported ABIs and is larger.
@@ -306,14 +304,18 @@ jobs:
           > Every Pre-Release workflow run automatically advances the DevPatch number for the next stable patch.
           EOF_NOTES
 
-          gh release create "$DEV_TAG" \
-            --target "$GITHUB_SHA" \
-            --title "$RELEASE_TITLE" \
-            --notes-file "$NOTES_FILE" \
-            --prerelease \
-            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk \
-            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk.sha256 \
-            artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk \
+      - name: Publish Kirin Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.dev_tag }}
+          name: KirinDL ${{ steps.version.outputs.dev_tag }} Pre-Release
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
+          files: |
+            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk
+            artifacts/prerelease/KirinDL-Universal-Pre-Release.apk.sha256
+            artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk
             artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk.sha256
 
       - name: Remove signing material
