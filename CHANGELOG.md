@@ -3,7 +3,7 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
-## [Unreleased]
+## [3.1.8] - 2026-09-26
 
 ### ✦ Recent changes
 
