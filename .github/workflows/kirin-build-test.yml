@@ -2,11 +2,6 @@ name: Kirin Pre-Release
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/.kirin-release-test-trigger'
 
 permissions:
   contents: write
