@@ -8,7 +8,6 @@
 
 A modern Android downloader powered by **yt-dlp** and **gallery-dl**, with a Kirin-focused interface, batch workflows, updateable engines, and signed Universal builds.
 
-[![Build](https://github.com/Lanzkila/KirinDL/actions/workflows/kirin-build-test.yml/badge.svg)](https://github.com/Lanzkila/KirinDL/actions/workflows/kirin-build-test.yml)
 [![Stars](https://img.shields.io/github/stars/Lanzkila/KirinDL?style=flat-square&logo=github)](https://github.com/Lanzkila/KirinDL/stargazers)
 [![Forks](https://img.shields.io/github/forks/Lanzkila/KirinDL?style=flat-square&logo=github)](https://github.com/Lanzkila/KirinDL/forks)
 [![Downloads](https://img.shields.io/github/downloads/Lanzkila/KirinDL/total?style=flat-square&logo=github&label=Downloads)](https://github.com/Lanzkila/KirinDL/releases)
