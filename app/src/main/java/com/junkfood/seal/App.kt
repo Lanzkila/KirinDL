@@ -144,6 +144,15 @@ class App : Application(), SingletonImageLoader.Factory {
         applicationScope.launch((Dispatchers.IO)) {
             try {
                 YoutubeDL.init(this@App)
+                // Keep the installed yt-dlp version in sync even on a fresh install.
+                // The engine is bundled and initialized above, so relying only on the
+                // updater to write YT_DLP_VERSION leaves Engine Update Center showing
+                // "Unknown" until the first successful online update.
+                YoutubeDL.getInstance()
+                    .version(this@App)
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { YT_DLP_VERSION.updateString(it) }
+
                 FFmpeg.init(this@App)
                 Aria2c.init(this@App)
                 // Pre-build the Netscape cookie file so it exists before the first
