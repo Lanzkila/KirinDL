@@ -2,6 +2,19 @@
 
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
+<!-- KIRIN-AUTO-CHANGELOG:START -->
+## [Unreleased]
+
+### ✦ Recent changes
+
+- Fix README pre-release badge version filtering (`232212b9`, 2026-09-27)
+- Remove workflow status badge from README (`62192fbd`, 2026-09-27)
+- Add KirinDL pre-release version badge (`c69c5fb5`, 2026-09-27)
+- Remove unintended in-app pre-release badge (`4b0b8ebb`, 2026-09-27)
+- Add pre-release version badge beside KirinDL branding (`17960f0f`, 2026-09-27)
+
+<!-- KIRIN-AUTO-CHANGELOG:END -->
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
