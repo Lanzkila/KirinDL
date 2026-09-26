@@ -8,6 +8,11 @@ on:
         required: true
         default: false
         type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-release-trigger'
 
 permissions:
   contents: write
@@ -146,7 +151,7 @@ jobs:
           print(f"Staged stable version {os.environ['RELEASE_VERSION']} ({version_code})")
 
       - name: Validate release notes
-        if: ${{ inputs.publish_release }}
+        if: ${{ github.event_name == 'push' || inputs.publish_release }}
         shell: bash
         env:
           RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
@@ -277,7 +282,7 @@ jobs:
           compression-level: 0
 
       - name: Publish GitHub Release
-        if: ${{ inputs.publish_release }}
+        if: ${{ github.event_name == 'push' || inputs.publish_release }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
