@@ -2,6 +2,11 @@ name: Kirin Pre-Release
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/.kirin-apk-test-trigger'
 
 permissions:
   contents: write
@@ -276,7 +281,57 @@ jobs:
           retention-days: 30
           compression-level: 0
 
+      - name: Split ARM64 APK for test download
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/arm64-parts
+          split -b 20M -d -a 2             artifacts/prerelease/KirinDL-ARM64-Pre-Release.apk             artifacts/arm64-parts/KirinDL-ARM64.part.
+          ls -lh artifacts/arm64-parts
+
+      - name: Upload ARM64 part 00
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-ARM64-part-00
+          path: artifacts/arm64-parts/KirinDL-ARM64.part.00
+          compression-level: 0
+
+      - name: Upload ARM64 part 01
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-ARM64-part-01
+          path: artifacts/arm64-parts/KirinDL-ARM64.part.01
+          compression-level: 0
+
+      - name: Upload ARM64 part 02
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-ARM64-part-02
+          path: artifacts/arm64-parts/KirinDL-ARM64.part.02
+          compression-level: 0
+
+      - name: Upload ARM64 part 03
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-ARM64-part-03
+          path: artifacts/arm64-parts/KirinDL-ARM64.part.03
+          compression-level: 0
+
+      - name: Upload ARM64 part 04
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-ARM64-part-04
+          path: artifacts/arm64-parts/KirinDL-ARM64.part.04
+          compression-level: 0
+
       - name: Publish Kirin Pre-Release
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
