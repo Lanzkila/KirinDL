@@ -1,2 +1,2 @@
-Trigger Kirin pre-release build after restoring devpatch11 source.
-Restore commit: dadf3041702399d67e8284429f868b97c46298f2
+Trigger Kirin pre-release build after fixing installed yt-dlp version detection.
+Fix commit: c50d4a93cd2263cb96a2ec17c35c9592b9c374fe
