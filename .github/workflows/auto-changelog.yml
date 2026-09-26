@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Update unreleased changelog
+      - name: Update latest-version changelog
         id: changelog
         shell: bash
         run: |
@@ -53,8 +53,18 @@ jobs:
 
           if stable_tag:
               rev_range = f"{stable_tag}..HEAD"
+              stable_version = stable_tag.removeprefix("v")
+              stable_date = subprocess.check_output(
+                  ["git", "log", "-1", "--format=%cs", stable_tag],
+                  text=True,
+              ).strip()
           else:
               rev_range = "HEAD"
+              stable_version = "Current"
+              stable_date = subprocess.check_output(
+                  ["git", "log", "-1", "--format=%cs"],
+                  text=True,
+              ).strip()
 
           raw = subprocess.check_output(
               [
@@ -122,7 +132,7 @@ jobs:
           if entries:
               lines = [
                   start_marker,
-                  "## [Unreleased]",
+                  f"## [{stable_version}] - {stable_date}",
                   "",
                   "### ✦ Recent changes",
                   "",
