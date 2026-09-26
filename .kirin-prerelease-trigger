@@ -1,2 +1,2 @@
-Trigger Kirin pre-release build.
-Source workflow: dual manual/connector trigger.
+Trigger Kirin pre-release build after restoring devpatch11 source.
+Restore commit: dadf3041702399d67e8284429f868b97c46298f2
