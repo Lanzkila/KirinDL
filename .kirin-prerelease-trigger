@@ -1,2 +1,2 @@
-Trigger Kirin pre-release build after fixing installed yt-dlp version detection.
-Fix commit: c50d4a93cd2263cb96a2ec17c35c9592b9c374fe
+Trigger Kirin pre-release build after adding home version badge.
+Fix commit: 17960f0fa803fa06e718d3eb700b3857e0411ea4
