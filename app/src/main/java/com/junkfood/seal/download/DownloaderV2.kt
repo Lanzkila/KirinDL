@@ -571,6 +571,14 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                 var lastUiUpdateAtMs = 0L
                 var lastNotifiedAtMs = 0L
                 var lastNotifiedProgress = -1
+
+                var destinationCount = 0
+                var transferPhase = Task.TransferPhase.Preparing
+                val separateVideoAndAudio =
+                    (info?.requestedFormats?.size ?: 0) > 1 ||
+                        (info?.requestedDownloads?.size ?: 0) > 1 ||
+                        preferences.formatIdString.contains('+')
+
                 DownloadUtil.downloadVideo(
                         videoInfo = info,
                         taskId = id,
@@ -584,6 +592,31 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                                 .removePrefix("[download] ")
                                 .removePrefix("[download]")
                                 .trim()
+                            val lowerText = text.lowercase()
+                            transferPhase = when {
+                                text.contains("[Merger]", ignoreCase = true) ||
+                                    text.contains("Merging formats", ignoreCase = true) ->
+                                    Task.TransferPhase.Merging
+                                text.contains("[download] Destination:", ignoreCase = true) -> {
+                                    destinationCount += 1
+                                    when {
+                                        preferences.extractAudio || info?.vcodec == "none" -> Task.TransferPhase.Audio
+                                        separateVideoAndAudio && destinationCount >= 2 -> Task.TransferPhase.Audio
+                                        else -> Task.TransferPhase.Video
+                                    }
+                                }
+                                lowerText.contains("fragment") &&
+                                    (lowerText.contains("download") || progressPercentage >= 0f) ->
+                                    Task.TransferPhase.Fragments
+                                progressPercentage >= 0f && transferPhase == Task.TransferPhase.Preparing ->
+                                    when {
+                                        preferences.extractAudio || info?.vcodec == "none" -> Task.TransferPhase.Audio
+                                        separateVideoAndAudio -> Task.TransferPhase.Video
+                                        else -> Task.TransferPhase.Downloading
+                                    }
+                                else -> transferPhase
+                            }
+
                             val now = System.currentTimeMillis()
                             when (val preState = downloadState) {
                                 is Running -> {
@@ -597,7 +630,11 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                                     if (now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS) {
                                         lastUiUpdateAtMs = now
                                         downloadState =
-                                            preState.copy(progress = progress, progressText = cleanText)
+                                            preState.copy(
+                                                progress = progress,
+                                                progressText = cleanText,
+                                                phase = transferPhase,
+                                            )
                                     }
                                     // Throttle notification updates independently (and more
                                     // conservatively, since each is a Binder IPC into
@@ -724,7 +761,13 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
             .also { job -> 
                 // Restore progress if this download was resumed from a paused state
                 val initialProgress = resumedProgressMap.remove(id) ?: -1f
-                downloadState = Running(job = job, taskId = id, progress = initialProgress)
+                downloadState =
+                    Running(
+                        job = job,
+                        taskId = id,
+                        progress = initialProgress,
+                        phase = Task.TransferPhase.Preparing,
+                    )
             }
     }
 
