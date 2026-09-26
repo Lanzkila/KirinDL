@@ -1,0 +1,174 @@
+name: Auto Changelog
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'CHANGELOG.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kirindl-auto-changelog
+  cancel-in-progress: true
+
+jobs:
+  changelog:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Update unreleased changelog
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+
+          changelog = Path("CHANGELOG.md")
+          original = changelog.read_text(encoding="utf-8")
+
+          # Resolve the newest stable vX.Y.Z tag. Pre-release/devpatch tags are ignored.
+          tags = subprocess.check_output(
+              ["git", "tag", "--sort=-v:refname"],
+              text=True,
+          ).splitlines()
+          stable_tag = next(
+              (tag for tag in tags if re.fullmatch(r"v\d+\.\d+\.\d+", tag)),
+              None,
+          )
+
+          if stable_tag:
+              rev_range = f"{stable_tag}..HEAD"
+          else:
+              rev_range = "HEAD"
+
+          raw = subprocess.check_output(
+              [
+                  "git",
+                  "log",
+                  rev_range,
+                  "--no-merges",
+                  "--date=short",
+                  "--pretty=format:%H%x1f%h%x1f%ad%x1f%s",
+              ],
+              text=True,
+          )
+
+          ignored_subject_prefixes = (
+              "chore(changelog):",
+              "Trigger Kirin pre-release",
+              "Trigger pre-release",
+              "Trigger yt-dlp",
+              "Trigger devpatch",
+              "Trigger ARM64",
+              "Run Kirin pre-release",
+              "Trigger KirinDL v",
+              "Remove temporary",
+              "Restore manual",
+              "Temporary trigger",
+              "Temporary CI",
+          )
+
+          ignored_only_paths = {
+              ".kirin-prerelease-trigger",
+              ".kirin-release-trigger",
+              ".github/workflows/auto-changelog.yml",
+          }
+
+          entries = []
+          for line in raw.splitlines():
+              if not line.strip():
+                  continue
+
+              full_sha, short_sha, day, subject = line.split("\x1f", 3)
+
+              if subject.startswith(ignored_subject_prefixes):
+                  continue
+
+              changed_paths = subprocess.check_output(
+                  [
+                      "git",
+                      "diff-tree",
+                      "--no-commit-id",
+                      "--name-only",
+                      "-r",
+                      full_sha,
+                  ],
+                  text=True,
+              ).splitlines()
+
+              if changed_paths and set(changed_paths).issubset(ignored_only_paths):
+                  continue
+
+              entries.append((day, short_sha, subject))
+
+          start_marker = "<!-- KIRIN-AUTO-CHANGELOG:START -->"
+          end_marker = "<!-- KIRIN-AUTO-CHANGELOG:END -->"
+
+          if entries:
+              lines = [
+                  start_marker,
+                  "## [Unreleased]",
+                  "",
+                  "### ✦ Recent changes",
+                  "",
+              ]
+              for day, short_sha, subject in entries:
+                  lines.append(f"- {subject} (`{short_sha}`, {day})")
+              lines.extend(["", end_marker, ""])
+              block = "\n".join(lines)
+          else:
+              block = ""
+
+          # Replace only our generated block and preserve the full historical changelog.
+          pattern = re.compile(
+              re.escape(start_marker) + r".*?" + re.escape(end_marker) + r"\n*",
+              re.S,
+          )
+          cleaned = pattern.sub("", original)
+
+          header_end = cleaned.find("\n\n", cleaned.find("\n\n") + 2)
+          if header_end == -1:
+              raise SystemExit("Could not locate CHANGELOG.md header")
+
+          if block:
+              updated = cleaned[: header_end + 2] + block + "\n" + cleaned[header_end + 2 :]
+          else:
+              updated = cleaned
+
+          if updated != original:
+              changelog.write_text(updated, encoding="utf-8")
+              print(f"Updated CHANGELOG.md from {stable_tag or 'repository history'}")
+          else:
+              print("CHANGELOG.md is already current")
+          PY
+
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit changelog update
+        if: steps.changelog.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore(changelog): sync recent KirinDL changes [skip ci]"
+          git push
