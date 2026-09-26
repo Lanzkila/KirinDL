@@ -2,6 +2,11 @@ name: Kirin Pre-Release
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-prerelease-trigger'
 
 permissions:
   contents: write
@@ -290,12 +295,12 @@ jobs:
 
           Automatically generated test build for the next KirinDL stable patch.
 
-          - Target stable version: `$BASE_VERSION`
-          - Tag: `$DEV_TAG`
-          - Commit: `$GITHUB_SHA`
-          - Workflow run: `#$GITHUB_RUN_NUMBER`
-          - Android package: `com.kirin.downloader.prerelease`
-          - Stable package remains: `com.kirin.downloader`
+          - Target stable version: \`$BASE_VERSION\`
+          - Tag: \`$DEV_TAG\`
+          - Commit: \`$GITHUB_SHA\`
+          - Workflow run: \`#$GITHUB_RUN_NUMBER\`
+          - Android package: \`com.kirin.downloader.prerelease\`
+          - Stable package remains: \`com.kirin.downloader\`
           - Can be installed beside Stable on the same phone.
           - **ARM64** is the smaller build for normal modern ARM64 phones.
           - **Universal** contains all supported ABIs and is larger.
