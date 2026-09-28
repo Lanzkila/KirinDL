@@ -451,7 +451,7 @@ fun UnifiedDownloadCenterPage(
             title = { Text("Clear completed history?") },
             text = {
                 Text(
-                    "This removes completed Media history and Gallery DL history from the Download Center. Downloaded files are kept.",
+                    "This removes completed Media history, completed Gallery queue entries, and completed Gallery history. Downloaded files are kept.",
                 )
             },
             confirmButton = {
@@ -460,9 +460,9 @@ fun UnifiedDownloadCenterPage(
                         showClearCompletedDialog = false
                         scope.launch {
                             DatabaseUtil.deleteInfoList(mediaHistory, deleteFile = false)
-                            GalleryDlStore.clearHistory(context)
+                            GalleryDlStore.clearCompleted(context)
                             refreshKey += 1
-                            context.makeToast("Completed history cleared")
+                            context.makeToast("Completed Media and Gallery activity cleared")
                         }
                     },
                 ) {
