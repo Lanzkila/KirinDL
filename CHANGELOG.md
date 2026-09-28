@@ -3,10 +3,14 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
-## [3.1.8] - 2026-09-26
+## [3.1.8] - 2026-09-27
 
 ### ✦ Recent changes
 
+- Add v3.1.8.1 hotfix release notes (`be74d247`, 2026-09-29)
+- Clear completed Gallery records from Download Center (`0a32f1b4`, 2026-09-29)
+- Fix clearing completed Gallery DL activity (`425a9729`, 2026-09-29)
+- Label auto changelog with latest stable version (`0498af7e`, 2026-09-27)
 - Fix README pre-release badge version filtering (`232212b9`, 2026-09-27)
 - Remove workflow status badge from README (`62192fbd`, 2026-09-27)
 - Add KirinDL pre-release version badge (`c69c5fb5`, 2026-09-27)
