@@ -107,6 +107,22 @@ object GalleryDlStore {
         historyFile(context).delete()
     }
 
+    /**
+     * Clear only completed Gallery DL activity.
+     *
+     * This keeps pending/running/failed queue entries and failed history records intact while
+     * removing both completed queue rows and successful history rows. The Download Center uses
+     * this so "Clear Completed" behaves consistently for Media and Gallery DL.
+     */
+    fun clearCompleted(context: Context) {
+        val remainingQueue =
+            loadQueue(context).filterNot { it.state.equals("completed", ignoreCase = true) }
+        val remainingHistory = loadHistory(context).filterNot { it.success }
+
+        saveQueue(context, remainingQueue)
+        saveHistory(context, remainingHistory)
+    }
+
     private fun normalizeQueueState(value: String): String =
         when (value.lowercase()) {
             "completed" -> "completed"
