@@ -1,2 +1,1 @@
-Trigger Kirin pre-release build after adding home version badge.
-Fix commit: 17960f0fa803fa06e718d3eb700b3857e0411ea4
+Trigger Kirin pre-release test for Global Feed paging, Kirin Search paging, Gallery preview, and UI-only yt-dlp progress experiment.
