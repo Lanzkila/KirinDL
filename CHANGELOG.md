@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Restore pre-20-Sep Kirin pre-release build flow (`a931fd9a`, 2026-09-29)
 - Finalize v3.1.8.1 notes for UI and history fixes only (`30636379`, 2026-09-29)
 - Prepare final hotfix pre-release without downloader overrides (`6d8dc92d`, 2026-09-29)
 - Keep hotfix pre-releases on stable v3.1.8 base (`32dea543`, 2026-09-29)
