@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add Kirin Search paging and play actions (`21fea2a5`, 2026-09-29)
 - Polish Global Feed navigation and media actions (`b8bf7f21`, 2026-09-29)
 - Add v3.1.8.1 hotfix release notes (`be74d247`, 2026-09-29)
 - Clear completed Gallery records from Download Center (`0a32f1b4`, 2026-09-29)
