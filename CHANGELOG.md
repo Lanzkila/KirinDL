@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Document Global Feed search paging and yt-dlp progress experiment (`a2066729`, 2026-09-29)
 - Add UI-only yt-dlp transfer phase experiment (`d9471bb0`, 2026-09-29)
 - Add Gallery URL image preview under check controls (`492abca2`, 2026-09-29)
 - Add Kirin Search paging and play actions (`21fea2a5`, 2026-09-29)
