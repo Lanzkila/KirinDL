@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -626,6 +627,20 @@ private fun GalleryDownloadTab(
                         Text("Check")
                     }
                 }
+                state.preflightInfo
+                    ?.thumbnailUrl
+                    ?.takeIf(String::isNotBlank)
+                    ?.let { previewUrl ->
+                        AsyncImage(
+                            model = previewUrl,
+                            contentDescription = "Gallery preview",
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .clip(RoundedCornerShape(14.dp)),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
             }
         }
 
