@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Finalize v3.1.8.1 notes for UI and history fixes only (`30636379`, 2026-09-29)
+- Prepare final hotfix pre-release without downloader overrides (`6d8dc92d`, 2026-09-29)
 - Keep hotfix pre-releases on stable v3.1.8 base (`32dea543`, 2026-09-29)
 - Document stable v3.1.8 download task pin (`19db3a84`, 2026-09-29)
 - Pin pre-release download task source to stable v3.1.8 (`2c630ad7`, 2026-09-29)
