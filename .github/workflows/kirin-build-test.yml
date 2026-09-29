@@ -107,8 +107,10 @@ jobs:
                   raise SystemExit("Could not resolve a stable KirinDL base version")
               major, minor, patch = map(int, match.groups())
 
-          next_patch = patch + 1
-          base_version = f"{major}.{minor}.{next_patch}"
+          # Hotfix testing stays on the exact current stable base instead of jumping to 3.1.9.
+          # This matches the known-good 3.1.8 prerelease line and avoids changing the app base
+          # version while we isolate the download regression.
+          base_version = f"{major}.{minor}.{patch}"
           dev_re = re.compile(rf"^v{re.escape(base_version)}-devpatch(\d+)$")
           dev_numbers = []
           for release in releases:
@@ -120,7 +122,7 @@ jobs:
 
           dev_patch = max(dev_numbers, default=0) + 1
           dev_tag = f"v{base_version}-devpatch{dev_patch}"
-          version_code = major * 100_000_000 + minor * 1_000_000 + next_patch * 10_000 + 400
+          version_code = major * 100_000_000 + minor * 1_000_000 + patch * 10_000 + 400
 
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"base_version={base_version}\n")
@@ -128,7 +130,7 @@ jobs:
               out.write(f"dev_tag={dev_tag}\n")
               out.write(f"version_code={version_code}\n")
 
-          print(f"Next Kirin Pre-Release: {dev_tag}")
+          print(f"Hotfix Kirin Pre-Release: {dev_tag}")
           print(f"Version code: {version_code}")
 
       - name: Stage generated version
