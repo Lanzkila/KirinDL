@@ -1,1 +1,1 @@
-Trigger Kirin pre-release test after reverting the yt-dlp progress experiment.
+Trigger pre-release with Media download task pinned to stable v3.1.8 while keeping current UI/features.
