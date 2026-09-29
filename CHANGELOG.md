@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Restore yt-dlp transfer progress display (`b59cd03a`, 2026-09-29)
 - Align v3.1.8.1 release notes with restored pre-release flow (`2e426963`, 2026-09-29)
 - Restore pre-20-Sep Kirin pre-release build flow (`a931fd9a`, 2026-09-29)
 - Finalize v3.1.8.1 notes for UI and history fixes only (`30636379`, 2026-09-29)
