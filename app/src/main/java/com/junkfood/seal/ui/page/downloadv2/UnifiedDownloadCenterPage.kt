@@ -37,6 +37,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -676,6 +677,53 @@ private fun CenterRecordCard(
 
             if (record.kind == CenterKind.MediaLive) {
                 val downloadState = record.taskState?.downloadState
+
+                if (downloadState is Task.DownloadState.Running) {
+                    val stage = ytDlpExperimentStage(record.task, downloadState)
+                    val progress = downloadState.progress
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                stage,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            if (progress >= 0f) {
+                                Text(
+                                    "%.1f%%".format(progress * 100f),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        if (progress >= 0f) {
+                            LinearProgressIndicator(
+                                progress = { progress.coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        if (downloadState.progressText.isNotBlank()) {
+                            Text(
+                                downloadState.progressText,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                     horizontalArrangement = Arrangement.End,
@@ -727,6 +775,32 @@ private fun CenterStatusBadge(status: CenterStatus, modifier: Modifier = Modifie
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
         )
+    }
+}
+
+private fun ytDlpExperimentStage(
+    task: Task?,
+    state: Task.DownloadState.Running,
+): String {
+    val text = state.progressText.lowercase()
+    return when {
+        "merger" in text ||
+            "merging format" in text ||
+            "merge" in text -> "Merge"
+
+        "fragment" in text ||
+            "frag " in text ||
+            "frag:" in text -> "Fragment"
+
+        "postprocess" in text ||
+            "post-process" in text ||
+            "remux" in text ||
+            "convert" in text ||
+            "extractaudio" in text ||
+            "ffmpeg" in text -> "Processing"
+
+        task?.preferences?.extractAudio == true -> "Audio"
+        else -> "Video"
     }
 }
 
