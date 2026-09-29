@@ -1,1 +1,1 @@
-Trigger hotfix pre-release on exact stable v3.1.8 base to isolate download regression.
+Trigger final v3.1.8 hotfix pre-release candidate with only the new UI/history fixes; no downloader experiments or overrides.
