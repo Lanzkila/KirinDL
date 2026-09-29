@@ -22,6 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Clear
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlaylistPlay
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
@@ -62,11 +65,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -109,6 +114,7 @@ fun SavedSourcesPage(
     var selectedSourceId by remember { mutableStateOf<String?>(null) }
     var filterText by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showSourceSearch by rememberSaveable { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<SavedSourceStore.SavedSource?>(null) }
     var deleteTarget by remember { mutableStateOf<SavedSourceStore.SavedSource?>(null) }
     var configureBusy by remember { mutableStateOf(false) }
@@ -242,12 +248,34 @@ fun SavedSourcesPage(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        if (selectedSource != null) browseTitle.ifBlank { selectedSource.displayTitle }
-                        else "Global Feed",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (selectedSource == null && showSourceSearch) {
+                        OutlinedTextField(
+                            value = filterText,
+                            onValueChange = { filterText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                            trailingIcon =
+                                if (filterText.isNotBlank()) {
+                                    {
+                                        IconButton(onClick = { filterText = "" }) {
+                                            Icon(Icons.Outlined.Clear, contentDescription = "Clear Global Feed search")
+                                        }
+                                    }
+                                } else {
+                                    null
+                                },
+                            placeholder = { Text("Find saved source") },
+                            shape = MaterialTheme.shapes.large,
+                        )
+                    } else {
+                        Text(
+                            if (selectedSource != null) browseTitle.ifBlank { selectedSource.displayTitle }
+                            else "Global Feed",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 },
                 navigationIcon = {
                     BackButton {
@@ -263,6 +291,12 @@ fun SavedSourcesPage(
                             Icon(Icons.Outlined.Refresh, contentDescription = "Refresh source")
                         }
                     } else {
+                        IconButton(onClick = { showSourceSearch = !showSourceSearch }) {
+                            Icon(
+                                if (showSourceSearch) Icons.Outlined.Clear else Icons.Outlined.Search,
+                                contentDescription = if (showSourceSearch) "Close Global Feed search" else "Search Global Feed",
+                            )
+                        }
                         IconButton(onClick = { showAddDialog = true }) {
                             Icon(Icons.Outlined.Add, contentDescription = "Add Global Feed source")
                         }
@@ -287,10 +321,7 @@ fun SavedSourcesPage(
                     modifier = Modifier.widthIn(max = 920.dp).fillMaxSize(),
                 sources = visibleSources,
                 totalCount = sources.size,
-                filterText = filterText,
-                onFilterChange = { filterText = it },
                 lastOpenedSource = lastOpenedSource,
-                onAdd = { showAddDialog = true },
                 onOpen = ::openSource,
                 onRename = { renameTarget = it },
                 onTogglePinned = {
@@ -425,10 +456,7 @@ private fun SavedSourcesList(
     modifier: Modifier,
     sources: List<SavedSourceStore.SavedSource>,
     totalCount: Int,
-    filterText: String,
-    onFilterChange: (String) -> Unit,
     lastOpenedSource: SavedSourceStore.SavedSource?,
-    onAdd: () -> Unit,
     onOpen: (SavedSourceStore.SavedSource) -> Unit,
     onRename: (SavedSourceStore.SavedSource) -> Unit,
     onTogglePinned: (SavedSourceStore.SavedSource) -> Unit,
@@ -443,36 +471,12 @@ private fun SavedSourcesList(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            SavedSourcesIntroCard(onAdd = onAdd)
+            SavedSourcesIntroCard()
         }
 
         if (lastOpenedSource != null) {
             item {
                 ContinueSourceCard(source = lastOpenedSource, onOpen = { onOpen(lastOpenedSource) })
-            }
-        }
-
-        if (totalCount > 0) {
-            item {
-                OutlinedTextField(
-                    value = filterText,
-                    onValueChange = onFilterChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                    trailingIcon =
-                        if (filterText.isNotBlank()) {
-                            {
-                                IconButton(onClick = { onFilterChange("") }) {
-                                    Icon(Icons.Outlined.Clear, contentDescription = "Clear filter")
-                                }
-                            }
-                        } else {
-                            null
-                        },
-                    placeholder = { Text("Find saved channel or playlist") },
-                    shape = MaterialTheme.shapes.large,
-                )
             }
         }
 
@@ -559,16 +563,23 @@ private fun SourceSectionHeader(label: String, count: Int) {
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
-        Text(
-            count.toString(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.primaryContainer,
+        ) {
+            Text(
+                count.toString(),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
     }
 }
 
 @Composable
-private fun SavedSourcesIntroCard(onAdd: () -> Unit) {
+private fun SavedSourcesIntroCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -602,10 +613,6 @@ private fun SavedSourcesIntroCard(onAdd: () -> Unit) {
                 "Supports HTTP(S) collection sources through yt-dlp or gallery-dl. Direct single-video URLs stay in Home or Kirin Search.",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            FilledTonalButton(onClick = onAdd) {
-                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(" Add Source")
-            }
         }
     }
 }
@@ -818,6 +825,19 @@ private fun SavedSourceBrowser(
     onOpen: (String) -> Unit,
     onCopy: (String) -> Unit,
 ) {
+    val pageSize = 20
+    val pageCount = maxOf(1, (items.size + pageSize - 1) / pageSize)
+    var currentPage by rememberSaveable(source.id) { mutableIntStateOf(0) }
+
+    LaunchedEffect(items.size, pageCount) {
+        currentPage = currentPage.coerceIn(0, pageCount - 1)
+    }
+
+    val pageItems =
+        remember(items, currentPage) {
+            items.drop(currentPage * pageSize).take(pageSize)
+        }
+
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -901,7 +921,7 @@ private fun SavedSourceBrowser(
                 ) {
                     Column {
                         Text(
-                            "${items.size} items",
+                            if (pageCount > 1) "${items.size} items • Page ${currentPage + 1}/$pageCount" else "${items.size} items",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -931,7 +951,7 @@ private fun SavedSourceBrowser(
                 HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
             }
 
-            items(items, key = { "${it.id}:${it.url}" }) { item ->
+            items(pageItems, key = { "${it.id}:${it.url}" }) { item ->
                 SavedSourceMediaCard(
                     item = item,
                     selected = item.url in selectedUrls,
@@ -939,10 +959,22 @@ private fun SavedSourceBrowser(
                     onConfigure = { onConfigure(item.url) },
                     onQueue = { onQueue(item.url) },
                     onOpen = { onOpen(item.url) },
+                    onPlay = { onOpen(item.url) },
                     onCopy = { onCopy(item.url) },
                     galleryMode = engineUsed == SavedSourceStore.SourceEngine.GALLERY_DL,
                     onGallery = { onOpenGallery(item.url) },
                 )
+            }
+
+            if (pageCount > 1) {
+                item {
+                    GlobalFeedPageNavigation(
+                        currentPage = currentPage,
+                        pageCount = pageCount,
+                        onPrevious = { if (currentPage > 0) currentPage -= 1 },
+                        onNext = { if (currentPage < pageCount - 1) currentPage += 1 },
+                    )
+                }
             }
         }
 
@@ -1030,6 +1062,7 @@ private fun SavedSourceMediaCard(
     onConfigure: () -> Unit,
     onQueue: () -> Unit,
     onOpen: () -> Unit,
+    onPlay: () -> Unit,
     onCopy: () -> Unit,
     galleryMode: Boolean = false,
     onGallery: () -> Unit = {},
@@ -1134,6 +1167,10 @@ private fun SavedSourceMediaCard(
                             Text(" Configure")
                         }
                         FilledTonalButton(onClick = onQueue) { Text("Queue") }
+                        TextButton(onClick = onPlay) {
+                            Icon(Icons.Outlined.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text(" Play")
+                        }
                     }
                     Spacer(Modifier.weight(1f))
                     Box {
@@ -1163,6 +1200,40 @@ private fun SavedSourceMediaCard(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GlobalFeedPageNavigation(
+    currentPage: Int,
+    pageCount: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            TextButton(onClick = onPrevious, enabled = currentPage > 0) {
+                Icon(Icons.Outlined.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(" Prev")
+            }
+            Text(
+                "Page ${currentPage + 1} of $pageCount",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            TextButton(onClick = onNext, enabled = currentPage < pageCount - 1) {
+                Text("Next ")
+                Icon(Icons.Outlined.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
             }
         }
     }
