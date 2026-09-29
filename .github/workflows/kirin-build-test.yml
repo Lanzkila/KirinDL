@@ -48,6 +48,21 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
+      - name: Restore stable v3.1.8 download task source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Keep the current feature/UI work, but build the Media download task path from the
+          # known-good v3.1.8 stable source. UnifiedDownloadCenterPage.kt is intentionally kept
+          # from main so the Gallery/Media "Clear Completed" hotfix remains included.
+          git fetch --depth=1 origin refs/tags/v3.1.8:refs/tags/v3.1.8
+          git checkout v3.1.8 --             app/src/main/java/com/junkfood/seal/download             app/src/main/java/com/junkfood/seal/ui/page/downloadv2             app/src/main/java/com/junkfood/seal/util/DownloadUtil.kt
+
+          git checkout HEAD --             app/src/main/java/com/junkfood/seal/ui/page/downloadv2/UnifiedDownloadCenterPage.kt
+
+          echo "Pinned Media download task/runtime/configuration to stable v3.1.8."
+
       - name: Resolve next Pre-Release patch
         id: version
         shell: python
