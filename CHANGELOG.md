@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Document stable v3.1.8 download task pin (`19db3a84`, 2026-09-29)
+- Pin pre-release download task source to stable v3.1.8 (`2c630ad7`, 2026-09-29)
 - Document removal of failing progress experiment (`cdcaed4f`, 2026-09-29)
 - Revert experimental yt-dlp progress UI (`186f36c7`, 2026-09-29)
 - Document Global Feed search paging and yt-dlp progress experiment (`a2066729`, 2026-09-29)
