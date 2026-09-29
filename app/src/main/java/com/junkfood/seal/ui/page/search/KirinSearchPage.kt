@@ -24,12 +24,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.PlaylistPlay
 import androidx.compose.material.icons.outlined.Search
@@ -152,6 +155,7 @@ fun KirinSearchPage(
     var lastSearchRequestAt by remember { mutableStateOf(0L) }
     var configureBusy by remember { mutableStateOf(false) }
     var searchCompleted by remember { mutableStateOf(false) }
+    var currentPage by remember { mutableIntStateOf(0) }
     val selectedUrls = remember { mutableStateListOf<String>() }
 
     val searches = remember(searchRevision) { KirinSearchStore.loadSearches(context) }
@@ -179,6 +183,23 @@ fun KirinSearchPage(
                 }
             }
         }
+
+    val searchPageSize = 20
+    val resultPageCount = maxOf(1, (displayResults.size + searchPageSize - 1) / searchPageSize)
+    val pagedResults by
+        remember(displayResults, currentPage) {
+            derivedStateOf {
+                displayResults.drop(currentPage * searchPageSize).take(searchPageSize)
+            }
+        }
+
+    LaunchedEffect(query, source, resultFilter, resultSort, results.size) {
+        currentPage = 0
+    }
+
+    LaunchedEffect(displayResults.size, resultPageCount) {
+        currentPage = currentPage.coerceIn(0, resultPageCount - 1)
+    }
 
     LaunchedEffect(query, source, resultFilter, resultSort) {
         // Debounce tiny UI-state writes so typing stays smooth.
@@ -512,6 +533,8 @@ fun KirinSearchPage(
                     ResultsHeader(
                         source = source,
                         count = displayResults.size,
+                        currentPage = currentPage,
+                        pageCount = resultPageCount,
                         selectedCount = selectedUrls.size,
                         onConfigureSelected = { configureUrls(selectedUrls.toList()) },
                         onQueueSelected = { queueUrls(selectedUrls.toList()) },
@@ -520,7 +543,7 @@ fun KirinSearchPage(
                 }
 
                 items(
-                    items = displayResults,
+                    items = pagedResults,
                     key = { item -> "${item.source.name}:${item.id}:${item.url}" },
                 ) { item ->
                     SearchResultCard(
@@ -536,6 +559,10 @@ fun KirinSearchPage(
                         configureEnabled = !configureBusy,
                         onDownload = { downloadWithConfigure(item.url) },
                         onQueue = { queueUrls(listOf(item.url)) },
+                        onPlay = {
+                            runCatching { uriHandler.openUri(item.url) }
+                                .onFailure { context.makeToast("Could not play this link") }
+                        },
                         onOpen = {
                             runCatching { uriHandler.openUri(item.url) }
                                 .onFailure { context.makeToast("Could not open this link") }
@@ -546,6 +573,17 @@ fun KirinSearchPage(
                         },
                         onDetails = { detailsTarget = item },
                     )
+                }
+
+                if (resultPageCount > 1) {
+                    item {
+                        SearchPageNavigation(
+                            currentPage = currentPage,
+                            pageCount = resultPageCount,
+                            onPrevious = { if (currentPage > 0) currentPage -= 1 },
+                            onNext = { if (currentPage < resultPageCount - 1) currentPage += 1 },
+                        )
+                    }
                 }
             } else if (!loading && !searchCompleted && errorText.isBlank() && searches.isNotEmpty()) {
                 item {
@@ -633,6 +671,40 @@ private fun SearchIntroCard() {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchPageNavigation(
+    currentPage: Int,
+    pageCount: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            TextButton(onClick = onPrevious, enabled = currentPage > 0) {
+                Icon(Icons.Outlined.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(" Prev")
+            }
+            Text(
+                "Page ${currentPage + 1} of $pageCount",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            TextButton(onClick = onNext, enabled = currentPage < pageCount - 1) {
+                Text("Next ")
+                Icon(Icons.Outlined.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -766,6 +838,8 @@ private fun SearchErrorCard(
 private fun ResultsHeader(
     source: KirinSearchStore.SearchSource,
     count: Int,
+    currentPage: Int,
+    pageCount: Int,
     selectedCount: Int,
     onConfigureSelected: () -> Unit,
     onQueueSelected: () -> Unit,
@@ -779,7 +853,12 @@ private fun ResultsHeader(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "$count result${if (count == 1) "" else "s"}",
+                text =
+                    if (pageCount > 1) {
+                        "$count result${if (count == 1) "" else "s"} • Page ${currentPage + 1}/$pageCount"
+                    } else {
+                        "$count result${if (count == 1) "" else "s"}"
+                    },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -821,6 +900,7 @@ private fun SearchResultCard(
     configureEnabled: Boolean,
     onDownload: () -> Unit,
     onQueue: () -> Unit,
+    onPlay: () -> Unit,
     onOpen: () -> Unit,
     onCopy: () -> Unit,
     onDetails: () -> Unit,
@@ -940,6 +1020,14 @@ private fun SearchResultCard(
                             modifier = Modifier.size(18.dp),
                         )
                         Text(" Queue")
+                    }
+                    TextButton(onClick = onPlay) {
+                        Icon(
+                            imageVector = Icons.Outlined.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(" Play")
                     }
                     Spacer(Modifier.weight(1f))
                     Box {
