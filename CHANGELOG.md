@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Use proven release action for manual pre-release publishing (`09933c8e`, 2026-09-30)
 - Temporarily enable pre-release trigger for devpatch19 test (`e7499246`, 2026-09-30)
 - Stop duplicating pre-release APK in Actions artifacts (`03687525`, 2026-09-30)
 - Document restored transfer progress display (`51f847d1`, 2026-09-29)
