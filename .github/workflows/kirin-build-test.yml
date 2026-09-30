@@ -167,15 +167,13 @@ jobs:
             sha256sum KirinDL-Pre-Release.apk > KirinDL-Pre-Release.apk.sha256
           )
 
-      - name: Publish Kirin Pre-Release
+      - name: Prepare Kirin Pre-Release notes
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           DEV_TAG: ${{ inputs.dev_tag }}
         run: |
           set -euo pipefail
 
-          RELEASE_TITLE="KirinDL ${DEV_TAG#v} Pre-Release"
           NOTES_FILE="$RUNNER_TEMP/kirindl-prerelease-notes.md"
 
           cat > "$NOTES_FILE" <<EOF_NOTES
@@ -183,36 +181,28 @@ jobs:
 
           Test build generated automatically after a successful Kirin Pre-Release workflow.
 
-          - Tag: \`$DEV_TAG\`
-          - Commit: \`$GITHUB_SHA\`
-          - Workflow run: \`#$GITHUB_RUN_NUMBER\`
-          - Android package: \`com.kirin.downloader.prerelease\`
-          - Stable package remains: \`com.kirin.downloader\`
+          - Tag: `$DEV_TAG`
+          - Commit: `$GITHUB_SHA`
+          - Workflow run: `#$GITHUB_RUN_NUMBER`
+          - Android package: `com.kirin.downloader.prerelease`
+          - Stable package remains: `com.kirin.downloader`
           - The Pre-Release APK can be installed beside Stable on the same phone.
           - Signed APK verified with Android apksigner.
 
           > Test build only. Installing this APK does not replace the Stable KirinDL app.
           EOF_NOTES
 
-          if gh release view "$DEV_TAG" >/dev/null 2>&1; then
-            echo "Updating existing prerelease $DEV_TAG"
-            gh release edit "$DEV_TAG" \
-              --title "$RELEASE_TITLE" \
-              --notes-file "$NOTES_FILE" \
-              --prerelease
-          else
-            echo "Creating prerelease $DEV_TAG"
-            gh release create "$DEV_TAG" \
-              --target "$GITHUB_SHA" \
-              --title "$RELEASE_TITLE" \
-              --notes-file "$NOTES_FILE" \
-              --prerelease
-          fi
-
-          gh release upload "$DEV_TAG" \
-            artifacts/prerelease/KirinDL-Pre-Release.apk \
-            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256 \
-            --clobber
+      - name: Publish Kirin Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.dev_tag }}
+          name: KirinDL ${{ inputs.dev_tag }} Pre-Release
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
+          files: |
+            artifacts/prerelease/KirinDL-Pre-Release.apk
+            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
 
       - name: Remove signing material
         if: always()
