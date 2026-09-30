@@ -8,6 +8,11 @@ on:
         required: true
         default: "v3.1.8-devpatch19"
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-prerelease-trigger'
 
 permissions:
   contents: write
@@ -54,7 +59,7 @@ jobs:
       - name: Validate pre-release tag
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
         run: |
           set -euo pipefail
 
@@ -98,7 +103,7 @@ jobs:
       - name: Build signed Kirin Pre-Release
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
         run: |
           set -euo pipefail
           PRERELEASE_SUFFIX="-${DEV_TAG##*-}"
@@ -123,7 +128,7 @@ jobs:
       - name: Verify package identity and signature
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
         run: |
           set -euo pipefail
 
@@ -170,7 +175,7 @@ jobs:
       - name: Prepare Kirin Pre-Release notes
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
         run: |
           set -euo pipefail
 
@@ -195,8 +200,8 @@ jobs:
       - name: Publish Kirin Pre-Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.dev_tag }}
-          name: KirinDL ${{ inputs.dev_tag }} Pre-Release
+          tag_name: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
+          name: KirinDL ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }} Pre-Release
           target_commitish: ${{ github.sha }}
           prerelease: true
           body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
