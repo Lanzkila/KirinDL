@@ -167,16 +167,6 @@ jobs:
             sha256sum KirinDL-Pre-Release.apk > KirinDL-Pre-Release.apk.sha256
           )
 
-      - name: Upload Kirin Pre-Release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: KirinDL-Pre-Release-${{ github.run_number }}
-          path: |
-            artifacts/prerelease/KirinDL-Pre-Release.apk
-            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
-          if-no-files-found: error
-          retention-days: 30
-
       - name: Publish Kirin Pre-Release
         shell: bash
         env:
