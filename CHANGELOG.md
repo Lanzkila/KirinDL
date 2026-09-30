@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Remove one-shot Kirin pre-release dispatch marker (`0a66ec6d`, 2026-09-30)
+- Remove one-shot Kirin pre-release dispatcher (`db24691a`, 2026-09-30)
 - Dispatch v3.1.8-devpatch19 (`8cd2c8fb`, 2026-09-30)
 - Add one-shot dispatcher for Kirin pre-release test (`c161edb6`, 2026-09-30)
 - Temporarily enable devpatch19 trigger (`958fc804`, 2026-09-30)
