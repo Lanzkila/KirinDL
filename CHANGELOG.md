@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Restore pre-release APK artifact backup (`c357deac`, 2026-09-30)
 - Remove one-shot Kirin pre-release dispatch marker (`0a66ec6d`, 2026-09-30)
 - Remove one-shot Kirin pre-release dispatcher (`db24691a`, 2026-09-30)
 - Dispatch v3.1.8-devpatch19 (`8cd2c8fb`, 2026-09-30)
