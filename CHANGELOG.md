@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add one-shot dispatcher for Kirin pre-release test (`c161edb6`, 2026-09-30)
 - Temporarily enable devpatch19 trigger (`958fc804`, 2026-09-30)
 - Use proven release action for manual pre-release publishing (`09933c8e`, 2026-09-30)
 - Temporarily enable pre-release trigger for devpatch19 test (`e7499246`, 2026-09-30)
