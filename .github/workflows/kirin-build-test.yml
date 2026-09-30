@@ -8,11 +8,6 @@ on:
         required: true
         default: "v3.1.8-devpatch19"
         type: string
-  push:
-    branches:
-      - main
-    paths:
-      - '.kirin-prerelease-trigger'
 
 permissions:
   contents: write
@@ -59,7 +54,7 @@ jobs:
       - name: Validate pre-release tag
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
+          DEV_TAG: ${{ inputs.dev_tag }}
         run: |
           set -euo pipefail
 
@@ -103,7 +98,7 @@ jobs:
       - name: Build signed Kirin Pre-Release
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
+          DEV_TAG: ${{ inputs.dev_tag }}
         run: |
           set -euo pipefail
           PRERELEASE_SUFFIX="-${DEV_TAG##*-}"
@@ -128,7 +123,7 @@ jobs:
       - name: Verify package identity and signature
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
+          DEV_TAG: ${{ inputs.dev_tag }}
         run: |
           set -euo pipefail
 
@@ -176,7 +171,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
+          DEV_TAG: ${{ inputs.dev_tag }}
         run: |
           set -euo pipefail
 
