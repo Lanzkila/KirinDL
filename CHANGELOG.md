@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Trigger stable comparison build (`425a33d3`, 2026-10-01)
+- Add one-shot stable test dispatcher (`a170e880`, 2026-10-01)
 - Remove experimental transfer progress display (`3582300c`, 2026-10-01)
 - Restore publish-only workflow to manual dispatch (`d96bf95f`, 2026-10-01)
 - Note publish-only reuse of verified devpatch19 artifact (`a02f1392`, 2026-10-01)
