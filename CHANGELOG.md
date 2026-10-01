@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Run KirinDL Stable Test (`3a81e4f1`, 2026-10-01)
 - Add dedicated Stable Test workflow (`d9e0642b`, 2026-10-01)
 - Restore Pre-Release as notes-only release with artifact APK (`cee1f476`, 2026-10-01)
 - Restore normal Stable and Pre-Release build types (`a15cfabb`, 2026-10-01)
