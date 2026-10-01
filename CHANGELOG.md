@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Temporarily remove transfer progress to isolate download failure (`8ccb1475`, 2026-10-01)
 - Restore publish-only workflow to manual dispatch (`0fb948e2`, 2026-10-01)
 - Prepare publish-only devpatch22 recovery (`e5acbbc4`, 2026-10-01)
 - Test pre-release with exact stable package identity (`d2d500cd`, 2026-10-01)
