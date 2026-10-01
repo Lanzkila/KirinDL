@@ -127,7 +127,7 @@ jobs:
           gradle_file = Path("app/build.gradle.kts")
           gradle = gradle_file.read_text(encoding="utf-8")
           gradle, count = re.subn(
-              r"versionCode\s*=\s*[0-9_]+",
+              r"versionCode\s*=\s*(?:[0-9_]+|effectiveVersionCode)",
               f"versionCode = {version_code}",
               gradle,
               count=1,
