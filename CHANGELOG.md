@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Use release note update as one-shot publish trigger (`3398459b`, 2026-10-01)
 - Temporarily enable publish-only trigger for devpatch19 (`ad1fc45f`, 2026-10-01)
 - Add publish-only flow for verified pre-release artifact (`cfd66f0d`, 2026-10-01)
 - Prepare artifact-backed devpatch19 pre-release test (`70c1681c`, 2026-10-01)
