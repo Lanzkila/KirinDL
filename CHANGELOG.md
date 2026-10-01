@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Restore publish-only workflow to manual dispatch (`d6938c6d`, 2026-10-01)
 - Prepare publish-only devpatch20 recovery (`e209760f`, 2026-10-01)
 - Temporarily re-enable devpatch20 trigger (`6c5d8490`, 2026-10-01)
 - Accept current apksigner certificate output format (`690d9be3`, 2026-10-01)
