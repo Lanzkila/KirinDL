@@ -27,7 +27,8 @@ val currentVersionCode = currentVersion.code.toInt()
 val prereleaseVersionSuffix =
     providers.gradleProperty("kirinPrereleaseSuffix").orNull
         ?.takeIf { it.matches(Regex("-devpatch[0-9]+")) }
-        ?: "-prerelease"
+
+val isPrereleaseBuild = prereleaseVersionSuffix != null
 
 android {
     compileSdk = 37
@@ -55,16 +56,19 @@ android {
     buildFeatures { buildConfig = true }
 
     defaultConfig {
-        applicationId = "com.kirin.downloader"
+        applicationId =
+            if (isPrereleaseBuild) "com.kirin.downloader.prerelease"
+            else "com.kirin.downloader"
         minSdk = 24
         targetSdk = 37
         versionCode = 301_080_400
         check(versionCode == currentVersionCode)
 
-        versionName = baseVersionName
+        versionName = baseVersionName + (prereleaseVersionSuffix ?: "")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
-        manifestPlaceholders["appLabel"] = "@string/app_name"
+        manifestPlaceholders["appLabel"] =
+            if (isPrereleaseBuild) "Kirin Pre-Release" else "@string/app_name"
 
         ndk {
             abiFilters += if (splitApks) {
@@ -135,14 +139,6 @@ android {
             signingConfig = signingConfigs.getByName("kirinDebug")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-        }
-
-        create("prerelease") {
-            initWith(getByName("release"))
-            applicationIdSuffix = ".prerelease"
-            versionNameSuffix = prereleaseVersionSuffix
-            manifestPlaceholders["appLabel"] = "Kirin Pre-Release"
-            matchingFallbacks += listOf("release")
         }
     }
 
