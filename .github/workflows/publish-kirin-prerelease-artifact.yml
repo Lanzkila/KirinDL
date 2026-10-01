@@ -6,13 +6,28 @@ on:
       artifact_run_id:
         description: "Kirin Pre-Release run ID containing the APK artifact"
         required: true
-        default: "36798080955"
+        default: "36805389334"
+        type: string
+      artifact_name:
+        description: "Actions artifact name"
+        required: true
+        default: "KirinDL-Pre-Release-v3.1.8-devpatch20-115"
+        type: string
+      source_run_number:
+        description: "Source build run number"
+        required: true
+        default: "115"
         type: string
       dev_tag:
         description: "Pre-release tag"
         required: true
-        default: "v3.1.8-devpatch19"
+        default: "v3.1.8-devpatch20"
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-prerelease-trigger'
 
 permissions:
   actions: read
@@ -28,11 +43,11 @@ jobs:
       - name: Download APK artifact from build run
         uses: actions/download-artifact@v4
         with:
-          name: KirinDL-Pre-Release-v3.1.8-devpatch19-113
+          name: ${{ inputs.artifact_name || 'KirinDL-Pre-Release-v3.1.8-devpatch20-115' }}
           path: artifacts/prerelease
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.artifact_run_id }}
+          run-id: ${{ inputs.artifact_run_id || '36805389334' }}
 
       - name: Verify artifact files
         shell: bash
@@ -48,8 +63,9 @@ jobs:
       - name: Prepare release notes
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
-          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch20' }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id || '36805389334' }}
+          SOURCE_RUN_NUMBER: ${{ inputs.source_run_number || '115' }}
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/kirindl-prerelease-notes.md" <<EOF_NOTES
@@ -58,10 +74,12 @@ jobs:
           Pre-release APK restored from the verified GitHub Actions artifact.
 
           - Tag: $DEV_TAG
-          - Source build run: #113
+          - Source build run: #$SOURCE_RUN_NUMBER
           - Source run ID: $ARTIFACT_RUN_ID
           - Android package: com.kirin.downloader.prerelease
           - Stable package remains: com.kirin.downloader
+          - Built with the Stable Release build type, not Debug.
+          - Verified non-debuggable and signed with the original KirinDL release certificate.
           - Signed APK and SHA256 were generated and verified by the Kirin Pre-Release build.
 
           > Test build only. Installing this APK does not replace the Stable KirinDL app.
@@ -70,8 +88,8 @@ jobs:
       - name: Publish Kirin Pre-Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.dev_tag }}
-          name: KirinDL ${{ inputs.dev_tag }} Pre-Release
+          tag_name: ${{ inputs.dev_tag || 'v3.1.8-devpatch20' }}
+          name: KirinDL ${{ inputs.dev_tag || 'v3.1.8-devpatch20' }} Pre-Release
           target_commitish: main
           prerelease: true
           body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
