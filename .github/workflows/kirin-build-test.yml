@@ -6,8 +6,13 @@ on:
       dev_tag:
         description: "Pre-release tag (example: v3.1.3-devpatch10)"
         required: true
-        default: "v3.1.8-devpatch21"
+        default: "v3.1.8-devpatch22"
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-prerelease-trigger'
 
 permissions:
   contents: write
@@ -54,12 +59,12 @@ jobs:
       - name: Validate pre-release tag
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }}
         run: |
           set -euo pipefail
 
           if [[ ! "$DEV_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-devpatch[0-9]+$ ]]; then
-            echo "::error::Invalid pre-release tag '$DEV_TAG'. Expected format: v3.1.8-devpatch21"
+            echo "::error::Invalid pre-release tag '$DEV_TAG'. Expected format: v3.1.8-devpatch22"
             exit 1
           fi
 
@@ -98,7 +103,7 @@ jobs:
       - name: Build signed Kirin Pre-Release
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }}
         run: |
           set -euo pipefail
           PRERELEASE_SUFFIX="-${DEV_TAG##*-}"
@@ -123,7 +128,7 @@ jobs:
       - name: Verify package identity and signature
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }}
         run: |
           set -euo pipefail
 
@@ -138,8 +143,8 @@ jobs:
           APP_LABEL="$(printf '%s\n' "$BADGING" | sed -n "s/application-label:'\([^']*\)'.*/\1/p" | head -n 1)"
           EXPECTED_VERSION="${DEV_TAG#v}"
 
-          if [[ "$PACKAGE_ID" != "com.kirin.downloader.prerelease" ]]; then
-            echo "::error::Wrong package id: '$PACKAGE_ID'. Expected com.kirin.downloader.prerelease"
+          if [[ "$PACKAGE_ID" != "com.kirin.downloader" ]]; then
+            echo "::error::Wrong package id: '$PACKAGE_ID'. Expected com.kirin.downloader"
             exit 1
           fi
 
@@ -186,7 +191,7 @@ jobs:
       - name: Upload Kirin Pre-Release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KirinDL-Pre-Release-${{ inputs.dev_tag }}-${{ github.run_number }}
+          name: KirinDL-Pre-Release-${{ inputs.dev_tag || 'v3.1.8-devpatch22' }}-${{ github.run_number }}
           path: |
             artifacts/prerelease/KirinDL-Pre-Release.apk
             artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
@@ -196,7 +201,7 @@ jobs:
       - name: Prepare Kirin Pre-Release notes
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }}
         run: |
           set -euo pipefail
 
@@ -210,21 +215,20 @@ jobs:
           - Tag: $DEV_TAG
           - Commit: $GITHUB_SHA
           - Workflow run: #$GITHUB_RUN_NUMBER
-          - Android package: com.kirin.downloader.prerelease
-          - Stable package remains: com.kirin.downloader
-          - The Pre-Release APK can be installed beside Stable on the same phone.
-          - Built with the same Android Release build type used by Stable; only package/version/label are overridden for testing.
+          - Android package: com.kirin.downloader
+          - Uses the exact Stable Android package identity and Release build mechanics.
+          - The devpatch version code is placed above v3.1.8 but below the next stable patch.
           - APK is verified non-debuggable and signed with the original KirinDL release certificate.
-          - Android 10 and older now request legacy storage permission before the first download.
+          - This test intentionally replaces Stable instead of installing beside it, so package-scoped data/permissions remain identical.
 
-          > Test build only. Installing this APK does not replace the Stable KirinDL app.
+          > Test build only. Because the package matches Stable, this APK replaces the installed Stable app.
           EOF_NOTES
 
       - name: Publish Kirin Pre-Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.dev_tag }}
-          name: KirinDL ${{ inputs.dev_tag }} Pre-Release
+          tag_name: ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }}
+          name: KirinDL ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }} Pre-Release
           target_commitish: ${{ github.sha }}
           prerelease: true
           body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
