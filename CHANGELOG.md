@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Accept current apksigner certificate output format (`690d9be3`, 2026-10-01)
 - Temporarily enable devpatch20 pre-release trigger (`27e8956a`, 2026-10-01)
 - Fix pre-release to use stable release build mechanics (`c0dc287a`, 2026-10-01)
 - Build pre-release through the stable Release variant (`a25ed946`, 2026-10-01)
