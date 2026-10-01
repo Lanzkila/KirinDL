@@ -27,16 +27,7 @@ val currentVersionCode = currentVersion.code.toInt()
 val prereleaseVersionSuffix =
     providers.gradleProperty("kirinPrereleaseSuffix").orNull
         ?.takeIf { it.matches(Regex("-devpatch[0-9]+")) }
-
-val isPrereleaseBuild = prereleaseVersionSuffix != null
-val prereleaseBuildNumber =
-    prereleaseVersionSuffix
-        ?.removePrefix("-devpatch")
-        ?.toIntOrNull()
-        ?: 0
-val effectiveVersionCode =
-    if (isPrereleaseBuild) currentVersionCode + prereleaseBuildNumber
-    else currentVersionCode
+        ?: "-prerelease"
 
 android {
     compileSdk = 37
@@ -67,20 +58,13 @@ android {
         applicationId = "com.kirin.downloader"
         minSdk = 24
         targetSdk = 37
-        versionCode = effectiveVersionCode
-        check(
-            if (isPrereleaseBuild) {
-                versionCode in (currentVersionCode + 1) until (currentVersionCode + 10_000)
-            } else {
-                versionCode == currentVersionCode
-            }
-        )
+        versionCode = 301_080_400
+        check(versionCode == currentVersionCode)
 
-        versionName = baseVersionName + (prereleaseVersionSuffix ?: "")
+        versionName = baseVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
-        manifestPlaceholders["appLabel"] =
-            if (isPrereleaseBuild) "Kirin Pre-Release" else "@string/app_name"
+        manifestPlaceholders["appLabel"] = "@string/app_name"
 
         ndk {
             abiFilters += if (splitApks) {
@@ -151,6 +135,14 @@ android {
             signingConfig = signingConfigs.getByName("kirinDebug")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+        }
+
+        create("prerelease") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".prerelease"
+            versionNameSuffix = prereleaseVersionSuffix
+            manifestPlaceholders["appLabel"] = "Kirin Pre-Release"
+            matchingFallbacks += listOf("release")
         }
     }
 
