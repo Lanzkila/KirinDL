@@ -183,15 +183,6 @@ jobs:
             sha256sum KirinDL-Pre-Release.apk > KirinDL-Pre-Release.apk.sha256
           )
 
-      - name: Upload Kirin Pre-Release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: KirinDL-Pre-Release-${{ inputs.dev_tag }}-${{ github.run_number }}
-          path: |
-            artifacts/prerelease/KirinDL-Pre-Release.apk
-            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
-          if-no-files-found: error
-          retention-days: 7
 
       - name: Prepare Kirin Pre-Release notes
         shell: bash
@@ -216,7 +207,7 @@ jobs:
           - APK is verified non-debuggable and signed with the original KirinDL release certificate.
           - This test intentionally replaces Stable instead of installing beside it, so package-scoped data/permissions remain identical.
 
-          > Test build only. Because the package matches Stable, this APK replaces the installed Stable app.
+          > Test build only. The APK is published directly on the GitHub Pre-Release page; no GitHub Actions artifact ZIP is retained.
           EOF_NOTES
 
       - name: Publish Kirin Pre-Release
@@ -229,7 +220,6 @@ jobs:
           body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
           files: |
             artifacts/prerelease/KirinDL-Pre-Release.apk
-            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
 
       - name: Remove signing material
         if: always()
