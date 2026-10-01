@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Use stable package identity for release-signed pre-release builds (`cbbf0c41`, 2026-10-01)
 - Revert disproven pre-release storage permission test (`7824bdd1`, 2026-10-01)
 - Restore publish-only workflow to manual dispatch (`02227903`, 2026-10-01)
 - Prepare publish-only devpatch21 recovery (`c67ef5a8`, 2026-10-01)
