@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Keep Stable Test staging compatible with current Gradle version logic (`29887d74`, 2026-10-01)
 - Restore transfer progress display (`e6e74f98`, 2026-10-01)
 - Remove obsolete pre-release asset publisher (`2135e95f`, 2026-10-01)
 - Add isolated Stable Test artifact workflow (`0ea6f992`, 2026-10-01)
