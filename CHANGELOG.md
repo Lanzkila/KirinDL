@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Build pre-release through the stable Release variant (`a25ed946`, 2026-10-01)
 - Restore yt-dlp transfer progress display (`444e8c29`, 2026-10-01)
 - Remove stable test trigger marker (`3090b08e`, 2026-10-01)
 - Remove one-shot stable test dispatcher (`daf04377`, 2026-10-01)
