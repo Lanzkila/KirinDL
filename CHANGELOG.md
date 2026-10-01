@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Remove experimental transfer progress display (`3582300c`, 2026-10-01)
 - Restore publish-only workflow to manual dispatch (`d96bf95f`, 2026-10-01)
 - Note publish-only reuse of verified devpatch19 artifact (`a02f1392`, 2026-10-01)
 - Use release note update as one-shot publish trigger (`3398459b`, 2026-10-01)
