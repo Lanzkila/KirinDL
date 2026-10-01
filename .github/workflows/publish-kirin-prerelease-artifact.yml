@@ -23,6 +23,11 @@ on:
         required: true
         default: "v3.1.8-devpatch21"
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-prerelease-trigger'
 
 permissions:
   actions: read
@@ -38,11 +43,11 @@ jobs:
       - name: Download APK artifact from build run
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
+          name: ${{ inputs.artifact_name || 'KirinDL-Pre-Release-v3.1.8-devpatch22-117' }}
           path: artifacts/prerelease
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.artifact_run_id }}
+          run-id: ${{ inputs.artifact_run_id || '36809573257' }}
 
       - name: Verify artifact files
         shell: bash
@@ -58,9 +63,9 @@ jobs:
       - name: Prepare release notes
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag }}
-          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
-          SOURCE_RUN_NUMBER: ${{ inputs.source_run_number }}
+          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id || '36809573257' }}
+          SOURCE_RUN_NUMBER: ${{ inputs.source_run_number || '117' }}
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/kirindl-prerelease-notes.md" <<EOF_NOTES
@@ -71,10 +76,10 @@ jobs:
           - Tag: $DEV_TAG
           - Source build run: #$SOURCE_RUN_NUMBER
           - Source run ID: $ARTIFACT_RUN_ID
-          - Android package: com.kirin.downloader.prerelease
-          - Stable package remains: com.kirin.downloader
-          - Built with the Stable Release build type, not Debug.
+          - Android package: com.kirin.downloader
+          - Uses the exact Stable package identity and Stable Release build type.
           - Verified non-debuggable and signed with the original KirinDL release certificate.
+          - This build replaces Stable instead of installing beside it, preserving package-scoped data and permissions.
           - Requests legacy shared-storage permission before the first download on Android 10 and older.
           - Signed APK and SHA256 were generated and verified by the Kirin Pre-Release build.
 
@@ -84,8 +89,8 @@ jobs:
       - name: Publish Kirin Pre-Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.dev_tag }}
-          name: KirinDL ${{ inputs.dev_tag }} Pre-Release
+          tag_name: ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }}
+          name: KirinDL ${{ inputs.dev_tag || 'v3.1.8-devpatch22' }} Pre-Release
           target_commitish: main
           prerelease: true
           body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
