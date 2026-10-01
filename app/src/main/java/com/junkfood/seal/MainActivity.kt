@@ -1,15 +1,11 @@
 package com.junkfood.seal
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
@@ -42,32 +38,9 @@ class MainActivity : AppCompatActivity() {
     private val dialogViewModel: DownloadDialogViewModel by viewModel()
     private var isAppInBackground = false
 
-    // KirinDL still writes media directly into the public Download/KirinDL directory.
-    // On Android 10 and older this requires WRITE_EXTERNAL_STORAGE at runtime. Stable
-    // installs often already have the grant, while the separately-installed Pre-Release
-    // package starts clean and previously never requested it unless the user opened the
-    // directory picker. Request it up front so Stable and Pre-Release have the same storage
-    // capability before the first Preset/Custom download.
-    private val legacyStoragePermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
-    private fun ensureLegacyStoragePermission() {
-        if (
-            Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q &&
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            legacyStoragePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
-    }
-
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        ensureLegacyStoragePermission()
 
         if (Build.VERSION.SDK_INT < 33) {
             lifecycleScope.launch(Dispatchers.IO) {
