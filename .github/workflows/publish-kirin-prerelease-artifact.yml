@@ -6,22 +6,22 @@ on:
       artifact_run_id:
         description: "Kirin Pre-Release run ID containing the APK artifact"
         required: true
-        default: "36808029273"
+        default: "36822360925"
         type: string
       artifact_name:
         description: "Actions artifact name"
         required: true
-        default: "KirinDL-Pre-Release-v3.1.8-devpatch21-116"
+        default: "KirinDL-Pre-Release-v3.1.8-devpatch23-118"
         type: string
       source_run_number:
         description: "Source build run number"
         required: true
-        default: "116"
+        default: "118"
         type: string
       dev_tag:
         description: "Pre-release tag"
         required: true
-        default: "v3.1.8-devpatch21"
+        default: "v3.1.8-devpatch23"
         type: string
 
 permissions:
@@ -75,10 +75,9 @@ jobs:
           - Uses the exact Stable package identity and Stable Release build type.
           - Verified non-debuggable and signed with the original KirinDL release certificate.
           - This build replaces Stable instead of installing beside it, preserving package-scoped data and permissions.
-          - Requests legacy shared-storage permission before the first download on Android 10 and older.
           - Signed APK and SHA256 were generated and verified by the Kirin Pre-Release build.
 
-          > Test build only. Installing this APK does not replace the Stable KirinDL app.
+          > Test build only. Because the Android package matches Stable, installing this APK replaces the installed Stable build.
           EOF_NOTES
 
       - name: Publish Kirin Pre-Release
