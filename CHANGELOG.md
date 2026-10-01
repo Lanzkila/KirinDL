@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add publish-only flow for verified pre-release artifact (`cfd66f0d`, 2026-10-01)
 - Prepare artifact-backed devpatch19 pre-release test (`70c1681c`, 2026-10-01)
 - Restore pre-release APK artifact backup (`c357deac`, 2026-09-30)
 - Remove one-shot Kirin pre-release dispatch marker (`0a66ec6d`, 2026-09-30)
