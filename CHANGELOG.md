@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Restore normal Stable and Pre-Release build types (`a15cfabb`, 2026-10-01)
 - Remove Stable Test trigger marker (`f66ee687`, 2026-10-01)
 - Remove one-shot Stable Test dispatcher (`99d5ed44`, 2026-10-01)
 - Trigger Stable Test build (`26b0372f`, 2026-10-01)
