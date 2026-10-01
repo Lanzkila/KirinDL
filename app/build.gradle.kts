@@ -29,6 +29,14 @@ val prereleaseVersionSuffix =
         ?.takeIf { it.matches(Regex("-devpatch[0-9]+")) }
 
 val isPrereleaseBuild = prereleaseVersionSuffix != null
+val prereleaseBuildNumber =
+    prereleaseVersionSuffix
+        ?.removePrefix("-devpatch")
+        ?.toIntOrNull()
+        ?: 0
+val effectiveVersionCode =
+    if (isPrereleaseBuild) currentVersionCode + prereleaseBuildNumber
+    else currentVersionCode
 
 android {
     compileSdk = 37
@@ -56,13 +64,17 @@ android {
     buildFeatures { buildConfig = true }
 
     defaultConfig {
-        applicationId =
-            if (isPrereleaseBuild) "com.kirin.downloader.prerelease"
-            else "com.kirin.downloader"
+        applicationId = "com.kirin.downloader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 301_080_400
-        check(versionCode == currentVersionCode)
+        versionCode = effectiveVersionCode
+        check(
+            if (isPrereleaseBuild) {
+                versionCode in (currentVersionCode + 1) until (currentVersionCode + 10_000)
+            } else {
+                versionCode == currentVersionCode
+            }
+        )
 
         versionName = baseVersionName + (prereleaseVersionSuffix ?: "")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
