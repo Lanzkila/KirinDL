@@ -1,0 +1,80 @@
+name: Publish Kirin Pre-Release Artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: "Kirin Pre-Release run ID containing the APK artifact"
+        required: true
+        default: "36798080955"
+        type: string
+      dev_tag:
+        description: "Pre-release tag"
+        required: true
+        default: "v3.1.8-devpatch19"
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    name: Publish existing Kirin Pre-Release artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Download APK artifact from build run
+        uses: actions/download-artifact@v4
+        with:
+          name: KirinDL-Pre-Release-v3.1.8-devpatch19-113
+          path: artifacts/prerelease
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.artifact_run_id }}
+
+      - name: Verify artifact files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f artifacts/prerelease/KirinDL-Pre-Release.apk
+          test -f artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
+          (
+            cd artifacts/prerelease
+            sha256sum -c KirinDL-Pre-Release.apk.sha256
+          )
+
+      - name: Prepare release notes
+        shell: bash
+        env:
+          DEV_TAG: ${{ inputs.dev_tag }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/kirindl-prerelease-notes.md" <<EOF_NOTES
+          ## Kirin Pre-Release
+
+          Pre-release APK restored from the verified GitHub Actions artifact.
+
+          - Tag: $DEV_TAG
+          - Source build run: #113
+          - Source run ID: $ARTIFACT_RUN_ID
+          - Android package: com.kirin.downloader.prerelease
+          - Stable package remains: com.kirin.downloader
+          - Signed APK and SHA256 were generated and verified by the Kirin Pre-Release build.
+
+          > Test build only. Installing this APK does not replace the Stable KirinDL app.
+          EOF_NOTES
+
+      - name: Publish Kirin Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.dev_tag }}
+          name: KirinDL ${{ inputs.dev_tag }} Pre-Release
+          target_commitish: main
+          prerelease: true
+          body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
+          files: |
+            artifacts/prerelease/KirinDL-Pre-Release.apk
+            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
