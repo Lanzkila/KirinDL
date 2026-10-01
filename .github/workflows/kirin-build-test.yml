@@ -10,6 +10,7 @@ on:
         type: string
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -25,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -184,6 +187,31 @@ jobs:
           )
 
 
+      - name: Remove older Kirin Pre-Release artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("KirinDL-Pre-Release-")) | .id' \
+            | while read -r ARTIFACT_ID
+              do
+                [[ -n "$ARTIFACT_ID" ]] || continue
+                gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
+              done
+
+      - name: Upload Kirin Pre-Release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-Pre-Release-${{ inputs.dev_tag }}-${{ github.run_number }}
+          path: |
+            artifacts/prerelease/KirinDL-Pre-Release.apk
+            artifacts/prerelease/KirinDL-Pre-Release.apk.sha256
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
       - name: Prepare Kirin Pre-Release notes
         shell: bash
         env:
@@ -192,22 +220,34 @@ jobs:
           set -euo pipefail
 
           NOTES_FILE="$RUNNER_TEMP/kirindl-prerelease-notes.md"
+          BASE_TAG="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || true)"
+
+          if [[ -n "$BASE_TAG" ]]; then
+            CHANGES="$(git log "$BASE_TAG..HEAD" --no-merges --pretty='- %s' | head -n 20)"
+          else
+            CHANGES="$(git log -n 20 --no-merges --pretty='- %s')"
+          fi
+
+          if [[ -z "$CHANGES" ]]; then
+            CHANGES="- Internal test/build updates."
+          fi
 
           cat > "$NOTES_FILE" <<EOF_NOTES
           ## Kirin Pre-Release
 
-          Test build generated automatically after a successful Kirin Pre-Release workflow.
+          Current development/test checkpoint for KirinDL.
 
           - Tag: $DEV_TAG
           - Commit: $GITHUB_SHA
           - Workflow run: #$GITHUB_RUN_NUMBER
-          - Android package: com.kirin.downloader
-          - Uses the exact Stable Android package identity and Release build mechanics.
-          - The devpatch version code is placed above v3.1.8 but below the next stable patch.
-          - APK is verified non-debuggable and signed with the original KirinDL release certificate.
-          - This test intentionally replaces Stable instead of installing beside it, so package-scoped data/permissions remain identical.
+          - APK is kept in the GitHub Actions artifact for this run.
+          - No APK/ZIP file is attached to this Pre-Release page.
 
-          > Test build only. The APK is published directly on the GitHub Pre-Release page; no GitHub Actions artifact ZIP is retained.
+          ### What we're working on
+
+          $CHANGES
+
+          > This page is notes/status only. Test files remain under the workflow run artifact.
           EOF_NOTES
 
       - name: Publish Kirin Pre-Release
@@ -218,8 +258,6 @@ jobs:
           target_commitish: ${{ github.sha }}
           prerelease: true
           body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
-          files: |
-            artifacts/prerelease/KirinDL-Pre-Release.apk
 
       - name: Remove signing material
         if: always()
