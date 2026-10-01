@@ -268,41 +268,18 @@ jobs:
           cat KirinDL-Universal-Release.apk.sha256
           cat KirinDL-ARM64-Release.apk.sha256
 
-      - name: Publish direct Test APKs
-        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_release }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TEST_VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -euo pipefail
-
-          TEST_TAG="kirindl-test-latest"
-          NOTES_FILE="$RUNNER_TEMP/kirindl-test-notes.md"
-
-          cat > "$NOTES_FILE" <<EOF_NOTES
-          ## KirinDL Test Build
-
-          Direct signed APKs from the latest Stable-mechanics test build.
-
-          - Version: $TEST_VERSION
-          - Commit: $GITHUB_SHA
-          - Workflow run: #$GITHUB_RUN_NUMBER
-          - Package: com.kirin.downloader
-          - Build type: Release / non-debuggable
-          - Signing: original KirinDL release certificate
-
-          This fixed test release is replaced by the next test build. No GitHub Actions artifact ZIP is stored.
-          EOF_NOTES
-
-          # Keep only one test release/tag so test APK storage never accumulates.
-          if gh release view "$TEST_TAG" >/dev/null 2>&1; then
-            gh release delete "$TEST_TAG" --cleanup-tag -y
-          else
-            gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TEST_TAG" >/dev/null 2>&1 || true
-          fi
-
-          gh release create "$TEST_TAG"             --target "$GITHUB_SHA"             --title "KirinDL Test Build"             --prerelease             --notes-file "$NOTES_FILE"             artifacts/release/KirinDL-Universal-Release.apk             artifacts/release/KirinDL-Universal-Release.apk.sha256             artifacts/release/KirinDL-ARM64-Release.apk             artifacts/release/KirinDL-ARM64-Release.apk.sha256
+      - name: Upload signed Release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-Release-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          path: |
+            artifacts/release/KirinDL-Universal-Release.apk
+            artifacts/release/KirinDL-Universal-Release.apk.sha256
+            artifacts/release/KirinDL-ARM64-Release.apk
+            artifacts/release/KirinDL-ARM64-Release.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
 
       - name: Publish GitHub Release
         if: ${{ github.event_name == 'push' || inputs.publish_release }}
