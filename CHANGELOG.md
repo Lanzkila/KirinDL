@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Publish Pre-Release as direct APK without Actions artifact ZIP (`01d6a780`, 2026-10-01)
+- Restore Stable release workflow unchanged (`da1a9ae3`, 2026-10-01)
 - Publish test builds as direct APK release assets (`3eb227a4`, 2026-10-01)
 - Add one-shot devpatch23 publish dispatcher (`f77e5c82`, 2026-10-01)
 - Update publish-only defaults for devpatch23 isolation build (`97ccc5c8`, 2026-10-01)
