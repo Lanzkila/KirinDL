@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Temporarily enable devpatch20 pre-release trigger (`27e8956a`, 2026-10-01)
+- Fix pre-release to use stable release build mechanics (`c0dc287a`, 2026-10-01)
 - Build pre-release through the stable Release variant (`a25ed946`, 2026-10-01)
 - Restore yt-dlp transfer progress display (`444e8c29`, 2026-10-01)
 - Remove stable test trigger marker (`3090b08e`, 2026-10-01)
