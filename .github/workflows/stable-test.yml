@@ -1,0 +1,254 @@
+name: KirinDL Stable Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-stable-test-trigger'
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: kirindl-stable-test
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Stable Test APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
+      - name: Delete older Stable Test artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("KirinDL-Stable-Test-")) | .id' \
+            | while read -r artifact_id; do
+                [[ -n "$artifact_id" ]] || continue
+                gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id"
+              done
+
+      - name: Resolve next Stable version
+        id: version
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          raw = subprocess.check_output(
+              ["gh", "api", f"repos/{repo}/releases?per_page=100"],
+              text=True,
+          )
+          releases = json.loads(raw)
+
+          stable_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+          stable_versions = []
+          for release in releases:
+              if release.get("draft") or release.get("prerelease"):
+                  continue
+              match = stable_re.fullmatch(release.get("tag_name", ""))
+              if match:
+                  stable_versions.append(tuple(map(int, match.groups())))
+
+          if stable_versions:
+              major, minor, patch = max(stable_versions)
+          else:
+              source = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
+              match = re.search(
+                  r"Version\.Stable\(\s*versionMajor\s*=\s*(\d+),"
+                  r"\s*versionMinor\s*=\s*(\d+),"
+                  r"\s*versionPatch\s*=\s*(\d+)\s*\)",
+                  source,
+                  re.S,
+              )
+              if not match:
+                  raise SystemExit("Could not resolve Stable base version")
+              major, minor, patch = map(int, match.groups())
+
+          patch += 1
+          version = f"{major}.{minor}.{patch}"
+          version_code = major * 100_000_000 + minor * 1_000_000 + patch * 10_000 + 400
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"version={version}\n")
+              out.write(f"version_code={version_code}\n")
+
+          print(f"Stable Test version: {version}")
+          print(f"Version code: {version_code}")
+
+      - name: Stage Stable Test version
+        shell: python
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        run: |
+          import os
+          import re
+          from pathlib import Path
+
+          major, minor, patch = os.environ["RELEASE_VERSION"].split(".")
+          version_code = os.environ["VERSION_CODE"]
+
+          version_file = Path("buildSrc/src/main/kotlin/Version.kt")
+          source = version_file.read_text(encoding="utf-8")
+          source, count = re.subn(
+              r"Version\.Stable\(\s*versionMajor\s*=\s*\d+,\s*versionMinor\s*=\s*\d+,\s*versionPatch\s*=\s*\d+\s*\)",
+              f"Version.Stable(versionMajor = {major}, versionMinor = {minor}, versionPatch = {patch})",
+              source,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Unable to stage Version.kt")
+          version_file.write_text(source, encoding="utf-8")
+
+          gradle_file = Path("app/build.gradle.kts")
+          gradle = gradle_file.read_text(encoding="utf-8")
+          gradle, count = re.subn(
+              r"versionCode\s*=\s*[0-9_]+",
+              f"versionCode = {version_code}",
+              gradle,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Unable to stage app versionCode")
+          gradle_file.write_text(gradle, encoding="utf-8")
+
+      - name: Prepare KirinDL release signing
+        shell: bash
+        env:
+          KIRIN_KEYSTORE_BASE64: ${{ secrets.KIRIN_KEYSTORE_BASE64 }}
+          KIRIN_KEYSTORE_PASSWORD: ${{ secrets.KIRIN_KEYSTORE_PASSWORD }}
+          KIRIN_KEY_ALIAS: ${{ secrets.KIRIN_KEY_ALIAS }}
+          KIRIN_KEY_PASSWORD: ${{ secrets.KIRIN_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in KIRIN_KEYSTORE_BASE64 KIRIN_KEYSTORE_PASSWORD KIRIN_KEY_ALIAS KIRIN_KEY_PASSWORD
+          do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::$name is missing from GitHub Actions secrets."
+              exit 1
+            fi
+          done
+
+          printf '%s' "$KIRIN_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/kirin-release.jks"
+          chmod 600 "$GITHUB_WORKSPACE/kirin-release.jks"
+          printf 'keyAlias=%s\nkeyPassword=%s\nstoreFile=../kirin-release.jks\nstorePassword=%s\n' \
+            "$KIRIN_KEY_ALIAS" "$KIRIN_KEY_PASSWORD" "$KIRIN_KEYSTORE_PASSWORD" \
+            > "$GITHUB_WORKSPACE/keystore.properties"
+
+          keytool -list \
+            -keystore "$GITHUB_WORKSPACE/kirin-release.jks" \
+            -storepass "$KIRIN_KEYSTORE_PASSWORD" \
+            -alias "$KIRIN_KEY_ALIAS" >/dev/null
+
+      - name: Build Stable Test
+        run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
+
+      - name: Prepare Universal Stable Test APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_DIR="app/build/outputs/apk/generic/release"
+          UNIVERSAL_APK="$(find "$APK_DIR" -type f -name '*universal*.apk' | head -n 1)"
+          [[ -n "$UNIVERSAL_APK" ]] || {
+            echo "::error::Universal Stable Test APK was not generated."
+            exit 1
+          }
+
+          mkdir -p artifacts/stable-test
+          cp "$UNIVERSAL_APK" artifacts/stable-test/KirinDL-Stable-Test.apk
+
+      - name: Verify Stable Test APK
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+          APK="artifacts/stable-test/KirinDL-Stable-Test.apk"
+          BADGING="$("$AAPT" dump badging "$APK")"
+
+          PACKAGE_ID="$(printf '%s\n' "$BADGING" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
+          VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
+
+          [[ "$PACKAGE_ID" == "com.kirin.downloader" ]] || {
+            echo "::error::Wrong package id: $PACKAGE_ID"
+            exit 1
+          }
+          [[ "$VERSION_NAME" == "$RELEASE_VERSION" ]] || {
+            echo "::error::Wrong version: $VERSION_NAME"
+            exit 1
+          }
+          if printf '%s\n' "$BADGING" | grep -q "application-debuggable"; then
+            echo "::error::Stable Test APK is debuggable."
+            exit 1
+          fi
+
+          EXPECTED_CERT_SHA256="793680d2b313b0806e195e29d2fe5d882a263220028450e7e88e48ffa32d0a98"
+          APKSIGNER_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK")"
+          CERT_SHA256="$(printf '%s\n' "$APKSIGNER_OUTPUT" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr '[:upper:]' '[:lower:]')"
+          [[ "$CERT_SHA256" == "$EXPECTED_CERT_SHA256" ]] || {
+            echo "::error::Wrong signing certificate: $CERT_SHA256"
+            exit 1
+          }
+
+          echo "Verified Stable Test package, version, non-debuggable state and original signature."
+
+      - name: Upload Stable Test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-Stable-Test-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          path: artifacts/stable-test/KirinDL-Stable-Test.apk
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$GITHUB_WORKSPACE/kirin-release.jks"
+          rm -f "$GITHUB_WORKSPACE/keystore.properties"
