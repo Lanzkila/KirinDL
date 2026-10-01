@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Trigger Stable Test build (`26b0372f`, 2026-10-01)
 - Add one-shot Stable Test dispatcher (`8510442a`, 2026-10-01)
 - Keep Stable Test staging compatible with current Gradle version logic (`29887d74`, 2026-10-01)
 - Restore transfer progress display (`e6e74f98`, 2026-10-01)
