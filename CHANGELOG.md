@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Remove Stable Test trigger marker (`f66ee687`, 2026-10-01)
+- Remove one-shot Stable Test dispatcher (`99d5ed44`, 2026-10-01)
 - Trigger Stable Test build (`26b0372f`, 2026-10-01)
 - Add one-shot Stable Test dispatcher (`8510442a`, 2026-10-01)
 - Keep Stable Test staging compatible with current Gradle version logic (`29887d74`, 2026-10-01)
