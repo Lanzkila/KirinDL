@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Request legacy storage permission before first download (`16211a6d`, 2026-10-01)
 - Restore publish-only workflow to manual dispatch (`d6938c6d`, 2026-10-01)
 - Prepare publish-only devpatch20 recovery (`e209760f`, 2026-10-01)
 - Temporarily re-enable devpatch20 trigger (`6c5d8490`, 2026-10-01)
