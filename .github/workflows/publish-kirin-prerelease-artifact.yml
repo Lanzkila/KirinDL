@@ -13,11 +13,6 @@ on:
         required: true
         default: "v3.1.8-devpatch19"
         type: string
-  push:
-    branches:
-      - main
-    paths:
-      - 'release-notes/v3.1.8.1.md'
 
 permissions:
   actions: read
@@ -37,7 +32,7 @@ jobs:
           path: artifacts/prerelease
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.artifact_run_id || '36798080955' }}
+          run-id: ${{ inputs.artifact_run_id }}
 
       - name: Verify artifact files
         shell: bash
@@ -53,8 +48,8 @@ jobs:
       - name: Prepare release notes
         shell: bash
         env:
-          DEV_TAG: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
-          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id || '36798080955' }}
+          DEV_TAG: ${{ inputs.dev_tag }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/kirindl-prerelease-notes.md" <<EOF_NOTES
@@ -75,8 +70,8 @@ jobs:
       - name: Publish Kirin Pre-Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }}
-          name: KirinDL ${{ inputs.dev_tag || 'v3.1.8-devpatch19' }} Pre-Release
+          tag_name: ${{ inputs.dev_tag }}
+          name: KirinDL ${{ inputs.dev_tag }} Pre-Release
           target_commitish: main
           prerelease: true
           body_path: ${{ runner.temp }}/kirindl-prerelease-notes.md
