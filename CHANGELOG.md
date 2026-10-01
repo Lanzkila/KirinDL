@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Restore publish-only workflow to manual dispatch (`02227903`, 2026-10-01)
 - Prepare publish-only devpatch21 recovery (`c67ef5a8`, 2026-10-01)
 - Prepare devpatch21 storage-permission test (`867a2a12`, 2026-10-01)
 - Request legacy storage permission before first download (`16211a6d`, 2026-10-01)
