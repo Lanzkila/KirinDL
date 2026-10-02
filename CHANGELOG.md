@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Refresh legacy Global Feed thumbnail caches (`1092db1b`, 2026-10-02)
 - Render thumbnails for all Global Feed queue previews (`6b4af20b`, 2026-10-02)
 - Trigger Stable artifact build (`900f505f`, 2026-10-02)
 - Add one-shot stable artifact dispatcher (`18f85eb8`, 2026-10-02)
