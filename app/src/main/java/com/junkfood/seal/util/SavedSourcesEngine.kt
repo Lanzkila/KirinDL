@@ -37,18 +37,29 @@ object SavedSourcesEngine {
         withContext(Dispatchers.IO) {
             if (!forceRefresh) {
                 SavedSourceStore.loadFreshCache(context, source.id)?.let { cache ->
-                    return@withContext Result.success(
-                        BrowseResult(
-                            engineUsed = cache.engine,
-                            title = cache.title.ifBlank { source.displayTitle },
-                            thumbnail = cache.thumbnail,
-                            creator = cache.creator,
-                            fetchedAt = cache.fetchedAt,
-                            fromCache = true,
-                            cacheStale = false,
-                            items = cache.items,
-                        ),
-                    )
+                    // Older Gallery DL Global Feed caches only probed thumbnails for the first
+                    // 12 queued items. If that exact legacy pattern is detected, bypass the
+                    // otherwise-fresh cache once so the source is rebuilt with previews for all
+                    // 24 queue cards.
+                    val legacyGalleryPreviewCache =
+                        cache.engine == SavedSourceStore.SourceEngine.GALLERY_DL &&
+                            cache.items.size > 12 &&
+                            cache.items.drop(12).all { it.thumbnail.isNullOrBlank() }
+
+                    if (!legacyGalleryPreviewCache) {
+                        return@withContext Result.success(
+                            BrowseResult(
+                                engineUsed = cache.engine,
+                                title = cache.title.ifBlank { source.displayTitle },
+                                thumbnail = cache.thumbnail,
+                                creator = cache.creator,
+                                fetchedAt = cache.fetchedAt,
+                                fromCache = true,
+                                cacheStale = false,
+                                items = cache.items,
+                            ),
+                        )
+                    }
                 }
             }
 
