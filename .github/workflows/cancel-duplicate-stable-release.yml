@@ -1,0 +1,21 @@
+name: Cancel Duplicate Stable Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-cancel-duplicate-trigger'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel duplicate Release run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel 36970157782 --repo "$GITHUB_REPOSITORY"
