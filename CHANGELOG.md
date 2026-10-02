@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add phase-aware progress to every Media queue card (`bd78b429`, 2026-10-02)
 - Refresh legacy Global Feed thumbnail caches (`1092db1b`, 2026-10-02)
 - Render thumbnails for all Global Feed queue previews (`6b4af20b`, 2026-10-02)
 - Trigger Stable artifact build (`900f505f`, 2026-10-02)
