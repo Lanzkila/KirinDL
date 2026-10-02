@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Restore Stable release output after artifact testing (`813b0e54`, 2026-10-02)
 - Trigger KirinDL Stable Test artifact (`a430b2f0`, 2026-10-02)
 - Remove duplicate Stable Test workflow (`94c67ab5`, 2026-10-02)
 - Trigger pending stable test cancellation (`a61af59c`, 2026-10-02)
