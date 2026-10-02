@@ -717,9 +717,13 @@ fun DownloadPageImplV2(
                         ) { (task, state) ->
                             with(state.viewState) {
                                 val temporaryPath =
-                                    state.videoInfo?.id
-                                        ?.takeIf { it.isNotBlank() }
-                                        ?.let { FileUtil.getExternalTempDir(it).absolutePath }
+                                    if (state.downloadState is Running || state.downloadState is Paused) {
+                                        state.videoInfo?.id
+                                            ?.takeIf { it.isNotBlank() }
+                                            ?.let { FileUtil.getExternalTempDir(it).absolutePath }
+                                    } else {
+                                        null
+                                    }
 
                                 VideoCardV2(
                                     modifier = Modifier.padding(bottom = 20.dp).padding(),
@@ -754,9 +758,13 @@ fun DownloadPageImplV2(
                             span = { GridItemSpan(maxLineSpan) },
                         ) { (task, state) ->
                             val temporaryPath =
-                                state.videoInfo?.id
-                                    ?.takeIf { it.isNotBlank() }
-                                    ?.let { FileUtil.getExternalTempDir(it).absolutePath }
+                                if (state.downloadState is Running || state.downloadState is Paused) {
+                                    state.videoInfo?.id
+                                        ?.takeIf { it.isNotBlank() }
+                                        ?.let { FileUtil.getExternalTempDir(it).absolutePath }
+                                } else {
+                                    null
+                                }
 
                             VideoListItem(
                                 modifier = Modifier.padding(bottom = 16.dp),
