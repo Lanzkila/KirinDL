@@ -200,46 +200,36 @@ jobs:
             -storepass "$KIRIN_KEYSTORE_PASSWORD" \
             -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
-      - name: Build signed Universal and ARM64 Release
+      - name: Build signed Stable Release APKs
         run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
-      - name: Prepare Universal and ARM64 Release APKs
-        shell: bash
-        run: |
-          set -euo pipefail
-          APK_DIR="app/build/outputs/apk/generic/release"
-          UNIVERSAL_APK="$(find "$APK_DIR" -type f -name '*universal*.apk' | head -n 1)"
-          ARM64_APK="$(find "$APK_DIR" -type f -name '*arm64-v8a*.apk' | head -n 1)"
-
-          [[ -n "$UNIVERSAL_APK" ]] || {
-            echo "::error::Universal release APK was not generated."
-            exit 1
-          }
-          [[ -n "$ARM64_APK" ]] || {
-            echo "::error::ARM64-v8a release APK was not generated."
-            exit 1
-          }
-
-          mkdir -p artifacts/release
-          cp "$UNIVERSAL_APK" artifacts/release/KirinDL-Universal-Release.apk
-          cp "$ARM64_APK" artifacts/release/KirinDL-ARM64-Release.apk
-
-          ls -lh artifacts/release/
-
-      - name: Verify package identity, version and signatures
+      - name: Verify all Stable APKs and create checksums
+        id: assets
         shell: bash
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
+          APK_DIR="app/build/outputs/apk/generic/release"
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
           AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
 
-          for APK in \
-            artifacts/release/KirinDL-Universal-Release.apk \
-            artifacts/release/KirinDL-ARM64-Release.apk
-          do
+          REQUIRED_APKS=(
+            "KirinDL-${RELEASE_VERSION}-universal.apk"
+            "KirinDL-${RELEASE_VERSION}-arm64-v8a.apk"
+            "KirinDL-${RELEASE_VERSION}-armeabi-v7a.apk"
+            "KirinDL-${RELEASE_VERSION}-x86.apk"
+            "KirinDL-${RELEASE_VERSION}-x86_64.apk"
+          )
+
+          for NAME in "${REQUIRED_APKS[@]}"; do
+            APK="$APK_DIR/$NAME"
+            [[ -f "$APK" ]] || {
+              echo "::error::Missing Stable APK: $NAME"
+              exit 1
+            }
+
             BADGING="$("$AAPT" dump badging "$APK")"
             PACKAGE_ID="$(printf '%s\n' "$BADGING" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
             VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
@@ -256,27 +246,26 @@ jobs:
             "$APKSIGNER" verify --verbose --print-certs "$APK"
           done
 
-          echo "Verified Universal + ARM64 Stable APKs."
+          (
+            cd "$APK_DIR"
+            sha256sum "${REQUIRED_APKS[@]}" > SHA256SUMS.txt
+            cat SHA256SUMS.txt
+          )
 
-      - name: Generate SHA-256 checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd artifacts/release
-          sha256sum KirinDL-Universal-Release.apk > KirinDL-Universal-Release.apk.sha256
-          sha256sum KirinDL-ARM64-Release.apk > KirinDL-ARM64-Release.apk.sha256
-          cat KirinDL-Universal-Release.apk.sha256
-          cat KirinDL-ARM64-Release.apk.sha256
+          echo "apk_dir=$APK_DIR" >> "$GITHUB_OUTPUT"
+          echo "Verified Universal, ARM64-v8a, ARMv7, x86 and x86_64 Stable APKs."
 
       - name: Upload signed Release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: KirinDL-Release-${{ steps.version.outputs.version }}-${{ github.run_number }}
           path: |
-            artifacts/release/KirinDL-Universal-Release.apk
-            artifacts/release/KirinDL-Universal-Release.apk.sha256
-            artifacts/release/KirinDL-ARM64-Release.apk
-            artifacts/release/KirinDL-ARM64-Release.apk.sha256
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-universal.apk
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-arm64-v8a.apk
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-armeabi-v7a.apk
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-x86.apk
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-x86_64.apk
+            ${{ steps.assets.outputs.apk_dir }}/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
@@ -291,10 +280,12 @@ jobs:
           make_latest: true
           fail_on_unmatched_files: true
           files: |
-            artifacts/release/KirinDL-Universal-Release.apk
-            artifacts/release/KirinDL-Universal-Release.apk.sha256
-            artifacts/release/KirinDL-ARM64-Release.apk
-            artifacts/release/KirinDL-ARM64-Release.apk.sha256
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-universal.apk
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-arm64-v8a.apk
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-armeabi-v7a.apk
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-x86.apk
+            ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-x86_64.apk
+            ${{ steps.assets.outputs.apk_dir }}/SHA256SUMS.txt
 
       - name: Remove signing material
         if: always()
