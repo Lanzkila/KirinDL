@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Publish the automatically generated next stable patch after the signed build succeeds"
+        description: "Publish the automatically generated next stable revision after the signed build succeeds"
         required: true
         default: false
         type: boolean
@@ -53,7 +53,7 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      - name: Resolve next stable patch
+      - name: Resolve next stable revision
         id: version
         shell: python
         env:
@@ -73,33 +73,43 @@ jobs:
           )
           releases = json.loads(raw)
 
-          stable_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+          stable_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$")
           stable_versions = []
           for release in releases:
               if release.get("draft") or release.get("prerelease"):
                   continue
               match = stable_re.fullmatch(release.get("tag_name", ""))
               if match:
-                  stable_versions.append(tuple(map(int, match.groups())))
+                  major, minor, patch = map(int, match.groups()[:3])
+                  build = int(match.group(4) or 0)
+                  stable_versions.append((major, minor, patch, build))
 
           if stable_versions:
-              major, minor, patch = max(stable_versions)
+              major, minor, patch, build = max(stable_versions)
           else:
               text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
               match = re.search(
                   r"Version\.Stable\(\s*versionMajor\s*=\s*(\d+),"
                   r"\s*versionMinor\s*=\s*(\d+),"
-                  r"\s*versionPatch\s*=\s*(\d+)\s*\)",
+                  r"\s*versionPatch\s*=\s*(\d+)"
+                  r"(?:,\s*versionBuild\s*=\s*(\d+))?\s*\)",
                   text,
                   re.S,
               )
               if not match:
                   raise SystemExit("Could not resolve a stable KirinDL base version")
-              major, minor, patch = map(int, match.groups())
+              major, minor, patch = map(int, match.groups()[:3])
+              build = int(match.group(4) or 0)
 
-          patch += 1
-          version = f"{major}.{minor}.{patch}"
-          version_code = major * 100_000_000 + minor * 1_000_000 + patch * 10_000 + 400
+          build += 1
+          version = f"{major}.{minor}.{patch}.{build}"
+          version_code = (
+              major * 100_000_000
+              + minor * 1_000_000
+              + patch * 10_000
+              + build * 10
+              + 400
+          )
           release_notes_path = f"release-notes/v{version}.md"
 
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
@@ -121,14 +131,18 @@ jobs:
           import re
           from pathlib import Path
 
-          major, minor, patch = os.environ["RELEASE_VERSION"].split(".")
+          major, minor, patch, build = os.environ["RELEASE_VERSION"].split(".")
           version_code = os.environ["VERSION_CODE"]
 
           version_file = Path("buildSrc/src/main/kotlin/Version.kt")
           text = version_file.read_text(encoding="utf-8")
           text, count = re.subn(
-              r"Version\.Stable\(\s*versionMajor\s*=\s*\d+,\s*versionMinor\s*=\s*\d+,\s*versionPatch\s*=\s*\d+\s*\)",
-              f"Version.Stable(versionMajor = {major}, versionMinor = {minor}, versionPatch = {patch})",
+              r"Version\.Stable\(\s*versionMajor\s*=\s*\d+,\s*versionMinor\s*=\s*\d+,"
+              r"\s*versionPatch\s*=\s*\d+(?:,\s*versionBuild\s*=\s*\d+)?\s*\)",
+              (
+                  f"Version.Stable(versionMajor = {major}, versionMinor = {minor}, "
+                  f"versionPatch = {patch}, versionBuild = {build})"
+              ),
               text,
               count=1,
           )
