@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Move Media progress into download status badge (`9bb7bcfc`, 2026-10-02)
 - Shorten KirinDL README (`056496e5`, 2026-10-02)
 - Publish Stable releases with all APK architectures (`7349fb03`, 2026-10-02)
 
