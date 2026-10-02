@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add one-shot duplicate run canceller (`8d11dca8`, 2026-10-02)
 - Trigger stable artifact test (`868db8e4`, 2026-10-02)
 - Add one-shot stable artifact dispatcher (`145075f5`, 2026-10-02)
 - Wire Media card progress to live download state (`87ab73f6`, 2026-10-02)
