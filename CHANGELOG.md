@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Shorten KirinDL README (`056496e5`, 2026-10-02)
 - Publish Stable releases with all APK architectures (`7349fb03`, 2026-10-02)
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
