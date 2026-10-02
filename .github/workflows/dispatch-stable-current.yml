@@ -1,0 +1,25 @@
+name: Dispatch Stable Artifact Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.kirin-stable-artifact-trigger'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch Stable workflow without publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/android.yml/dispatches" \
+            -f ref=main \
+            -f 'inputs[publish_release]=false'
