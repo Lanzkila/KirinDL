@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Support four-part Stable version names (`2d8000d3`, 2026-10-02)
 - Limit Media temp path to active tasks (`57a286a6`, 2026-10-02)
 - Show temp path below Media cards (`dbc65053`, 2026-10-02)
 - Move Media progress into download status badge (`9bb7bcfc`, 2026-10-02)
