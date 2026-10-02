@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add KirinDL v3.1.9.1 release notes (`1e268e96`, 2026-10-02)
 - Prepare Stable revision releases such as v3.1.9.1 (`b35421d2`, 2026-10-02)
 - Support four-part Stable version names (`2d8000d3`, 2026-10-02)
 - Limit Media temp path to active tasks (`57a286a6`, 2026-10-02)
