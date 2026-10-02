@@ -716,11 +716,17 @@ fun DownloadPageImplV2(
                             key = { (task, _) -> task.id },
                         ) { (task, state) ->
                             with(state.viewState) {
+                                val temporaryPath =
+                                    state.videoInfo?.id
+                                        ?.takeIf { it.isNotBlank() }
+                                        ?.let { FileUtil.getExternalTempDir(it).absolutePath }
+
                                 VideoCardV2(
                                     modifier = Modifier.padding(bottom = 20.dp).padding(),
                                     viewState = this,
                                     downloadState = state.downloadState,
                                     isAudioTask = task.preferences.extractAudio,
+                                    temporaryPath = temporaryPath,
                                     actionButton = {
                                         ActionButton(
                                             modifier = Modifier,
@@ -733,6 +739,7 @@ fun DownloadPageImplV2(
                                         CardStateIndicator(
                                             modifier = Modifier,
                                             downloadState = state.downloadState,
+                                            isAudioTask = task.preferences.extractAudio,
                                         )
                                     },
                                     onButtonClick = { showActionSheet(task) },
@@ -746,15 +753,22 @@ fun DownloadPageImplV2(
                             key = { (task, _) -> task.id },
                             span = { GridItemSpan(maxLineSpan) },
                         ) { (task, state) ->
+                            val temporaryPath =
+                                state.videoInfo?.id
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?.let { FileUtil.getExternalTempDir(it).absolutePath }
+
                             VideoListItem(
                                 modifier = Modifier.padding(bottom = 16.dp),
                                 viewState = state.viewState,
                                 downloadState = state.downloadState,
                                 isAudioTask = task.preferences.extractAudio,
+                                temporaryPath = temporaryPath,
                                 stateIndicator = {
                                     ListItemStateText(
                                         modifier = Modifier.padding(top = 3.dp),
                                         downloadState = state.downloadState,
+                                        isAudioTask = task.preferences.extractAudio,
                                     )
                                 },
                                 onButtonClick = { showActionSheet(task) },
