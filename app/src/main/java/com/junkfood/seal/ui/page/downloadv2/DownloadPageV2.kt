@@ -719,6 +719,8 @@ fun DownloadPageImplV2(
                                 VideoCardV2(
                                     modifier = Modifier.padding(bottom = 20.dp).padding(),
                                     viewState = this,
+                                    downloadState = state.downloadState,
+                                    isAudioTask = task.preferences.extractAudio,
                                     actionButton = {
                                         ActionButton(
                                             modifier = Modifier,
@@ -747,6 +749,8 @@ fun DownloadPageImplV2(
                             VideoListItem(
                                 modifier = Modifier.padding(bottom = 16.dp),
                                 viewState = state.viewState,
+                                downloadState = state.downloadState,
+                                isAudioTask = task.preferences.extractAudio,
                                 stateIndicator = {
                                     ListItemStateText(
                                         modifier = Modifier.padding(top = 3.dp),
