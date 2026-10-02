@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Trigger Stable artifact build (`900f505f`, 2026-10-02)
 - Add one-shot stable artifact dispatcher (`18f85eb8`, 2026-10-02)
 - Keep Stable artifact to Universal APK for one day (`8a93a41f`, 2026-10-02)
 - Run KirinDL Stable Test (`3a81e4f1`, 2026-10-01)
