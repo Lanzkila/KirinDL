@@ -180,7 +180,7 @@ def diagnostics(engine_dir):
 
 _PREVIEW_SCAN_LIMIT = 40
 _LARGE_GALLERY_THRESHOLD = 30
-_QUEUE_PREVIEW_PROBE_LIMIT = 12
+_QUEUE_PREVIEW_PROBE_LIMIT = 24
 _QUEUE_CHILD_MESSAGE_LIMIT = 14
 _IMAGE_EXTENSIONS = {
     "jpg", "jpeg", "png", "gif", "webp", "avif", "bmp", "tif", "tiff", "heic",
