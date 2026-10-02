@@ -268,17 +268,13 @@ jobs:
           cat KirinDL-Universal-Release.apk.sha256
           cat KirinDL-ARM64-Release.apk.sha256
 
-      - name: Upload signed Release artifacts
+      - name: Upload signed Release artifact
         uses: actions/upload-artifact@v4
         with:
           name: KirinDL-Release-${{ steps.version.outputs.version }}-${{ github.run_number }}
-          path: |
-            artifacts/release/KirinDL-Universal-Release.apk
-            artifacts/release/KirinDL-Universal-Release.apk.sha256
-            artifacts/release/KirinDL-ARM64-Release.apk
-            artifacts/release/KirinDL-ARM64-Release.apk.sha256
+          path: artifacts/release/KirinDL-Universal-Release.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 1
           compression-level: 0
 
       - name: Publish GitHub Release
