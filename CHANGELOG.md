@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Trigger pending stable test cancellation (`a61af59c`, 2026-10-02)
+- Add one-shot pending stable test canceller (`fd51aac7`, 2026-10-02)
 - Trigger duplicate run cancellation (`bc7b61ae`, 2026-10-02)
 - Add one-shot duplicate run canceller (`8d11dca8`, 2026-10-02)
 - Trigger stable artifact test (`868db8e4`, 2026-10-02)
