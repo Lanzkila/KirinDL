@@ -34,7 +34,6 @@ import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -96,6 +95,7 @@ fun VideoCardV2(
     viewState: Task.ViewState,
     downloadState: Task.DownloadState? = null,
     isAudioTask: Boolean = false,
+    temporaryPath: String? = null,
     stateIndicator: @Composable (BoxScope.() -> Unit)? = null,
     actionButton: @Composable (BoxScope.() -> Unit)? = null,
     onButtonClick: () -> Unit,
@@ -110,6 +110,7 @@ fun VideoCardV2(
             fileSizeApprox = fileSizeApprox,
             downloadState = downloadState,
             isAudioTask = isAudioTask,
+            temporaryPath = temporaryPath,
             stateIndicator = stateIndicator,
             actionButton = actionButton,
             onButtonClick = onButtonClick,
@@ -123,6 +124,7 @@ fun VideoListItem(
     viewState: Task.ViewState,
     downloadState: Task.DownloadState? = null,
     isAudioTask: Boolean = false,
+    temporaryPath: String? = null,
     stateIndicator: @Composable (() -> Unit)? = null,
     onButtonClick: () -> Unit,
 ) {
@@ -136,6 +138,7 @@ fun VideoListItem(
             fileSizeApprox = fileSizeApprox,
             downloadState = downloadState,
             isAudioTask = isAudioTask,
+            temporaryPath = temporaryPath,
             stateIndicator = stateIndicator,
             onButtonClick = onButtonClick,
         )
@@ -152,6 +155,7 @@ fun VideoListItem(
     fileSizeApprox: Double = .0,
     downloadState: Task.DownloadState? = null,
     isAudioTask: Boolean = false,
+    temporaryPath: String? = null,
     stateIndicator: @Composable (() -> Unit)? = null,
     onButtonClick: () -> Unit,
 ) {
@@ -174,10 +178,8 @@ fun VideoListItem(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 stateIndicator?.invoke()
-                MediaCardTransferProgress(
-                    downloadState = downloadState,
-                    isAudioTask = isAudioTask,
-                    compact = true,
+                MediaCardTempPath(
+                    temporaryPath = temporaryPath,
                     modifier = Modifier.padding(top = 6.dp, end = 36.dp),
                 )
             }
@@ -247,6 +249,7 @@ fun VideoCardV2(
     fileSizeApprox: Double = .0,
     downloadState: Task.DownloadState? = null,
     isAudioTask: Boolean = false,
+    temporaryPath: String? = null,
     stateIndicator: @Composable (BoxScope.() -> Unit)? = null,
     actionButton: @Composable (BoxScope.() -> Unit)? = null,
     onButtonClick: () -> Unit,
@@ -282,10 +285,8 @@ fun VideoCardV2(
                     )
                 }
             }
-            MediaCardTransferProgress(
-                downloadState = downloadState,
-                isAudioTask = isAudioTask,
-                compact = false,
+            MediaCardTempPath(
+                temporaryPath = temporaryPath,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
             )
         }
@@ -407,7 +408,11 @@ private fun VideoInfoLabel(modifier: Modifier = Modifier, duration: Int, fileSiz
 }
 
 @Composable
-fun CardStateIndicator(modifier: Modifier = Modifier, downloadState: Task.DownloadState) {
+fun CardStateIndicator(
+    modifier: Modifier = Modifier,
+    downloadState: Task.DownloadState,
+    isAudioTask: Boolean = false,
+) {
     Surface(
         modifier = modifier.padding(vertical = 12.dp, horizontal = 8.dp),
         color = LabelContainerColor,
@@ -416,83 +421,26 @@ fun CardStateIndicator(modifier: Modifier = Modifier, downloadState: Task.Downlo
         CardItemStateText(
             modifier = Modifier.padding(horizontal = 4.dp),
             downloadState = downloadState,
+            isAudioTask = isAudioTask,
         )
     }
 }
 
 @Composable
-private fun MediaCardTransferProgress(
-    downloadState: Task.DownloadState?,
-    isAudioTask: Boolean,
-    compact: Boolean,
+private fun MediaCardTempPath(
+    temporaryPath: String?,
     modifier: Modifier = Modifier,
 ) {
-    val progress: Float
-    val stage: String
-    val progressText: String
+    val path = temporaryPath?.takeIf { it.isNotBlank() } ?: return
 
-    when (downloadState) {
-        is FetchingInfo -> {
-            progress = -1f
-            stage = "Preparing"
-            progressText = ""
-        }
-        is Running -> {
-            progress = downloadState.progress
-            progressText = downloadState.progressText
-            stage = mediaTransferStage(progressText, isAudioTask)
-        }
-        is Paused -> {
-            val pausedProgress = downloadState.progress ?: return
-            progress = pausedProgress
-            stage = "Paused"
-            progressText = ""
-        }
-        else -> return
-    }
-
-    Column(
+    Text(
+        text = "Temp: $path",
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 5.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stage,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            if (progress >= 0f) {
-                Text(
-                    text = "%.1f%%".format(progress.coerceIn(0f, 1f) * 100f),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        if (progress >= 0f) {
-            LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-
-        if (progressText.isNotBlank()) {
-            Text(
-                text = progressText,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 private fun mediaTransferStage(progressText: String, isAudioTask: Boolean): String {
@@ -517,6 +465,7 @@ fun ListItemStateText(
     modifier: Modifier = Modifier,
     isDarkTheme: Boolean = LocalDarkTheme.current.isDarkTheme(),
     downloadState: Task.DownloadState,
+    isAudioTask: Boolean = false,
 ) {
     val sizeModifier = Modifier.size(14.dp)
 
@@ -544,14 +493,12 @@ fun ListItemStateText(
                 }
                 ReadyWithInfo -> stringResource(R.string.status_enqueued)
                 is Running -> {
-                    val progressText = downloadState.progressText
+                    val stage = mediaTransferStage(downloadState.progressText, isAudioTask)
                     val progress = downloadState.progress
-                    when {
-                        progressText.contains("[Merger]", ignoreCase = true) ||
-                        progressText.contains("Merging formats", ignoreCase = true) ->
-                            stringResource(R.string.status_merging)
-                        progress >= 0 -> "%.1f %%".format(progress * 100)
-                        else -> stringResource(R.string.status_downloading)
+                    if (progress >= 0) {
+                        "%s %.1f%%".format(stage, progress.coerceIn(0f, 1f) * 100f)
+                    } else {
+                        stage
                     }
                 }
             }
@@ -626,7 +573,11 @@ fun ListItemStateText(
 }
 
 @Composable
-private fun CardItemStateText(modifier: Modifier = Modifier, downloadState: Task.DownloadState) {
+private fun CardItemStateText(
+    modifier: Modifier = Modifier,
+    downloadState: Task.DownloadState,
+    isAudioTask: Boolean = false,
+) {
     val errorColor =
         MaterialTheme.colorScheme.run {
             if (LocalDarkTheme.current.isDarkTheme()) error else errorContainer
@@ -636,18 +587,29 @@ private fun CardItemStateText(modifier: Modifier = Modifier, downloadState: Task
 
     val text =
         when (downloadState) {
-            is Canceled -> R.string.status_canceled
-            is Completed -> R.string.status_downloaded
-            is Error -> R.string.status_error
-            is FetchingInfo -> R.string.status_fetching_video_info
-            Idle -> R.string.status_enqueued
-            is Paused -> R.string.status_paused
-            ReadyWithInfo -> R.string.status_enqueued
-            is Running ->
-                if (downloadState.progressText.contains("[Merger]", ignoreCase = true) ||
-                    downloadState.progressText.contains("Merging formats", ignoreCase = true))
-                    R.string.status_merging
-                else R.string.status_downloading
+            is Canceled -> stringResource(R.string.status_canceled)
+            is Completed -> stringResource(R.string.status_downloaded)
+            is Error -> stringResource(R.string.status_error)
+            is FetchingInfo -> "Preparing"
+            Idle -> stringResource(R.string.status_enqueued)
+            is Paused -> {
+                val progress = downloadState.progress
+                if (progress != null && progress >= 0) {
+                    "Paused %.1f%%".format(progress.coerceIn(0f, 1f) * 100f)
+                } else {
+                    stringResource(R.string.status_paused)
+                }
+            }
+            ReadyWithInfo -> stringResource(R.string.status_enqueued)
+            is Running -> {
+                val stage = mediaTransferStage(downloadState.progressText, isAudioTask)
+                val progress = downloadState.progress
+                if (progress >= 0) {
+                    "%s %.1f%%".format(stage, progress.coerceIn(0f, 1f) * 100f)
+                } else {
+                    stage
+                }
+            }
         }
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         if (downloadState is Error) {
@@ -660,7 +622,7 @@ private fun CardItemStateText(modifier: Modifier = Modifier, downloadState: Task
             Spacer(Modifier.width(4.dp))
         }
         Text(
-            text = stringResource(id = text),
+            text = text,
             modifier = Modifier,
             style = textStyle,
             color = contentColor,
