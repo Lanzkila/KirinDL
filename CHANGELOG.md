@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Harden Download All preflight count handling (`3bfc0440`, 2026-10-05)
 - Run collection downloads in Download All mode (`c3105dde`, 2026-10-05)
 - Add Download All mode for Gallery collections (`d33eff86`, 2026-10-05)
 - Track collection mode in Gallery DL preflight (`bc9df686`, 2026-10-05)
