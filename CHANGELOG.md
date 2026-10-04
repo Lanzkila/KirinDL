@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Track collection mode in Gallery DL preflight (`bc9df686`, 2026-10-05)
 - Expose Gallery DL collection mode in preflight (`a33dfb11`, 2026-10-05)
 - Handle hentai source kinds in URL normalization (`a31d2a98`, 2026-10-05)
 - Use Gallery DL for hentai manga feed sources (`30d6f9eb`, 2026-10-05)
