@@ -8,6 +8,7 @@ import com.junkfood.seal.util.GalleryDlConfig
 import com.junkfood.seal.util.GalleryDlEngine
 import com.junkfood.seal.util.GalleryDlRunner
 import com.junkfood.seal.util.GalleryDlStore
+import com.junkfood.seal.util.SavedSourcesEngine
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -659,6 +660,19 @@ class GalleryDlViewModel : ViewModel() {
         val current = mutableState.value
         if (!current.canDownload) return
 
+        val detectedKind = SavedSourcesEngine.classifySourceUrl(current.url)
+        val downloadAll =
+            current.preflightInfo?.isCollection == true ||
+                (detectedKind != null &&
+                    SavedSourcesEngine.isHentaiMangaCollectionKind(detectedKind))
+        val knownTotal =
+            current.preflightInfo
+                ?.estimatedItemCount
+                ?.takeIf { count ->
+                    count > 0 &&
+                        (!downloadAll || current.preflightInfo.itemCountExact)
+                }
+
         mutableState.update {
             it.copy(
                 isDownloading = true,
@@ -667,8 +681,8 @@ class GalleryDlViewModel : ViewModel() {
                 savedFiles = emptyList(),
                 destinationDirectory = null,
                 downloadCompletedCount = 0,
-                downloadTotalCount = current.preflightInfo?.estimatedItemCount?.takeIf { it > 0 },
-                downloadStage = "Preparing",
+                downloadTotalCount = knownTotal,
+                downloadStage = if (downloadAll) "Preparing all" else "Preparing",
             )
         }
 
@@ -676,13 +690,15 @@ class GalleryDlViewModel : ViewModel() {
             GalleryDlRunner.download(
                 App.context,
                 current.url,
-                current.preflightInfo?.estimatedItemCount?.takeIf { it > 0 },
+                knownTotal,
             ) { completed, total, stage ->
                 mutableState.update { state ->
                     state.copy(
                         downloadCompletedCount = completed,
                         downloadTotalCount = total ?: state.downloadTotalCount,
-                        downloadStage = stage,
+                        downloadStage =
+                            if (downloadAll && stage == "Downloading") "Downloading all"
+                            else stage,
                     )
                 }
             }.onSuccess { result ->
@@ -693,7 +709,7 @@ class GalleryDlViewModel : ViewModel() {
                             isDownloading = false,
                             downloadCompletedCount = result.savedFiles.size,
                             downloadTotalCount = result.savedFiles.size,
-                            downloadStage = "Done",
+                            downloadStage = if (downloadAll) "All done" else "Done",
                             installedVersion = result.version,
                             savedFiles = result.savedFiles,
                             destinationDirectory = result.destinationDirectory,
@@ -702,6 +718,7 @@ class GalleryDlViewModel : ViewModel() {
                             cacheSize = snapshot.cacheSize,
                             statusMessage =
                                 buildString {
+                                    if (downloadAll) append("Download All finished • ")
                                     append("Saved ${result.savedFiles.size} file(s)")
                                     if (result.extractorLabel.isNotBlank()) append(" • ${result.extractorLabel}")
                                 },
