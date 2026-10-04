@@ -112,6 +112,81 @@ object SavedSourcesEngine {
             }
         }
 
+    private val hentaiMangaHosts =
+        setOf(
+            "hentainexus.com",
+            "nhentai.net",
+            "imhentai.xxx",
+            "hentaifox.com",
+            "hentaiera.com",
+            "hentairox.com",
+            "hentaienvy.com",
+            "hentaizap.com",
+            "hentaihand.com",
+            "hentai2read.com",
+            "hentaihere.com",
+            "simply-hentai.com",
+            "hitomi.la",
+            "e-hentai.org",
+            "exhentai.org",
+        )
+
+    private fun looksLikeHentaiMangaHost(host: String): Boolean {
+        val cleanHost = host.lowercase().removePrefix("www.")
+        return cleanHost in hentaiMangaHosts ||
+            hentaiMangaHosts.any { cleanHost.endsWith(".$it") } ||
+            "hentai" in cleanHost ||
+            "doujin" in cleanHost
+    }
+
+    private fun classifyHentaiMangaCollection(
+        uri: Uri,
+        host: String,
+        lowerPath: String,
+    ): SavedSourceStore.SourceKind? {
+        if (!looksLikeHentaiMangaHost(host)) return null
+
+        fun kindForField(field: String): SavedSourceStore.SourceKind? =
+            when (field.trim().lowercase()) {
+                "artist", "artists", "author", "authors", "creator", "creators" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_ARTIST
+                "publisher", "publishers" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_PUBLISHER
+                "group", "groups", "circle", "circles" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_GROUP
+                "magazine", "magazines" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_MAGAZINE
+                "series", "parody", "parodies" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_SERIES
+                "character", "characters" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_CHARACTER
+                "tag", "tags" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_TAG
+                "language", "languages", "lang" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_LANGUAGE
+                "category", "categories", "genre", "genres" ->
+                    SavedSourceStore.SourceKind.HENTAI_MANGA_CATEGORY
+                else -> null
+            }
+
+        val searchQuery = uri.getQueryParameter("q").orEmpty().trim()
+        if (searchQuery.isNotBlank()) {
+            val field = searchQuery.substringBefore(':', "").trim()
+            kindForField(field)?.let { return it }
+        }
+
+        lowerPath
+            .trim('/')
+            .split('/')
+            .asSequence()
+            .filter(String::isNotBlank)
+            .mapNotNull(::kindForField)
+            .firstOrNull()
+            ?.let { return it }
+
+        return null
+    }
+
     fun classifySourceUrl(text: String): SavedSourceStore.SourceKind? {
         val raw = text.trim()
         if (raw.isBlank()) return null
@@ -123,6 +198,8 @@ object SavedSourcesEngine {
         val lowerPath = path.lowercase()
 
         if (KirinSearchEngine.looksLikeDirectVideoUrl(raw)) return null
+
+        classifyHentaiMangaCollection(uri, host, lowerPath)?.let { return it }
 
         return when {
             host == "music.youtube.com" -> {
