@@ -491,6 +491,15 @@ object SavedSourcesEngine {
                 }
             }
 
+            SavedSourceStore.SourceKind.HENTAI_MANGA_ARTIST,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_PUBLISHER,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_GROUP,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_MAGAZINE,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_SERIES,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_CHARACTER,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_TAG,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_LANGUAGE,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_CATEGORY,
             SavedSourceStore.SourceKind.GENERIC_COLLECTION ->
                 rawUrl.takeIf { it.startsWith("http://") || it.startsWith("https://") }
         }
