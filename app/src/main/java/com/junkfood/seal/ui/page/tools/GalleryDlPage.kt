@@ -83,6 +83,7 @@ import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import com.junkfood.seal.util.GalleryDlRunner
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
+import com.junkfood.seal.util.SavedSourcesEngine
 import java.text.DateFormat
 import java.util.Date
 import org.koin.androidx.compose.koinViewModel
@@ -103,6 +104,15 @@ private data class KirinGalleryColors(
 private enum class GalleryConfirmAction {
     DOWNLOAD,
     QUEUE,
+}
+
+private fun isDownloadAllSource(
+    url: String,
+    info: GalleryDlRunner.ExtractorInfo?,
+): Boolean {
+    if (info?.isCollection == true) return true
+    val kind = SavedSourcesEngine.classifySourceUrl(url) ?: return false
+    return SavedSourcesEngine.isHentaiMangaCollectionKind(kind)
 }
 
 @Composable
@@ -404,9 +414,13 @@ fun GalleryDlPage(
         AlertDialog(
             onDismissRequest = { confirmAction = null },
             title = {
+                val downloadAll = isDownloadAllSource(state.url, state.preflightInfo)
                 Text(
-                    if (action == GalleryConfirmAction.DOWNLOAD) "Download gallery?"
-                    else "Add to Gallery queue?"
+                    if (action == GalleryConfirmAction.DOWNLOAD) {
+                        if (downloadAll) "Download all items?" else "Download gallery?"
+                    } else {
+                        if (downloadAll) "Add collection to Gallery queue?" else "Add to Gallery queue?"
+                    }
                 )
             },
             text = {
@@ -428,6 +442,14 @@ fun GalleryDlPage(
                         Text(
                             "Extractor: $it",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    val downloadAll = isDownloadAllSource(state.url, state.preflightInfo)
+                    if (downloadAll) {
+                        Text(
+                            "Mode: Download All • follows every child item from this collection",
+                            color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -453,7 +475,15 @@ fun GalleryDlPage(
                     },
                     enabled = !state.isCheckingExtractor && state.extractorSupported != false,
                 ) {
-                    Text(if (action == GalleryConfirmAction.DOWNLOAD) "Download" else "Add")
+                    val downloadAll = isDownloadAllSource(state.url, state.preflightInfo)
+                    Text(
+                        when (action) {
+                            GalleryConfirmAction.DOWNLOAD ->
+                                if (downloadAll) "Download All" else "Download"
+                            GalleryConfirmAction.QUEUE ->
+                                if (downloadAll) "Queue All" else "Add"
+                        }
+                    )
                 }
             },
             dismissButton = {
@@ -551,6 +581,8 @@ private fun GalleryDownloadTab(
     onRememberSiteFilter: () -> Unit,
     onClearSiteFilter: () -> Unit,
 ) {
+    val downloadAll = isDownloadAllSource(state.url, state.preflightInfo)
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -735,7 +767,10 @@ private fun GalleryDownloadTab(
             } else {
                 Icon(Icons.Outlined.Download, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Download Gallery", fontWeight = FontWeight.Bold)
+                Text(
+                    if (downloadAll) "Download All" else "Download Gallery",
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
 
@@ -753,7 +788,7 @@ private fun GalleryDownloadTab(
             ) {
                 Icon(Icons.Outlined.Add, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                Text("Add to Queue")
+                Text(if (downloadAll) "Queue All" else "Add to Queue")
             }
             OutlinedButton(
                 onClick = onBatch,
@@ -873,6 +908,9 @@ private fun GalleryExtractorInspector(
                 InspectorPill("Extractor", state.extractorLabel ?: info.label, colors)
                 info.mediaType.takeIf(String::isNotBlank)?.let {
                     InspectorPill("Type", it, colors)
+                }
+                if (isDownloadAllSource(state.url, info)) {
+                    InspectorPill("Mode", "Download All", colors)
                 }
                 val count = info.estimatedItemCount ?: info.scannedItemCount.takeIf { it > 0 }
                 count?.let { InspectorPill("Items", it.toString(), colors) }
