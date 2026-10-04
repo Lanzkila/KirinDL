@@ -43,6 +43,7 @@ object GalleryDlRunner {
         val author: String = "",
         val thumbnailUrl: String = "",
         val mediaType: String = "",
+        val isCollection: Boolean = false,
         val estimatedItemCount: Int? = null,
         val itemCountExact: Boolean = false,
         val scannedItemCount: Int = 0,
@@ -137,6 +138,7 @@ object GalleryDlRunner {
                             author = result.optString("author"),
                             thumbnailUrl = result.optString("thumbnail"),
                             mediaType = result.optString("media_type"),
+                            isCollection = result.optBoolean("collection", false),
                             estimatedItemCount =
                                 if (result.has("estimated_count") && !result.isNull("estimated_count")) {
                                     result.optInt("estimated_count")
