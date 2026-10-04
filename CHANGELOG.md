@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Restore Bilibili short-link routing (`03ebdc0f`, 2026-10-05)
 - Restore dedicated Bilibili download profile (`eb65541c`, 2026-10-05)
 - Harden Download All preflight count handling (`3bfc0440`, 2026-10-05)
 - Run collection downloads in Download All mode (`c3105dde`, 2026-10-05)
