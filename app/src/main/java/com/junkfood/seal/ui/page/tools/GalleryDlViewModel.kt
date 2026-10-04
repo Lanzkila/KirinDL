@@ -660,17 +660,18 @@ class GalleryDlViewModel : ViewModel() {
         val current = mutableState.value
         if (!current.canDownload) return
 
+        val preflight = current.preflightInfo
         val detectedKind = SavedSourcesEngine.classifySourceUrl(current.url)
         val downloadAll =
-            current.preflightInfo?.isCollection == true ||
+            preflight?.isCollection == true ||
                 (detectedKind != null &&
                     SavedSourcesEngine.isHentaiMangaCollectionKind(detectedKind))
         val knownTotal =
-            current.preflightInfo
+            preflight
                 ?.estimatedItemCount
                 ?.takeIf { count ->
                     count > 0 &&
-                        (!downloadAll || current.preflightInfo.itemCountExact)
+                        (!downloadAll || preflight.itemCountExact)
                 }
 
         mutableState.update {
