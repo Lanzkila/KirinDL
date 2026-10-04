@@ -249,6 +249,20 @@ object SavedSourcesEngine {
         }
     }
 
+    fun isHentaiMangaCollectionKind(kind: SavedSourceStore.SourceKind): Boolean =
+        when (kind) {
+            SavedSourceStore.SourceKind.HENTAI_MANGA_ARTIST,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_PUBLISHER,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_GROUP,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_MAGAZINE,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_SERIES,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_CHARACTER,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_TAG,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_LANGUAGE,
+            SavedSourceStore.SourceKind.HENTAI_MANGA_CATEGORY -> true
+            else -> false
+        }
+
     fun validationMessage(text: String): String {
         val raw = text.trim()
         if (raw.isBlank()) return "Paste a feed, channel, playlist, collection or gallery URL"
@@ -263,6 +277,11 @@ object SavedSourcesEngine {
         source: SavedSourceStore.SavedSource,
         limit: Int,
     ): BrowseResult {
+        val detectedKind = classifySourceUrl(source.url)
+        if (detectedKind != null && isHentaiMangaCollectionKind(detectedKind)) {
+            return executeGalleryBrowse(context, source, limit)
+        }
+
         return when (source.engine) {
             SavedSourceStore.SourceEngine.YT_DLP -> executeYtDlpBrowse(source, limit)
             SavedSourceStore.SourceEngine.GALLERY_DL -> executeGalleryBrowse(context, source, limit)
