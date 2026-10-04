@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Use Gallery DL for hentai manga feed sources (`30d6f9eb`, 2026-10-05)
+- Route hentai manga collection links through Gallery DL (`2fa0b77e`, 2026-10-05)
 - Expand hentai manga collection metadata (`d110705b`, 2026-10-05)
 - Classify hentai manga artist and publisher sources (`8edf9820`, 2026-10-05)
 - Add hentai manga collection source kinds (`18347eb9`, 2026-10-05)
