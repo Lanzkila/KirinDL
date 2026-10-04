@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Expand hentai manga collection metadata (`d110705b`, 2026-10-05)
 - Classify hentai manga artist and publisher sources (`8edf9820`, 2026-10-05)
 - Add hentai manga collection source kinds (`18347eb9`, 2026-10-05)
 - Use compact popup grid for Gallery DL themes (`62bc6d2d`, 2026-10-05)
