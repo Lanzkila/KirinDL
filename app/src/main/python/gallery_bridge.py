@@ -309,7 +309,8 @@ def _probe_queued_preview(extractor_module, message_enum, item):
                     data,
                     (
                         "username", "user_name", "author", "author_name", "artist",
-                        "uploader", "owner", "account", "user",
+                        "artist_name", "publisher", "publisher_name", "group", "circle",
+                        "magazine", "uploader", "owner", "account", "user",
                     ),
                 )
             if not thumbnail:
@@ -424,7 +425,7 @@ def inspect_url(
                             data,
                             (
                                 "title", "gallery_title", "album", "album_name", "set_name",
-                                "collection", "name", "post_title",
+                                "collection", "series", "parody", "magazine", "name", "post_title",
                             ),
                         )
                     if not author:
@@ -432,7 +433,8 @@ def inspect_url(
                             data,
                             (
                                 "username", "user_name", "author", "author_name", "artist",
-                                "artist_name", "uploader", "channel", "account", "owner", "user",
+                                "artist_name", "publisher", "publisher_name", "group", "circle",
+                                "magazine", "uploader", "channel", "account", "owner", "user",
                             ),
                         )
                     if not thumbnail:
@@ -475,7 +477,11 @@ def inspect_url(
                         )
                         item_creator = _pick_text(
                             item_data,
-                            ("username", "author", "artist", "uploader", "owner", "user"),
+                            (
+                                "username", "author", "artist", "artist_name", "publisher",
+                                "publisher_name", "group", "circle", "magazine",
+                                "uploader", "owner", "user",
+                            ),
                         )
                         item_thumb = _pick_text(
                             item_data,
@@ -511,14 +517,16 @@ def inspect_url(
                             item_data,
                             (
                                 "title", "post_title", "gallery_title", "album",
-                                "collection", "name", "filename", "id",
+                                "collection", "series", "parody", "magazine",
+                                "name", "filename", "id",
                             ),
                         )
                         item_creator = _pick_text(
                             item_data,
                             (
-                                "username", "user_name", "author", "artist", "uploader",
-                                "owner", "account", "user",
+                                "username", "user_name", "author", "artist", "artist_name",
+                                "publisher", "publisher_name", "group", "circle", "magazine",
+                                "uploader", "owner", "account", "user",
                             ),
                         )
                         item_thumb = _pick_text(
