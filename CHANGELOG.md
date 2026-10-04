@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add hentai manga collection source kinds (`18347eb9`, 2026-10-05)
 - Use compact popup grid for Gallery DL themes (`62bc6d2d`, 2026-10-05)
 - Use integer phase progress in Media cards (`67bc6229`, 2026-10-05)
 - Simplify Gallery DL Codeberg source label (`afbd80d4`, 2026-10-05)
