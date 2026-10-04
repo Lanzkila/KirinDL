@@ -31,8 +31,6 @@ import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -130,7 +128,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     var showBodyColorDialog by remember { mutableStateOf(false) }
     var showButtonColorDialog by remember { mutableStateOf(false) }
     var showCustomThemeDialog by remember { mutableStateOf(false) }
-    var showGalleryThemeMenu by remember { mutableStateOf(false) }
+    var showGalleryThemeDialog by remember { mutableStateOf(false) }
     var favoriteColorPair by remember { mutableStateOf(PreferenceUtil.getFavoriteColorPair()) }
     val previewDarkTheme = LocalDarkTheme.current.isDarkTheme()
 
@@ -338,45 +336,12 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                     onNavigateTo(Route.LANGUAGES)
                 }
                 PreferenceSubtitle(text = "Gallery DL")
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    PreferenceItem(
-                        title = "Gallery DL appearance",
-                        description = "${galleryTheme.title} — ${galleryTheme.description}",
-                        icon = Icons.Outlined.Palette,
-                        onClick = { showGalleryThemeMenu = true },
-                    )
-
-                    DropdownMenu(
-                        expanded = showGalleryThemeMenu,
-                        onDismissRequest = { showGalleryThemeMenu = false },
-                    ) {
-                        GalleryDlThemeStyle.entries.forEach { style ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(
-                                            text =
-                                                if (galleryTheme == style) {
-                                                    "✓ ${style.title}"
-                                                } else {
-                                                    style.title
-                                                },
-                                        )
-                                        Text(
-                                            text = style.description,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    GalleryDlThemePreference.setStyle(style)
-                                    showGalleryThemeMenu = false
-                                },
-                            )
-                        }
-                    }
-                }
+                PreferenceItem(
+                    title = "Gallery DL appearance",
+                    description = "${galleryTheme.title} • ${galleryThemeShortInfo(galleryTheme)}",
+                    icon = Icons.Outlined.Palette,
+                    onClick = { showGalleryThemeDialog = true },
+                )
             }
         },
     )
@@ -421,6 +386,161 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                 showCustomThemeDialog = false
             },
         )
+    }
+    if (showGalleryThemeDialog) {
+        GalleryDlThemeDialog(
+            selected = galleryTheme,
+            onDismiss = { showGalleryThemeDialog = false },
+            onSelect = {
+                GalleryDlThemePreference.setStyle(it)
+                showGalleryThemeDialog = false
+            },
+        )
+    }
+}
+
+private fun galleryThemeShortInfo(style: GalleryDlThemeStyle): String =
+    when (style) {
+        GalleryDlThemeStyle.APP_DEFAULT -> "App accent"
+        GalleryDlThemeStyle.KIRIN_CYAN -> "Bright cyan"
+        GalleryDlThemeStyle.OCEAN -> "Cool blue"
+        GalleryDlThemeStyle.EMERALD -> "Green"
+        GalleryDlThemeStyle.VIOLET -> "Purple"
+        GalleryDlThemeStyle.SAKURA -> "Soft pink"
+        GalleryDlThemeStyle.CRIMSON -> "Deep red"
+        GalleryDlThemeStyle.AMBER -> "Warm gold"
+        GalleryDlThemeStyle.TEAL -> "Teal"
+        GalleryDlThemeStyle.INDIGO -> "Indigo"
+        GalleryDlThemeStyle.LIME -> "Bright lime"
+    }
+
+@Composable
+private fun galleryThemePreviewColor(style: GalleryDlThemeStyle): Color =
+    when (style) {
+        GalleryDlThemeStyle.APP_DEFAULT -> MaterialTheme.colorScheme.primary
+        GalleryDlThemeStyle.KIRIN_CYAN -> Color(0xFF18BFEA)
+        GalleryDlThemeStyle.OCEAN -> Color(0xFF4B8DFF)
+        GalleryDlThemeStyle.EMERALD -> Color(0xFF2DBF85)
+        GalleryDlThemeStyle.VIOLET -> Color(0xFF8B7CFF)
+        GalleryDlThemeStyle.SAKURA -> Color(0xFFFF78A8)
+        GalleryDlThemeStyle.CRIMSON -> Color(0xFFE5485D)
+        GalleryDlThemeStyle.AMBER -> Color(0xFFFFB52E)
+        GalleryDlThemeStyle.TEAL -> Color(0xFF20B7A6)
+        GalleryDlThemeStyle.INDIGO -> Color(0xFF6674E8)
+        GalleryDlThemeStyle.LIME -> Color(0xFF91C94B)
+    }
+
+@Composable
+private fun GalleryDlThemeDialog(
+    selected: GalleryDlThemeStyle,
+    onDismiss: () -> Unit,
+    onSelect: (GalleryDlThemeStyle) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(28.dp),
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("Gallery DL theme")
+                Text(
+                    "Choose a Gallery DL accent",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                GalleryDlThemeStyle.entries.chunked(2).forEach { styles ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        styles.forEach { style ->
+                            GalleryDlThemeTile(
+                                style = style,
+                                selected = selected == style,
+                                onSelect = onSelect,
+                            )
+                        }
+                        if (styles.size == 1) {
+                            Box(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+    )
+}
+
+@Composable
+private fun RowScope.GalleryDlThemeTile(
+    style: GalleryDlThemeStyle,
+    selected: Boolean,
+    onSelect: (GalleryDlThemeStyle) -> Unit,
+) {
+    val previewColor = galleryThemePreviewColor(style)
+
+    Surface(
+        modifier = Modifier.weight(1f),
+        shape = RoundedCornerShape(18.dp),
+        color =
+            if (selected) MaterialTheme.colorScheme.secondaryContainer
+            else MaterialTheme.colorScheme.surfaceContainerHigh,
+        onClick = { onSelect(style) },
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .sizeIn(minHeight = 52.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(previewColor),
+            ) {
+                if (selected) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = null,
+                            modifier = Modifier.padding(4.dp).size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+            Text(
+                text = style.title,
+                style = MaterialTheme.typography.labelLarge,
+                color =
+                    if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+            Text(
+                text = galleryThemeShortInfo(style),
+                style = MaterialTheme.typography.bodySmall,
+                color =
+                    if (selected) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
     }
 }
 
