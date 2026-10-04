@@ -398,13 +398,19 @@ fun SavedSourcesPage(
                     if (duplicate != null) {
                         "Already saved as ${duplicate.displayTitle}"
                     } else {
+                        val effectiveEngine =
+                            if (SavedSourcesEngine.isHentaiMangaCollectionKind(kind)) {
+                                SavedSourceStore.SourceEngine.GALLERY_DL
+                            } else {
+                                sourceEngine
+                            }
                         val source =
                             SavedSourceStore.addSource(
                                 context = context,
                                 url = url,
                                 kind = kind,
                                 customName = nickname,
-                                engine = sourceEngine,
+                                engine = effectiveEngine,
                             )
                         sourceRevision += 1
                         showAddDialog = false
