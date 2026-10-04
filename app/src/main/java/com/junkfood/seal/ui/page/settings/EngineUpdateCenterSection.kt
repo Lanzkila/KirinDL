@@ -270,12 +270,9 @@ internal fun EngineUpdateCenterSection(
             title = "gallery-dl",
             installed = galleryInstalled ?: "Not installed",
             source =
-                gallerySource
-                    ?.removePrefix("codeberg:")
-                    ?.take(12)
-                    ?.let { "Installed source: Codeberg $it" }
-                    ?: "Source: Codeberg master",
-            latest = galleryLatestCommit?.let { "Latest master commit: ${it.take(12)}" },
+                if (gallerySource != null) "Installed source: Codeberg master"
+                else "Source: Codeberg master",
+            latest = galleryLatestCommit?.let { "Latest source: Codeberg master" },
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
