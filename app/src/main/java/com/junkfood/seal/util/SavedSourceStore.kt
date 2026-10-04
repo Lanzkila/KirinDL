@@ -21,6 +21,15 @@ object SavedSourceStore {
         YOUTUBE_MUSIC_COLLECTION("YT Music Collection"),
         BILIBILI_SPACE("Bilibili Space"),
         BILIBILI_COLLECTION("Bilibili Collection"),
+        HENTAI_MANGA_ARTIST("Hentai Artist"),
+        HENTAI_MANGA_PUBLISHER("Hentai Publisher"),
+        HENTAI_MANGA_GROUP("Hentai Group / Circle"),
+        HENTAI_MANGA_MAGAZINE("Hentai Magazine"),
+        HENTAI_MANGA_SERIES("Hentai Series / Parody"),
+        HENTAI_MANGA_CHARACTER("Hentai Character"),
+        HENTAI_MANGA_TAG("Hentai Tag"),
+        HENTAI_MANGA_LANGUAGE("Hentai Language"),
+        HENTAI_MANGA_CATEGORY("Hentai Category"),
         GENERIC_COLLECTION("Web Collection"),
     }
 
