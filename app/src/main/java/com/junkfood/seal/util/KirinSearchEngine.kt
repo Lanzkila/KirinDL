@@ -559,7 +559,9 @@ object KirinSearchEngine {
             host.endsWith("youtube.com") &&
                 (path == "/watch" || path.startsWith("/shorts/") || path.startsWith("/live/")) ->
                 true
+            host == "b23.tv" || host.endsWith(".b23.tv") -> true
             host.endsWith("bilibili.com") && path.startsWith("/video/") -> true
+            host.endsWith("bilibili.tv") && path.startsWith("/video/") -> true
             else -> false
         }
     }
