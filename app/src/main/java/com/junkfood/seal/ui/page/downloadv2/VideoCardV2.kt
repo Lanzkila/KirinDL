@@ -80,6 +80,7 @@ import com.junkfood.seal.util.toDurationText
 import com.junkfood.seal.util.toFileSizeText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 private val IconButtonSize = 64.dp
 private val IconSize = 36.dp
@@ -486,7 +487,10 @@ fun ListItemStateText(
                 is Paused -> {
                     val progress = downloadState.progress
                     if (progress != null && progress >= 0) {
-                        "%.1f %% - %s".format(progress * 100, stringResource(R.string.status_paused))
+                        "%s : %d%%".format(
+                            stringResource(R.string.status_paused),
+                            (progress.coerceIn(0f, 1f) * 100f).roundToInt(),
+                        )
                     } else {
                         stringResource(R.string.status_paused)
                     }
@@ -496,7 +500,10 @@ fun ListItemStateText(
                     val stage = mediaTransferStage(downloadState.progressText, isAudioTask)
                     val progress = downloadState.progress
                     if (progress >= 0) {
-                        "%s %.1f%%".format(stage, progress.coerceIn(0f, 1f) * 100f)
+                        "%s : %d%%".format(
+                            stage,
+                            (progress.coerceIn(0f, 1f) * 100f).roundToInt(),
+                        )
                     } else {
                         stage
                     }
@@ -595,7 +602,9 @@ private fun CardItemStateText(
             is Paused -> {
                 val progress = downloadState.progress
                 if (progress != null && progress >= 0) {
-                    "Paused %.1f%%".format(progress.coerceIn(0f, 1f) * 100f)
+                    "Paused : %d%%".format(
+                        (progress.coerceIn(0f, 1f) * 100f).roundToInt(),
+                    )
                 } else {
                     stringResource(R.string.status_paused)
                 }
@@ -605,7 +614,10 @@ private fun CardItemStateText(
                 val stage = mediaTransferStage(downloadState.progressText, isAudioTask)
                 val progress = downloadState.progress
                 if (progress >= 0) {
-                    "%s %.1f%%".format(stage, progress.coerceIn(0f, 1f) * 100f)
+                    "%s : %d%%".format(
+                        stage,
+                        (progress.coerceIn(0f, 1f) * 100f).roundToInt(),
+                    )
                 } else {
                     stage
                 }
