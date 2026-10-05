@@ -178,8 +178,104 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
         // long as a download keeps ticking (see: menu items unresponsive while downloading).
         // Capping both to a bounded cadence keeps the UI/notification smooth while freeing up
         // the main thread to service input in between updates.
-        private const val PROGRESS_UI_UPDATE_THROTTLE_MS = 200L
+        private const val PROGRESS_UI_UPDATE_THROTTLE_MS = 100L
         private const val PROGRESS_NOTIFICATION_THROTTLE_MS = 750L
+        private const val PROGRESS_STAGE_PREFIX = "__kirin_stage__"
+
+        /**
+         * yt-dlp may emit slightly out-of-order percentage callbacks while fragmented/DASH
+         * downloads are active. It can also legitimately reset to a low percentage when a
+         * second destination (usually the audio stream) starts. This guard keeps progress
+         * monotonic inside one transfer stream while still allowing an explicit stream reset.
+         */
+        private class ProgressGuard(private val audioOnly: Boolean) {
+            private var destinationCount = 0
+            private var lastProgress = -1f
+            private var stage = if (audioOnly) "audio" else "video"
+
+            data class Value(
+                val progress: Float,
+                val cleanText: String,
+                val stateText: String,
+            )
+
+            fun update(rawPercentage: Float, rawText: String): Value {
+                val cleanText =
+                    rawText
+                        .removePrefix("[download] ")
+                        .removePrefix("[download]")
+                        .trim()
+                val lower = rawText.lowercase()
+                val isDestination =
+                    lower.contains("[download] destination:") ||
+                        cleanText.startsWith("Destination:", ignoreCase = true)
+
+                if (isDestination) {
+                    destinationCount += 1
+                    stage =
+                        if (audioOnly) "audio"
+                        else if (destinationCount <= 1) "video"
+                        else "audio"
+                    lastProgress = -1f
+                } else {
+                    stage =
+                        when {
+                            lower.contains("[merger]") ||
+                                lower.contains("merging format") ||
+                                lower.contains(" merge") -> "merge"
+                            lower.contains("[extractaudio]") ||
+                                lower.contains("[videoconvertor]") ||
+                                lower.contains("[videoremuxer]") ||
+                                lower.contains("[metadata]") ||
+                                lower.contains("[embedsubtitle]") ||
+                                lower.contains("[embedthumbnail]") ||
+                                lower.contains("[fixup") ||
+                                lower.contains("ffmpeg") -> "processing"
+                            lower.contains("[hlsnative]") ||
+                                lower.contains("[dashsegments]") ||
+                                lower.contains("(frag ") ||
+                                lower.contains("fragment") -> "fragment"
+                            lower.contains("moving") || lower.contains("move file") -> "moving"
+                            else -> stage
+                        }
+                }
+
+                val rawProgress =
+                    if (rawPercentage.isFinite() && rawPercentage >= 0f) {
+                        (rawPercentage / 100f).coerceIn(0f, 1f)
+                    } else {
+                        -1f
+                    }
+
+                val progress =
+                    when {
+                        stage == "merge" || stage == "processing" || stage == "moving" -> -1f
+                        isDestination -> 0f
+                        rawProgress < 0f -> lastProgress
+                        lastProgress < 0f -> rawProgress
+                        // A completed first stream may be followed by a new stream without a
+                        // Destination line on some extractors. Permit only a clear hard reset.
+                        lastProgress >= 0.90f && rawProgress <= 0.15f -> {
+                            if (!audioOnly && destinationCount < 2) {
+                                destinationCount = 2
+                                stage = "audio"
+                            }
+                            rawProgress
+                        }
+                        else -> maxOf(lastProgress, rawProgress)
+                    }
+
+                if (progress >= 0f) {
+                    lastProgress = progress
+                }
+
+                return Value(
+                    progress = progress,
+                    cleanText = cleanText,
+                    stateText = "$PROGRESS_STAGE_PREFIX$stage|$cleanText",
+                )
+            }
+        }
     }
     private val snapshotFlow = snapshotFlow { taskStateMap.toMap() }
 
@@ -571,19 +667,19 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                 var lastUiUpdateAtMs = 0L
                 var lastNotifiedAtMs = 0L
                 var lastNotifiedProgress = -1
+                val progressGuard = ProgressGuard(preferences.extractAudio)
                 DownloadUtil.downloadVideo(
                         videoInfo = info,
                         taskId = id,
                         downloadPreferences = preferences,
                         progressCallback = { progressPercentage, _, text ->
-                            val progress = progressPercentage / 100f
-                            val progressInt = progressPercentage.toInt()
-                            // Strip yt-dlp's "[download] " prefix so progressText stored
-                            // in the Running state is clean for any UI that displays it.
-                            val cleanText = text
-                                .removePrefix("[download] ")
-                                .removePrefix("[download]")
-                                .trim()
+                            val guarded = progressGuard.update(progressPercentage, text)
+                            val progress = guarded.progress
+                            val progressInt =
+                                if (progress >= 0f) (progress * 100f).toInt().coerceIn(0, 100)
+                                else -1
+                            val cleanText = guarded.cleanText
+                            val stateText = guarded.stateText
                             val now = System.currentTimeMillis()
                             when (val preState = downloadState) {
                                 is Running -> {
@@ -597,7 +693,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                                     if (now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS) {
                                         lastUiUpdateAtMs = now
                                         downloadState =
-                                            preState.copy(progress = progress, progressText = cleanText)
+                                            preState.copy(progress = progress, progressText = stateText)
                                     }
                                     // Throttle notification updates independently (and more
                                     // conservatively, since each is a Binder IPC into
@@ -841,19 +937,23 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                 var lastUiUpdateAtMs = 0L
                 var lastNotifiedAtMs = 0L
                 var lastNotifiedProgress = -1
+                val progressGuard = ProgressGuard(preferences.extractAudio)
                 DownloadUtil.executeCustomCommandTask(url, id, template, preferences) {
                         progressPercentage,
                         _,
                         text ->
-                        val progress = progressPercentage / 100f
-                        val progressInt = progressPercentage.toInt()
+                        val guarded = progressGuard.update(progressPercentage, text)
+                        val progress = guarded.progress
+                        val progressInt =
+                            if (progress >= 0f) (progress * 100f).toInt().coerceIn(0, 100)
+                            else -1
                         val now = System.currentTimeMillis()
                         when (val preState = downloadState) {
                             is Running -> {
                                 if (now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS) {
                                     lastUiUpdateAtMs = now
                                     downloadState =
-                                        preState.copy(progress = progress, progressText = text)
+                                        preState.copy(progress = progress, progressText = guarded.stateText)
                                 }
                                 if (progressInt != lastNotifiedProgress &&
                                     now - lastNotifiedAtMs >= PROGRESS_NOTIFICATION_THROTTLE_MS
