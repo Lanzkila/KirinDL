@@ -283,10 +283,10 @@ object GalleryDlRunner {
                                         outputDir.absolutePath,
                                         engineDir.absolutePath,
                                         if (GalleryDlBehaviorPreference.isExpertConfigEnabled()) {
-                                    compatibility.configFile.absolutePath
-                                } else {
-                                    ""
-                                },
+                                            compatibility.configFile.absolutePath
+                                        } else {
+                                            ""
+                                        },
                                         cookiesPath,
                                         compatibility.cacheFile.absolutePath,
                                     )
