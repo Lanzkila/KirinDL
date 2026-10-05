@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add Expert Config toggle and audio export filter (`1660c125`, 2026-10-05)
 - Update v3.1.9.2 notes for export filter popup (`b381cf7d`, 2026-10-05)
 - Move Gallery media export filter into popup (`69bd60d2`, 2026-10-05)
 - Add KirinDL v3.1.9.2 release notes (`185ff7f5`, 2026-10-05)
