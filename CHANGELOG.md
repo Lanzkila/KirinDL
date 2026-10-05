@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Stabilize and speed up Media progress updates (`52fdb9f0`, 2026-10-05)
 - Document Bilibili profile rollback in v3.2.0.1 (`365bdc7e`, 2026-10-05)
 - Remove legacy Bilibili speed preferences (`ce3ddbdc`, 2026-10-05)
 - Remove unused Bilibili speed settings (`71e6358a`, 2026-10-05)
