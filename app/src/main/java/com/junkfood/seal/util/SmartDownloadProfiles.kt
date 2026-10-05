@@ -18,8 +18,6 @@ object SmartDownloadProfiles {
     const val VIDEO_SMALL = 3
     const val AUDIO_HQ = 4
     const val AUDIO_DATA_SAVER = 5
-    const val BILIBILI_FAST = 6
-    const val BILIBILI_STABLE = 7
     const val CUSTOM_1 = 101
     const val CUSTOM_2 = 102
     const val CUSTOM_3 = 103
@@ -34,8 +32,6 @@ object SmartDownloadProfiles {
             Definition(VIDEO_SMALL, "Video Small", "720p • H.264 • MP4 for smaller downloads."),
             Definition(AUDIO_HQ, "Audio HQ", "M4A/AAC • 320 Kbps • embedded cover."),
             Definition(AUDIO_DATA_SAVER, "Audio Data Saver", "Opus • 96 Kbps • no cover file."),
-            Definition(BILIBILI_FAST, "Bilibili Fast", "1080p compatibility profile + Bilibili Fast mode."),
-            Definition(BILIBILI_STABLE, "Bilibili Stable", "720p compatibility profile + Balanced Bilibili mode."),
         )
 
     fun label(id: Int = SMART_DOWNLOAD_PROFILE.getInt()): String =
@@ -82,14 +78,6 @@ object SmartDownloadProfiles {
                 AUDIO_COVER_MODE.updateInt(AUDIO_COVER_NONE)
                 AUDIO_COVER_FORMAT.updateInt(AUDIO_COVER_FORMAT_AUTO)
                 AUDIO_CONVERT.updateBoolean(false)
-            }
-            BILIBILI_FAST -> {
-                applyVideoCompatibility(3)
-                BILIBILI_SPEED_MODE.updateInt(BILIBILI_SPEED_FAST)
-            }
-            BILIBILI_STABLE -> {
-                applyVideoCompatibility(4)
-                BILIBILI_SPEED_MODE.updateInt(BILIBILI_SPEED_BALANCED)
             }
             CUSTOM_1, CUSTOM_2, CUSTOM_3 -> {
                 val encoded = customKey(id)?.getString().orEmpty()
@@ -140,15 +128,16 @@ object SmartDownloadProfiles {
             VIDEO_CONTAINER.getInt().toString(),
             FORMAT_SORTING.getBoolean().toString(),
             SORTING_FIELDS.getString(),
-            BILIBILI_SPEED_MODE.getInt().toString(),
-            BILIBILI_CUSTOM_FRAGMENTS.getInt().toString(),
             AUDIO_CONVERT.getBoolean().toString(),
             AUDIO_CONVERSION_FORMAT.getInt().toString(),
         ).joinToString("|")
 
     private fun applyEncoded(encoded: String): Boolean {
         val values = encoded.split('|')
-        if (values.size < 16) return false
+        // Current payload has 14 fields. Older v3.2.0 profiles may have 16 fields because
+        // Bilibili speed mode/fragments occupied indexes 12-13; keep reading those profiles
+        // while ignoring the removed Bilibili values.
+        if (values.size < 14) return false
         return runCatching {
             EXTRACT_AUDIO.updateBoolean(values[0].toBooleanStrict())
             AUDIO_FORMAT.updateInt(values[1].toInt())
@@ -162,10 +151,9 @@ object SmartDownloadProfiles {
             VIDEO_CONTAINER.updateInt(values[9].toInt())
             FORMAT_SORTING.updateBoolean(values[10].toBooleanStrict())
             SORTING_FIELDS.updateString(values[11])
-            BILIBILI_SPEED_MODE.updateInt(values[12].toInt())
-            BILIBILI_CUSTOM_FRAGMENTS.updateInt(values[13].toInt())
-            AUDIO_CONVERT.updateBoolean(values[14].toBooleanStrict())
-            AUDIO_CONVERSION_FORMAT.updateInt(values[15].toInt())
+            val tailOffset = if (values.size >= 16) 2 else 0
+            AUDIO_CONVERT.updateBoolean(values[12 + tailOffset].toBooleanStrict())
+            AUDIO_CONVERSION_FORMAT.updateInt(values[13 + tailOffset].toInt())
         }.isSuccess
     }
 }
