@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Remove stale Bilibili smart profile references (`121f7589`, 2026-10-05)
 - Document Media progress stability fix (`1b164ab3`, 2026-10-05)
 - Show guarded Media transfer phases correctly (`599b2d3f`, 2026-10-05)
 - Stabilize and speed up Media progress updates (`52fdb9f0`, 2026-10-05)
