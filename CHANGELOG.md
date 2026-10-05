@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Document Bilibili profile rollback in v3.2.0.1 (`365bdc7e`, 2026-10-05)
 - Remove legacy Bilibili speed preferences (`ce3ddbdc`, 2026-10-05)
 - Remove unused Bilibili speed settings (`71e6358a`, 2026-10-05)
 - Remove Bilibili short-link special routing (`d43a4001`, 2026-10-05)
