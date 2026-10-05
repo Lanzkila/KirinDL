@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -45,7 +47,7 @@ private val releaseLinkPattern =
     Regex("""\[([^\]]+)]\((https?://[^)]+)\)|(https?://\S+)""")
 private val releaseVersionPattern =
     Regex(
-        """v?(\d+\.\d+\.\d+(?:-(?:(?:alpha|beta|rc)\.\d+|devpatch\d+))?)""",
+        """v?(\d+\.\d+\.\d+(?:\.\d+)?(?:-(?:(?:alpha|beta|rc)\.\d+|devpatch\d+))?)""",
         RegexOption.IGNORE_CASE,
     )
 
@@ -58,7 +60,7 @@ fun UpdateDialog(
 ) {
     val context = LocalContext.current
     // Keep the complete version name here. Pre-release builds must not be shown as Stable.
-    val currentVersion = App.packageInfo.versionName ?: "Unknown"
+    val currentVersion = UpdateUtil.installedVersionName(context).ifBlank { "Unknown" }
     val releaseVersion = release.versionLabel()
     val releaseTitle =
         release.name?.takeIf { it.isNotBlank() }
@@ -207,8 +209,9 @@ fun UpdateDialogImpl(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text =
-                            "Tap Update to download the APK in the background. " +
-                                "Android keeps the download progress in your notification shade.",
+                            "Tap Update to download with Android Download Manager. " +
+                                "When it finishes, KirinDL hands the APK to Android's package installer " +
+                                "for an in-place update. Android still asks you to confirm installation.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -253,58 +256,106 @@ private fun ReleaseNotesContent(markdown: String) {
     markdown.lines().forEach { sourceLine ->
         val line = sourceLine.trimEnd()
         val trimmed = line.trim()
+        val leadingSpaces = line.takeWhile(Char::isWhitespace).length
+        val listIndent = (leadingSpaces / 2).coerceIn(0, 3)
+
+        // The dialog header already shows the release/version. GitHub notes often repeat the same
+        // "# KirinDL vX.Y.Z" at the top and again near the footer, which made the popup look noisy.
+        val duplicateVersionHeading =
+            trimmed.matches(
+                Regex(
+                    """#{1,3}\s+KirinDL\s+v?\d+\.\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9.]+)?""",
+                    RegexOption.IGNORE_CASE,
+                )
+            )
 
         when {
-            trimmed.startsWith("```") -> {
+            duplicateVersionHeading -> Unit
+
+            trimmed.startsWith("~~~") || trimmed.startsWith("```") -> {
                 inCodeBlock = !inCodeBlock
+                Spacer(modifier = Modifier.height(3.dp))
             }
 
-            trimmed.isBlank() -> Spacer(modifier = Modifier.height(2.dp))
+            trimmed.isBlank() -> Spacer(modifier = Modifier.height(6.dp))
 
             trimmed == "---" -> {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
             inCodeBlock -> {
-                Text(
-                    text = trimmed,
-                    style =
-                        MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Monospace
-                        ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ) {
+                    Text(
+                        text = line,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        style =
+                            MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = FontFamily.Monospace
+                            ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            trimmed.startsWith(">") -> {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    ReleaseNoteLine(
+                        text = trimmed.removePrefix(">").trim(),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        onOpenUrl = uriHandler::openUri,
+                    )
+                }
             }
 
             trimmed.startsWith("### ") -> {
+                Spacer(modifier = Modifier.height(4.dp))
                 ReleaseNoteLine(
                     text = trimmed.removePrefix("### "),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     onOpenUrl = uriHandler::openUri,
                 )
+                Spacer(modifier = Modifier.height(2.dp))
             }
 
             trimmed.startsWith("## ") -> {
+                Spacer(modifier = Modifier.height(7.dp))
                 ReleaseNoteLine(
                     text = trimmed.removePrefix("## "),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     onOpenUrl = uriHandler::openUri,
                 )
+                Spacer(modifier = Modifier.height(3.dp))
             }
 
             trimmed.startsWith("# ") -> {
+                Spacer(modifier = Modifier.height(7.dp))
                 ReleaseNoteLine(
                     text = trimmed.removePrefix("# "),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     onOpenUrl = uriHandler::openUri,
                 )
+                Spacer(modifier = Modifier.height(3.dp))
             }
 
             trimmed.startsWith("- ") || trimmed.startsWith("* ") -> {
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(start = (listIndent * 12).dp, bottom = 3.dp)
+                ) {
                     Text(
                         text = "•",
                         modifier = Modifier.padding(end = 8.dp),
@@ -323,10 +374,14 @@ private fun ReleaseNotesContent(markdown: String) {
             trimmed.matches(Regex("""\d+\.\s+.*""")) -> {
                 val marker = trimmed.substringBefore(" ") + " "
                 val body = trimmed.substringAfter(" ", "")
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(start = (listIndent * 12).dp, bottom = 3.dp)
+                ) {
                     Text(
                         text = marker,
-                        modifier = Modifier.padding(end = 4.dp),
+                        modifier = Modifier.padding(end = 5.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -342,6 +397,7 @@ private fun ReleaseNotesContent(markdown: String) {
             else -> {
                 ReleaseNoteLine(
                     text = trimmed,
+                    modifier = Modifier.padding(bottom = 4.dp),
                     style = MaterialTheme.typography.bodyMedium,
                     onOpenUrl = uriHandler::openUri,
                 )
