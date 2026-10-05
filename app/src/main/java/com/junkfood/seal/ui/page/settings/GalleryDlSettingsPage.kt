@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -58,6 +59,8 @@ fun GalleryDlSettingsPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val exportFilter by GalleryDlBehaviorPreference.exportFilter.collectAsStateWithLifecycle()
+    val expertConfigEnabled by
+        GalleryDlBehaviorPreference.expertConfigEnabled.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showYtdlpSettings by remember { mutableStateOf(false) }
     var showExportFilterDialog by remember { mutableStateOf(false) }
@@ -210,18 +213,52 @@ fun GalleryDlSettingsPage(
                 icon = Icons.Outlined.Save,
                 title = "Expert Config",
                 description =
-                    "Raw gallery-dl JSON. Normal downloads do not require editing this file.",
+                    "Optional raw gallery-dl JSON for advanced extractor and downloader settings.",
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            if (expertConfigEnabled) "Enabled" else "Disabled",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            if (expertConfigEnabled) {
+                                "Custom JSON is applied to Gallery DL jobs."
+                            } else {
+                                "Gallery DL uses its normal defaults."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = expertConfigEnabled,
+                        onCheckedChange = GalleryDlBehaviorPreference::setExpertConfigEnabled,
+                        enabled = !state.isBusy,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = state.configText,
                     onValueChange = viewModel::updateConfigText,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isBusy,
+                    enabled = expertConfigEnabled && !state.isBusy,
                     minLines = 8,
                     maxLines = 16,
-                    isError = !state.configValid,
+                    isError = expertConfigEnabled && !state.configValid,
                     supportingText = {
-                        Text(if (state.configValid) "Valid JSON" else "Invalid JSON")
+                        Text(
+                            when {
+                                !expertConfigEnabled -> "Enable Expert Config to edit JSON"
+                                state.configValid -> "Valid JSON"
+                                else -> "Invalid JSON"
+                            }
+                        )
                     },
                 )
                 Spacer(Modifier.height(8.dp))
@@ -231,14 +268,14 @@ fun GalleryDlSettingsPage(
                 ) {
                     Button(
                         onClick = viewModel::saveConfig,
-                        enabled = state.configValid && !state.isBusy,
+                        enabled = expertConfigEnabled && state.configValid && !state.isBusy,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Save")
                     }
                     OutlinedButton(
                         onClick = viewModel::resetConfig,
-                        enabled = !state.isBusy,
+                        enabled = expertConfigEnabled && !state.isBusy,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Reset")
@@ -255,7 +292,7 @@ fun GalleryDlSettingsPage(
                             )
                         )
                     },
-                    enabled = !state.isBusy,
+                    enabled = expertConfigEnabled && !state.isBusy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Import Config JSON")
@@ -263,7 +300,7 @@ fun GalleryDlSettingsPage(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { configExportLauncher.launch("gallery-dl-config.json") },
-                    enabled = state.configValid && !state.isBusy,
+                    enabled = expertConfigEnabled && state.configValid && !state.isBusy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Export Config JSON")
