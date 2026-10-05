@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Apply Gallery Expert Config only when enabled (`616a38cb`, 2026-10-05)
+- Add Expert Config enable toggle (`6f42011f`, 2026-10-05)
 - Unlock yt-dlp audio format settings (`5a524cb0`, 2026-10-05)
 - Keep Gallery export filters media-only (`c0241464`, 2026-10-05)
 - Add Expert Config toggle and audio export filter (`1660c125`, 2026-10-05)
