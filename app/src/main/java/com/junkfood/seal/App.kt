@@ -135,6 +135,9 @@ class App : Application(), SingletonImageLoader.Factory {
                     getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
                 else getPackageInfo(packageName, 0)
             }
+        // A package update keeps SharedPreferences. Reset the updater cooldown as soon as the
+        // installed KirinDL version changes so the new APK becomes the update baseline immediately.
+        UpdateUtil.syncInstalledVersionState(this)
         applicationScope = CoroutineScope(SupervisorJob())
         DynamicColors.applyToActivitiesIfAvailable(this)
 
