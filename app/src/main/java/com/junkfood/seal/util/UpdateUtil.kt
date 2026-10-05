@@ -1,6 +1,9 @@
 package com.junkfood.seal.util
 
 import android.app.DownloadManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import androidx.core.app.NotificationCompat
 import com.junkfood.seal.App
 import com.junkfood.seal.App.Companion.context
 import com.junkfood.seal.util.PreferenceUtil.getInt
@@ -36,6 +40,8 @@ object UpdateUtil {
     private const val KEY_WAITING_INSTALL_PERMISSION = "waiting_install_permission"
     private const val NO_DOWNLOAD_ID = -1L
     private const val APK_MIME = "application/vnd.android.package-archive"
+    private const val UPDATE_NOTIFICATION_CHANNEL = "kirin_app_updates"
+    private const val UPDATE_NOTIFICATION_ID = 32001
 
     private const val YTDLP_STABLE_RELEASE =
         "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
@@ -244,7 +250,10 @@ object UpdateUtil {
                 }
 
             when (status) {
-                DownloadManager.STATUS_SUCCESSFUL -> openDownloadedAppUpdateInstaller(context, downloadId)
+                DownloadManager.STATUS_SUCCESSFUL -> {
+                    showInstallReadyNotification(context, downloadId)
+                    openDownloadedAppUpdateInstaller(context, downloadId)
+                }
                 DownloadManager.STATUS_FAILED -> {
                     clearPendingAppUpdate(context)
                     false
@@ -308,6 +317,55 @@ object UpdateUtil {
 
         context.startActivity(installIntent)
         return true
+    }
+
+    private fun showInstallReadyNotification(
+        context: Context,
+        downloadId: Long,
+    ) {
+        runCatching {
+            val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val apkUri = manager.getUriForDownloadedFile(downloadId) ?: return@runCatching
+            val installIntent =
+                Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(apkUri, APK_MIME)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+            val pendingIntent =
+                PendingIntent.getActivity(
+                    context,
+                    UPDATE_NOTIFICATION_ID,
+                    installIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                notificationManager.createNotificationChannel(
+                    NotificationChannel(
+                        UPDATE_NOTIFICATION_CHANNEL,
+                        "KirinDL app updates",
+                        NotificationManager.IMPORTANCE_HIGH,
+                    ).apply {
+                        description = "Install downloaded KirinDL application updates"
+                    }
+                )
+            }
+
+            val notification =
+                NotificationCompat.Builder(context, UPDATE_NOTIFICATION_CHANNEL)
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentTitle("KirinDL update ready")
+                    .setContentText("Tap to install and update KirinDL")
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(true)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .build()
+
+            notificationManager.notify(UPDATE_NOTIFICATION_ID, notification)
+        }
     }
 
     private fun clearPendingAppUpdate(context: Context) {
