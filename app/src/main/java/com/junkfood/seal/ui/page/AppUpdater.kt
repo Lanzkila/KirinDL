@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
 // - check once when the app UI starts
 // - throttle automatic checks so every app launch does not hit GitHub
 // - About/manual checks are intentionally NOT throttled
-private val AUTO_UPDATE_CHECK_INTERVAL_MS = TimeUnit.DAYS.toMillis(2)
+private val AUTO_UPDATE_CHECK_INTERVAL_MS = TimeUnit.DAYS.toMillis(1)
 
 /**
  * KirinDL app update trigger.
@@ -29,8 +29,9 @@ private val AUTO_UPDATE_CHECK_INTERVAL_MS = TimeUnit.DAYS.toMillis(2)
  * but repeated automatic checks are rate-limited. If the user dismisses or misses the popup, the
  * About page can always perform a fresh manual check and reopen the same update dialog.
  *
- * KirinDL does not silently install APKs. The update action only hands the official release APK
- * to Android DownloadManager; installation remains user-controlled.
+ * KirinDL never silently confirms an install. The official release APK is downloaded by Android
+ * DownloadManager and then handed to Android's package installer; the user still confirms the
+ * final in-place update/overwrite.
  */
 @Composable
 fun AppUpdater() {
@@ -39,6 +40,10 @@ fun AppUpdater() {
     var release by remember { mutableStateOf(UpdateUtil.Release()) }
 
     LaunchedEffect(Unit) {
+        // If Android has just replaced KirinDL with a newer APK, clear the previous build's
+        // updater cooldown before deciding whether this startup should check GitHub.
+        UpdateUtil.syncInstalledVersionState(context)
+
         if (
             !PreferenceUtil.isNetworkAvailableForDownload() ||
                 !PreferenceUtil.isAutoUpdateEnabled()
