@@ -54,6 +54,7 @@ import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateInt
+import com.junkfood.seal.util.PreferenceUtil.updateLong
 import com.junkfood.seal.util.STABLE
 import com.junkfood.seal.util.UPDATE_CHANNEL
 import com.junkfood.seal.util.UpdateUtil
@@ -103,7 +104,7 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                     PreferenceInfo(
                         modifier = Modifier.padding(horizontal = 4.dp),
                         text =
-                            "$statusText\nInstalled: v${App.packageInfo.versionName ?: "Unknown"}" +
+                            "$statusText\nInstalled: v${UpdateUtil.installedVersionName(context).ifBlank { "Unknown" }}" +
                                 formatLastChecked(lastChecked),
                     )
                 }
@@ -166,6 +167,9 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                     ) {
                         updateChannel = STABLE
                         UPDATE_CHANNEL.updateInt(updateChannel)
+                        APP_UPDATE_CHECK_TIME.updateLong(0L)
+                        lastChecked = 0L
+                        statusText = "Ready to check"
                     }
                 }
 
@@ -177,6 +181,9 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                     ) {
                         updateChannel = PRE_RELEASE
                         UPDATE_CHANNEL.updateInt(updateChannel)
+                        APP_UPDATE_CHECK_TIME.updateLong(0L)
+                        lastChecked = 0L
+                        statusText = "Ready to check"
                     }
                 }
 
@@ -230,7 +237,8 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                         text =
                             "KirinDL checks its official GitHub releases for new versions. " +
                                 "When an update is available, the popup includes the release notes. " +
-                                "The app opens the official release page in your browser and does not silently install APKs.",
+                                "Update downloads use Android Download Manager, then Android's package installer " +
+                                "confirms the in-place app update.",
                     )
                 }
 
@@ -251,6 +259,23 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
             onDismissRequest = { showUpdateDialog = false },
             release = release,
             isUpdateAvailable = true,
+            onBackgroundUpdate =
+                if (UpdateUtil.hasBackgroundAppUpdate(release)) {
+                    {
+                        UpdateUtil.enqueueBackgroundAppUpdate(context, release)
+                            .onSuccess {
+                                context.makeToast(
+                                    "KirinDL update is downloading in Android Download Manager"
+                                )
+                            }
+                            .onFailure { error ->
+                                error.printStackTrace()
+                                context.makeToast("Could not start the app update download")
+                            }
+                    }
+                } else {
+                    null
+                },
         )
     }
 
