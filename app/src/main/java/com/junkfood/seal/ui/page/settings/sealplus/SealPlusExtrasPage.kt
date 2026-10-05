@@ -55,12 +55,6 @@ import com.junkfood.seal.ui.component.PreferenceSingleChoiceItem
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.page.security.LockScreen
 import com.junkfood.seal.util.AuthenticationManager
-import com.junkfood.seal.util.BILIBILI_CUSTOM_FRAGMENTS
-import com.junkfood.seal.util.BILIBILI_SPEED_AUTO
-import com.junkfood.seal.util.BILIBILI_SPEED_BALANCED
-import com.junkfood.seal.util.BILIBILI_SPEED_CUSTOM
-import com.junkfood.seal.util.BILIBILI_SPEED_FAST
-import com.junkfood.seal.util.BILIBILI_SPEED_MODE
 import com.junkfood.seal.util.FORMAT_LIST_VIEW
 import com.junkfood.seal.util.HOME_RECENT_LIMIT
 import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
@@ -145,20 +139,6 @@ fun SealPlusExtrasPage(
     val galleryConfirmBeforeDownload by
         GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsState()
 
-    val bilibiliFragmentOptions = remember { listOf(1, 4, 8, 12, 16) }
-    var bilibiliSpeedMode by remember {
-        mutableStateOf(BILIBILI_SPEED_MODE.getInt().coerceIn(BILIBILI_SPEED_AUTO, BILIBILI_SPEED_CUSTOM))
-    }
-    var bilibiliCustomFragments by remember {
-        mutableStateOf(
-            BILIBILI_CUSTOM_FRAGMENTS.getInt().let { saved ->
-                if (saved in bilibiliFragmentOptions) saved else 8
-            }
-        )
-    }
-    var showBilibiliSpeedDialog by remember { mutableStateOf(false) }
-    var showBilibiliFragmentsDialog by remember { mutableStateOf(false) }
-    
     // Authentication state for AppLock settings
     var showAuthScreen by remember { mutableStateOf(false) }
     var isAuthenticated by remember { mutableStateOf(false) }
@@ -333,42 +313,6 @@ fun SealPlusExtrasPage(
                         GalleryDlBehaviorPreference.setConfirmBeforeDownload(!galleryConfirmBeforeDownload)
                     },
                 )
-            }
-
-            item {
-                PreferenceSubtitle(text = "Bilibili")
-            }
-
-            item {
-                PreferenceItem(
-                    title = "Bilibili Speed Mode",
-                    description =
-                        when (bilibiliSpeedMode) {
-                            BILIBILI_SPEED_BALANCED ->
-                                "Balanced • 4 fragments • steadier on weaker routes"
-                            BILIBILI_SPEED_FAST ->
-                                "Fast • 12 fragments • higher parallelism"
-                            BILIBILI_SPEED_CUSTOM ->
-                                "Custom • $bilibiliCustomFragments fragments"
-                            else ->
-                                "Auto • 8 fragments • recommended"
-                        } + " • Bilibili only",
-                    icon = Icons.Rounded.NetworkCheck,
-                    onClick = { showBilibiliSpeedDialog = true },
-                )
-            }
-
-            if (bilibiliSpeedMode == BILIBILI_SPEED_CUSTOM) {
-                item {
-                    PreferenceItem(
-                        title = "Bilibili concurrent fragments",
-                        description =
-                            "$bilibiliCustomFragments fragment${if (bilibiliCustomFragments == 1) "" else "s"} • " +
-                                "Aria2 profile cap follows this value; the global Aria2 limit still applies",
-                        icon = Icons.Outlined.SignalCellular4Bar,
-                        onClick = { showBilibiliFragmentsDialog = true },
-                    )
-                }
             }
 
             item {
@@ -676,31 +620,6 @@ fun SealPlusExtrasPage(
             }
         }
 
-        if (showBilibiliSpeedDialog) {
-            BilibiliSpeedModeDialog(
-                currentSelection = bilibiliSpeedMode,
-                onDismissRequest = { showBilibiliSpeedDialog = false },
-                onConfirm = { selected ->
-                    BILIBILI_SPEED_MODE.updateInt(selected)
-                    bilibiliSpeedMode = selected
-                    showBilibiliSpeedDialog = false
-                },
-            )
-        }
-
-        if (showBilibiliFragmentsDialog) {
-            BilibiliFragmentsDialog(
-                currentSelection = bilibiliCustomFragments,
-                options = bilibiliFragmentOptions,
-                onDismissRequest = { showBilibiliFragmentsDialog = false },
-                onConfirm = { selected ->
-                    BILIBILI_CUSTOM_FRAGMENTS.updateInt(selected)
-                    bilibiliCustomFragments = selected
-                    showBilibiliFragmentsDialog = false
-                },
-            )
-        }
-
         if (showHomeRecentDialog) {
             HomeRecentLimitDialog(
                 currentSelection = homeRecentLimit,
@@ -836,149 +755,6 @@ private fun StorageManagerCard(
             }
         }
     }
-}
-
-@Composable
-private fun BilibiliSpeedModeDialog(
-    currentSelection: Int,
-    onDismissRequest: () -> Unit,
-    onConfirm: (Int) -> Unit,
-) {
-    var selected by remember { mutableStateOf(currentSelection) }
-    val modes =
-        listOf(
-            Triple(BILIBILI_SPEED_AUTO, "Auto", "8 fragments • recommended • adaptive safe default"),
-            Triple(BILIBILI_SPEED_BALANCED, "Balanced", "4 fragments • steadier on weaker routes"),
-            Triple(BILIBILI_SPEED_FAST, "Fast", "12 fragments • higher parallelism"),
-            Triple(BILIBILI_SPEED_CUSTOM, "Custom", "Choose 1 / 4 / 8 / 12 / 16 fragments"),
-        )
-
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismissRequest,
-        icon = {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-            ) {
-                Icon(
-                    Icons.Rounded.NetworkCheck,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(12.dp).size(28.dp),
-                )
-            }
-        },
-        title = { Text("Bilibili Speed Mode", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text =
-                        "Bilibili/b23.tv only. Other sites keep the normal Network settings. " +
-                            "Aria2 caps follow the selected profile without changing your global limit.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-                modes.forEach { (value, title, description) ->
-                    val active = selected == value
-                    Surface(
-                        onClick = { selected = value },
-                        shape = RoundedCornerShape(14.dp),
-                        color =
-                            if (active) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                        tonalElevation = if (active) 2.dp else 0.dp,
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        title,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                    if (value == BILIBILI_SPEED_AUTO) {
-                                        Text(
-                                            "  RECOMMENDED",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                    }
-                                }
-                                Text(
-                                    description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            androidx.compose.material3.RadioButton(
-                                selected = active,
-                                onClick = { selected = value },
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = { onConfirm(selected) }) {
-                Text("Apply")
-            }
-        },
-        dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                Text(stringResource(android.R.string.cancel))
-            }
-        },
-    )
-}
-
-@Composable
-private fun BilibiliFragmentsDialog(
-    currentSelection: Int,
-    options: List<Int>,
-    onDismissRequest: () -> Unit,
-    onConfirm: (Int) -> Unit,
-) {
-    var selected by remember { mutableStateOf(currentSelection) }
-
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismissRequest,
-        title = { Text("Bilibili concurrent fragments") },
-        text = {
-            Column {
-                Text(
-                    text =
-                        "Higher values request more fragments in parallel. " +
-                            "This does not change the global setting for other sites.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-                options.forEach { value ->
-                    PreferenceSingleChoiceItem(
-                        text = "$value fragment${if (value == 1) "" else "s"}",
-                        selected = selected == value,
-                        containerColor = Color.Transparent,
-                        onClick = { selected = value },
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = { onConfirm(selected) }) {
-                Text(stringResource(android.R.string.ok))
-            }
-        },
-        dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismissRequest) {
-                Text(stringResource(android.R.string.cancel))
-            }
-        },
-    )
 }
 
 @Composable
