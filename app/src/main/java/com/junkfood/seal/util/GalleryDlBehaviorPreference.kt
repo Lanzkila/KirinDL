@@ -19,7 +19,6 @@ object GalleryDlBehaviorPreference {
     const val EXPORT_IMAGES = 1
     const val EXPORT_VIDEOS = 2
     const val EXPORT_MEDIA = 3
-    const val EXPORT_AUDIO = 4
 
     private val preferences by lazy { App.context.getSharedPreferences(PREFS_NAME, 0) }
 
@@ -40,7 +39,7 @@ object GalleryDlBehaviorPreference {
     }
 
     fun setExportFilter(value: Int) {
-        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_AUDIO } ?: EXPORT_ALL
+        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_MEDIA } ?: EXPORT_ALL
         preferences.edit().putInt(KEY_EXPORT_FILTER, safeValue).apply()
         mutableExportFilter.value = safeValue
     }
@@ -50,7 +49,6 @@ object GalleryDlBehaviorPreference {
             EXPORT_IMAGES -> "Images only"
             EXPORT_VIDEOS -> "Videos only"
             EXPORT_MEDIA -> "Images + videos"
-            EXPORT_AUDIO -> "Audio only"
             else -> "All files"
         }
 
@@ -66,14 +64,14 @@ object GalleryDlBehaviorPreference {
         if (!preferences.contains(key)) return null
         return preferences
             .getInt(key, EXPORT_ALL)
-            .takeIf { it in EXPORT_ALL..EXPORT_AUDIO }
+            .takeIf { it in EXPORT_ALL..EXPORT_MEDIA }
     }
 
     fun effectiveExportFilter(url: String): Int = siteExportFilter(url) ?: mutableExportFilter.value
 
     fun rememberSiteExportFilter(url: String, value: Int) {
         val key = sitePreferenceKey(url) ?: return
-        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_AUDIO } ?: EXPORT_ALL
+        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_MEDIA } ?: EXPORT_ALL
         preferences.edit().putInt(key, safeValue).apply()
     }
 
