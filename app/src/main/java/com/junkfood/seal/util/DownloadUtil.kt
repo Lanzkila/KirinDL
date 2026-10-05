@@ -34,10 +34,8 @@ import com.junkfood.seal.util.FileUtil.moveFilesToSdcard
 import com.junkfood.seal.util.PreferenceUtil.COOKIE_HEADER
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getInt
-import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
-import com.junkfood.seal.util.PreferenceUtil.updateLong
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -239,76 +237,6 @@ object DownloadUtil {
     }
 
     private const val TAG = "DownloadUtil"
-
-    // KirinDL Bilibili download profile.
-    //
-    // Bilibili commonly exposes DASH streams, so KirinDL keeps a dedicated transfer
-    // profile for Bilibili/b23.tv. Other extractors continue using the normal global
-    // concurrent-fragment and Aria2 preferences without any profile override.
-    private const val BILIBILI_AUTO_CONCURRENT_FRAGMENTS = 12
-    private const val BILIBILI_BALANCED_CONCURRENT_FRAGMENTS = 4
-    private const val BILIBILI_FAST_CONCURRENT_FRAGMENTS = 12
-
-    private data class BilibiliSpeedProfile(
-        val concurrentFragments: Int,
-        val aria2ConnectionCap: Int,
-        val socketTimeoutSeconds: Int,
-    )
-
-    private fun getBilibiliSpeedProfile(
-        mode: Int,
-        customFragments: Int,
-    ): BilibiliSpeedProfile {
-        val safeCustomFragments =
-            customFragments.takeIf { it == 1 || it == 4 || it == 8 || it == 12 || it == 16 } ?: 8
-        val lastAverageSpeed = BILIBILI_LAST_AVG_SPEED.getLong()
-        val adaptiveFragments =
-            when {
-                lastAverageSpeed <= 0L -> BILIBILI_AUTO_CONCURRENT_FRAGMENTS
-                lastAverageSpeed < 2L * 1024L * 1024L -> 16
-                lastAverageSpeed < 6L * 1024L * 1024L -> 12
-                else -> 8
-            }
-
-        return when (mode) {
-            BILIBILI_SPEED_BALANCED ->
-                BilibiliSpeedProfile(
-                    concurrentFragments = BILIBILI_BALANCED_CONCURRENT_FRAGMENTS,
-                    aria2ConnectionCap = BILIBILI_BALANCED_CONCURRENT_FRAGMENTS,
-                    socketTimeoutSeconds = 25,
-                )
-            BILIBILI_SPEED_FAST ->
-                BilibiliSpeedProfile(
-                    concurrentFragments = BILIBILI_FAST_CONCURRENT_FRAGMENTS,
-                    aria2ConnectionCap = BILIBILI_FAST_CONCURRENT_FRAGMENTS,
-                    socketTimeoutSeconds = 20,
-                )
-            BILIBILI_SPEED_CUSTOM ->
-                BilibiliSpeedProfile(
-                    concurrentFragments = safeCustomFragments,
-                    aria2ConnectionCap = safeCustomFragments,
-                    socketTimeoutSeconds = 20,
-                )
-            else ->
-                BilibiliSpeedProfile(
-                    concurrentFragments = adaptiveFragments,
-                    aria2ConnectionCap = adaptiveFragments,
-                    socketTimeoutSeconds = 20,
-                )
-        }
-    }
-
-    internal fun isBilibiliUrl(url: String): Boolean {
-        val host =
-            runCatching { Uri.parse(url).host.orEmpty().lowercase(Locale.US) }
-                .getOrDefault("")
-        return host == "b23.tv" ||
-            host.endsWith(".b23.tv") ||
-            host == "bilibili.com" ||
-            host.endsWith(".bilibili.com") ||
-            host == "bilibili.tv" ||
-            host.endsWith(".bilibili.tv")
-    }
 
     const val BASENAME = "%(title).200B"
 
@@ -538,9 +466,6 @@ object DownloadUtil {
         val mergeAudioStream: Boolean,
         val mergeToMkv: Boolean,
         val downloadDocs: Boolean = false,
-        // Defaults keep older serialized/queued tasks compatible after this update.
-        val bilibiliSpeedMode: Int = BILIBILI_SPEED_AUTO,
-        val bilibiliCustomFragments: Int = 8,
     ) {
         companion object {
             val EMPTY =
@@ -654,8 +579,6 @@ object DownloadUtil {
                     mergeAudioStream = false,
                     mergeToMkv =
                         (downloadSubtitle && embedSubtitle) || MERGE_OUTPUT_MKV.getBoolean(),
-                    bilibiliSpeedMode = BILIBILI_SPEED_MODE.getInt(),
-                    bilibiliCustomFragments = BILIBILI_CUSTOM_FRAGMENTS.getInt(),
                 )
             }
         }
@@ -854,7 +777,7 @@ object DownloadUtil {
     fun getCookiesContentFromDatabase(): Result<String> =
         getCookieListFromDatabase().mapCatching { it.toCookiesFileContent() }
 
-    private fun YoutubeDLRequest.enableAria2c(connectionCap: Int? = null): YoutubeDLRequest {
+    private fun YoutubeDLRequest.enableAria2c(): YoutubeDLRequest {
         // FIX: addOption() builds a raw argv array — no shell quoting involved.
         // The old value  aria2c:"-x 8 ..."  passes literal " characters to yt-dlp.
         // Python's shlex.split() inside yt-dlp treats the whole quoted block as ONE
@@ -875,10 +798,7 @@ object DownloadUtil {
         // --file-allocation=none   = no preallocation (faster on Android / SAF temp dirs)
         // --max-tries / --retry-wait = resilience against transient network errors
         // --console-log-level=warn = keep logs clean without breaking progress parsing
-        val configuredConnections = ARIA2C_CONNECTIONS.getInt()
-        val connections =
-            connectionCap?.let { configuredConnections.coerceAtMost(it) }
-                ?: configuredConnections
+        val connections = ARIA2C_CONNECTIONS.getInt()
         return this.addOption("--downloader", "http,https,ftp,ftps:libaria2c.so")
             .addOption(
                 "--external-downloader-args",
@@ -1266,7 +1186,6 @@ object DownloadUtil {
                             Throwable(context.getString(R.string.fetch_info_error_msg))
                         )
                 }
-            val isBilibili = isBilibiliUrl(url)
             val request = YoutubeDLRequest(url)
             val pathBuilder = StringBuilder()
             val outputBuilder = StringBuilder()
@@ -1329,32 +1248,11 @@ object DownloadUtil {
 
                     // aria2c is scoped to contiguous protocols (see enableAria2c), so
                     // concurrent fragments can run alongside it for DASH/HLS streams.
-                    // Bilibili gets its own profile; all other sites keep the global values.
-                    val bilibiliProfile =
-                        if (isBilibili) {
-                            getBilibiliSpeedProfile(
-                                mode = bilibiliSpeedMode,
-                                customFragments = bilibiliCustomFragments,
-                            )
-                        } else {
-                            null
-                        }
-                    val effectiveConcurrentFragments =
-                        bilibiliProfile?.concurrentFragments ?: concurrentFragments
-
                     if (aria2c) {
-                        enableAria2c(connectionCap = bilibiliProfile?.aria2ConnectionCap)
+                        enableAria2c()
                     }
-
-                    if (effectiveConcurrentFragments > 1) {
-                        addOption("--concurrent-fragments", effectiveConcurrentFragments)
-                    }
-
-                    bilibiliProfile?.let { profile ->
-                        addOption("--socket-timeout", profile.socketTimeoutSeconds)
-                        addOption("--fragment-retries", "20")
-                        addOption("--retries", "15")
-                        addOption("--retry-sleep", "fragment:exp=1:20")
+                    if (concurrentFragments > 1) {
+                        addOption("--concurrent-fragments", concurrentFragments)
                     }
 
                     if (extractAudio || (videoInfo.vcodec == "none")) {
@@ -1442,17 +1340,13 @@ object DownloadUtil {
                         )
                     } else Result.failure(th)
                 }
-            val averageSpeed = computeAvgSpeed(videoInfo, downloadTiming)
-            if (isBilibili && averageSpeed > 0L) {
-                BILIBILI_LAST_AVG_SPEED.updateLong(averageSpeed)
-            }
             return onFinishDownloading(
                 preferences = this,
                 videoInfo = videoInfo,
                 downloadPath = pathBuilder.toString(),
                 sdcardUri = sdcardUri,
                 downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
-                averageSpeedBytesPerSec = averageSpeed,
+                averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
             )
         }
     }
