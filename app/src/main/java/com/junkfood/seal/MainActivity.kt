@@ -26,6 +26,7 @@ import com.junkfood.seal.util.ONBOARDING_COMPLETED
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
+import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.matchUrlFromSharedText
 import com.junkfood.seal.util.setLanguage
 import androidx.lifecycle.lifecycleScope
@@ -133,6 +134,11 @@ class MainActivity : AppCompatActivity() {
         // the download notification/foreground status catches up without waiting on the next
         // task-state change.
         App.retryForegroundPromotionIfNeeded()
+
+        // Continue an app update after the user grants Android's "Install unknown apps"
+        // permission. The final overwrite/update is still confirmed by Android's package installer.
+        UpdateUtil.resumePendingAppUpdateInstall(this)
+            .onFailure { it.printStackTrace() }
     }
 
     override fun onNewIntent(intent: Intent) {
