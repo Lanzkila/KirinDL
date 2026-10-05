@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Update v3.1.9.2 notes for Expert Config and Audio (`4b1fcc9f`, 2026-10-05)
+- Polish Expert Config runner wiring (`672a6daa`, 2026-10-05)
 - Apply Gallery Expert Config only when enabled (`616a38cb`, 2026-10-05)
 - Add Expert Config enable toggle (`6f42011f`, 2026-10-05)
 - Unlock yt-dlp audio format settings (`5a524cb0`, 2026-10-05)
