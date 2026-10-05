@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Show guarded Media transfer phases correctly (`599b2d3f`, 2026-10-05)
 - Stabilize and speed up Media progress updates (`52fdb9f0`, 2026-10-05)
 - Document Bilibili profile rollback in v3.2.0.1 (`365bdc7e`, 2026-10-05)
 - Remove legacy Bilibili speed preferences (`ce3ddbdc`, 2026-10-05)
