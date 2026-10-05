@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Expand v3.2.0 upgrade and fallback notes (`41f156f9`, 2026-10-05)
 - Remove superseded v3.1.9.2 release notes (`3e880cac`, 2026-10-05)
 - Prepare KirinDL v3.2.0 release notes (`069ab355`, 2026-10-05)
 - Support v3.2.0 Stable version jumps (`61f80ad0`, 2026-10-05)
