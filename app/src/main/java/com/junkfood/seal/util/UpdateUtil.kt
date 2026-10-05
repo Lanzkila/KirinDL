@@ -2,10 +2,12 @@ package com.junkfood.seal.util
 
 import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.Settings
 import com.junkfood.seal.App
 import com.junkfood.seal.App.Companion.context
 import com.junkfood.seal.util.PreferenceUtil.getInt
@@ -26,6 +28,14 @@ object UpdateUtil {
 
     private const val OWNER = "Lanzkila"
     private const val REPO = "KirinDL"
+
+    private const val APP_UPDATE_PREFS = "kirin_app_update_state"
+    private const val KEY_PENDING_DOWNLOAD_ID = "pending_download_id"
+    private const val KEY_PENDING_VERSION = "pending_version"
+    private const val KEY_LAST_INSTALLED_VERSION = "last_installed_version"
+    private const val KEY_WAITING_INSTALL_PERMISSION = "waiting_install_permission"
+    private const val NO_DOWNLOAD_ID = -1L
+    private const val APK_MIME = "application/vnd.android.package-archive"
 
     private const val YTDLP_STABLE_RELEASE =
         "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
@@ -127,10 +137,36 @@ object UpdateUtil {
     }
 
     /**
-     * Compatibility no-op for the old startup cleanup hook. KirinDL no longer downloads,
-     * caches, or installs application APKs itself.
+     * Synchronize the installed app version with updater state.
+     *
+     * Android keeps SharedPreferences across an in-place APK update. Without this reset, the
+     * automatic checker can inherit the previous version's cooldown and incorrectly wait up to
+     * two days before checking again. A changed installed version clears that cooldown
+     * immediately, so the newly installed KirinDL build becomes the new update baseline.
      */
-    suspend fun deleteOutdatedApk() = Unit
+    fun syncInstalledVersionState(context: Context = App.context): Boolean {
+        val installed = context.getCurrentVersionName()
+        val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+        val previous = prefs.getString(KEY_LAST_INSTALLED_VERSION, null)
+        if (previous == installed) return false
+
+        prefs.edit()
+            .putString(KEY_LAST_INSTALLED_VERSION, installed)
+            .remove(KEY_PENDING_DOWNLOAD_ID)
+            .remove(KEY_PENDING_VERSION)
+            .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
+            .apply()
+        APP_UPDATE_CHECK_TIME.updateLong(0L)
+        return previous != null
+    }
+
+    /**
+     * Kept for the existing App startup hook. Version-state cleanup now replaces the legacy APK
+     * cache cleanup that KirinDL no longer needs.
+     */
+    suspend fun deleteOutdatedApk() {
+        syncInstalledVersionState(App.context)
+    }
 
     /**
      * Starts the APK download through Android's DownloadManager. This is deliberately separate
@@ -168,8 +204,120 @@ object UpdateUtil {
                     )
 
             val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            manager.enqueue(request)
+            val downloadId = manager.enqueue(request)
+            context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putLong(KEY_PENDING_DOWNLOAD_ID, downloadId)
+                .putString(KEY_PENDING_VERSION, rawVersion.removePrefix("v"))
+                .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
+                .apply()
+            downloadId
         }
+
+    fun isPendingAppUpdateDownload(
+        context: Context,
+        downloadId: Long,
+    ): Boolean =
+        context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+            .getLong(KEY_PENDING_DOWNLOAD_ID, NO_DOWNLOAD_ID) == downloadId
+
+    /**
+     * Called from the DownloadManager completion receiver. A successful KirinDL APK download is
+     * handed directly to Android's package installer. Android still owns the final confirmation;
+     * with the same release signature this is an in-place update/overwrite, not a second app.
+     */
+    fun handleCompletedAppUpdateDownload(
+        context: Context,
+        downloadId: Long,
+    ): Result<Boolean> =
+        runCatching {
+            if (!isPendingAppUpdateDownload(context, downloadId)) return@runCatching false
+
+            val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val status =
+                manager.query(DownloadManager.Query().setFilterById(downloadId))?.use { cursor ->
+                    if (!cursor.moveToFirst()) null
+                    else {
+                        val index = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        if (index >= 0) cursor.getInt(index) else null
+                    }
+                }
+
+            when (status) {
+                DownloadManager.STATUS_SUCCESSFUL -> openDownloadedAppUpdateInstaller(context, downloadId)
+                DownloadManager.STATUS_FAILED -> {
+                    clearPendingAppUpdate(context)
+                    false
+                }
+                else -> false
+            }
+        }
+
+    /**
+     * If Android required the user to enable "Install unknown apps", MainActivity calls this on
+     * resume so the installer continues automatically after permission is granted.
+     */
+    fun resumePendingAppUpdateInstall(context: Context): Result<Boolean> =
+        runCatching {
+            val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+            if (!prefs.getBoolean(KEY_WAITING_INSTALL_PERMISSION, false)) {
+                return@runCatching false
+            }
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                    !context.packageManager.canRequestPackageInstalls()
+            ) {
+                return@runCatching false
+            }
+            val downloadId = prefs.getLong(KEY_PENDING_DOWNLOAD_ID, NO_DOWNLOAD_ID)
+            if (downloadId == NO_DOWNLOAD_ID) return@runCatching false
+            prefs.edit().putBoolean(KEY_WAITING_INSTALL_PERMISSION, false).apply()
+            openDownloadedAppUpdateInstaller(context, downloadId)
+        }
+
+    private fun openDownloadedAppUpdateInstaller(
+        context: Context,
+        downloadId: Long,
+    ): Boolean {
+        val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                !context.packageManager.canRequestPackageInstalls()
+        ) {
+            prefs.edit().putBoolean(KEY_WAITING_INSTALL_PERMISSION, true).apply()
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:${context.packageName}"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            return true
+        }
+
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val apkUri =
+            manager.getUriForDownloadedFile(downloadId)
+                ?: throw IOException("Downloaded KirinDL APK is unavailable")
+
+        val installIntent =
+            Intent(Intent.ACTION_VIEW)
+                .setDataAndType(apkUri, APK_MIME)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+        context.startActivity(installIntent)
+        return true
+    }
+
+    private fun clearPendingAppUpdate(context: Context) {
+        context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_PENDING_DOWNLOAD_ID)
+            .remove(KEY_PENDING_VERSION)
+            .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
+            .apply()
+    }
 
     fun hasBackgroundAppUpdate(release: Release): Boolean = preferredApkAsset(release) != null
 
@@ -210,15 +358,20 @@ object UpdateUtil {
             }
         }
 
-    private fun Context.getCurrentVersion(): Version =
+    fun installedVersionName(context: Context = App.context): String =
+        context.getCurrentVersionName()
+
+    private fun Context.getCurrentVersionName(): String =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager
                 .getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
                 .versionName
-                .toVersion()
+                .orEmpty()
         } else {
-            packageManager.getPackageInfo(packageName, 0).versionName.toVersion()
+            packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
         }
+
+    private fun Context.getCurrentVersion(): Version = getCurrentVersionName().toVersion()
 
     @Serializable
     data class Release(
@@ -243,7 +396,7 @@ object UpdateUtil {
 
     private val pattern =
         Pattern.compile(
-            """v?(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z]+)\.?(\d+)?)?""",
+            """v?(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-([a-zA-Z]+)\.?(\d+)?)?""",
             Pattern.CASE_INSENSITIVE,
         )
     private val EMPTY_VERSION = Version.Stable()
@@ -257,14 +410,15 @@ object UpdateUtil {
                 val major = matcher.group(1)?.toInt() ?: 0
                 val minor = matcher.group(2)?.toInt() ?: 0
                 val patch = matcher.group(3)?.toInt() ?: 0
-                val buildNumber = matcher.group(5)?.toInt() ?: 0
-                when (matcher.group(4)?.lowercase()) {
-                    "alpha" -> Version.Alpha(major, minor, patch, buildNumber)
-                    "beta" -> Version.Beta(major, minor, patch, buildNumber)
-                    "rc" -> Version.ReleaseCandidate(major, minor, patch, buildNumber)
-                    "devpatch", "dev" -> Version.DevPatch(major, minor, patch, buildNumber)
-                    null, "", "stable" -> Version.Stable(major, minor, patch)
-                    else -> Version.Stable(major, minor, patch)
+                val stableRevision = matcher.group(4)?.toInt() ?: 0
+                val preReleaseBuild = matcher.group(6)?.toInt() ?: 0
+                when (matcher.group(5)?.lowercase()) {
+                    "alpha" -> Version.Alpha(major, minor, patch, preReleaseBuild)
+                    "beta" -> Version.Beta(major, minor, patch, preReleaseBuild)
+                    "rc" -> Version.ReleaseCandidate(major, minor, patch, preReleaseBuild)
+                    "devpatch", "dev" -> Version.DevPatch(major, minor, patch, preReleaseBuild)
+                    null, "", "stable" -> Version.Stable(major, minor, patch, stableRevision)
+                    else -> Version.Stable(major, minor, patch, stableRevision)
                 }
             } else {
                 null
@@ -350,14 +504,33 @@ object UpdateUtil {
             versionMajor: Int = 0,
             versionMinor: Int = 0,
             versionPatch: Int = 0,
-        ) : Version(versionMajor, versionMinor, versionPatch) {
-            override fun toVersionName(): String = "${major}.${minor}.${patch}"
+            versionBuild: Int = 0,
+        ) : Version(versionMajor, versionMinor, versionPatch, versionBuild) {
+            override fun toVersionName(): String =
+                if (build > 0) "${major}.${minor}.${patch}.${build}"
+                else "${major}.${minor}.${patch}"
 
             override fun toNumber(): Long =
                 major * MAJOR + minor * MINOR + patch * PATCH + build * BUILD + STABLE
         }
 
-        override operator fun compareTo(other: Version): Int =
-            toNumber().compareTo(other.toNumber())
+        private fun channelRank(): Int =
+            when (this) {
+                is Alpha -> 1
+                is Beta -> 2
+                is ReleaseCandidate -> 3
+                is DevPatch -> 4
+                is Stable -> 5
+            }
+
+        override operator fun compareTo(other: Version): Int {
+            if (major != other.major) return major.compareTo(other.major)
+            if (minor != other.minor) return minor.compareTo(other.minor)
+            if (patch != other.patch) return patch.compareTo(other.patch)
+
+            val rankComparison = channelRank().compareTo(other.channelRank())
+            if (rankComparison != 0) return rankComparison
+            return build.compareTo(other.build)
+        }
     }
 }
