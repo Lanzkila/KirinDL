@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Support v3.2.0 Stable version jumps (`61f80ad0`, 2026-10-05)
 - Set KirinDL v3.2.0 version code (`3ac7ca7d`, 2026-10-05)
 - Bump KirinDL to v3.2.0 (`ef9cc15e`, 2026-10-05)
 - Update v3.1.9.2 notes for Expert Config and Audio (`4b1fcc9f`, 2026-10-05)
