@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Resume app update installer after permission (`7d0097c3`, 2026-10-05)
 - Sync updater state after app version changes (`96b4a16b`, 2026-10-05)
 - Enable package installer handoff for app updates (`0520b719`, 2026-10-05)
 - Add app update download completion receiver (`520d66fd`, 2026-10-05)
