@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Publish the automatically generated next stable revision after the signed build succeeds"
+        description: "Publish the next KirinDL Stable version after the signed build succeeds"
         required: true
         default: false
         type: boolean
@@ -84,25 +84,36 @@ jobs:
                   build = int(match.group(4) or 0)
                   stable_versions.append((major, minor, patch, build))
 
-          if stable_versions:
-              major, minor, patch, build = max(stable_versions)
-          else:
-              text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
-              match = re.search(
-                  r"Version\.Stable\(\s*versionMajor\s*=\s*(\d+),"
-                  r"\s*versionMinor\s*=\s*(\d+),"
-                  r"\s*versionPatch\s*=\s*(\d+)"
-                  r"(?:,\s*versionBuild\s*=\s*(\d+))?\s*\)",
-                  text,
-                  re.S,
-              )
-              if not match:
-                  raise SystemExit("Could not resolve a stable KirinDL base version")
-              major, minor, patch = map(int, match.groups()[:3])
-              build = int(match.group(4) or 0)
+          text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
+          match = re.search(
+              r"Version\.Stable\(\s*versionMajor\s*=\s*(\d+),"
+              r"\s*versionMinor\s*=\s*(\d+),"
+              r"\s*versionPatch\s*=\s*(\d+)"
+              r"(?:,\s*versionBuild\s*=\s*(\d+))?\s*\)",
+              text,
+              re.S,
+          )
+          if not match:
+              raise SystemExit("Could not resolve the KirinDL source version")
+          source_major, source_minor, source_patch = map(int, match.groups()[:3])
+          source_build = int(match.group(4) or 0)
+          source_version = (source_major, source_minor, source_patch, source_build)
 
-          build += 1
-          version = f"{major}.{minor}.{patch}.{build}"
+          if stable_versions:
+              latest_version = max(stable_versions)
+              if source_version > latest_version:
+                  major, minor, patch, build = source_version
+              else:
+                  major, minor, patch, build = latest_version
+                  build += 1
+          else:
+              major, minor, patch, build = source_version
+
+          version = (
+              f"{major}.{minor}.{patch}.{build}"
+              if build > 0
+              else f"{major}.{minor}.{patch}"
+          )
           version_code = (
               major * 100_000_000
               + minor * 1_000_000
@@ -131,7 +142,11 @@ jobs:
           import re
           from pathlib import Path
 
-          major, minor, patch, build = os.environ["RELEASE_VERSION"].split(".")
+          parts = os.environ["RELEASE_VERSION"].split(".")
+          if len(parts) not in (3, 4):
+              raise SystemExit("Stable version must have three or four numeric components")
+          major, minor, patch = parts[:3]
+          build = parts[3] if len(parts) == 4 else "0"
           version_code = os.environ["VERSION_CODE"]
 
           version_file = Path("buildSrc/src/main/kotlin/Version.kt")
