@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Cookie
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +60,7 @@ fun GalleryDlSettingsPage(
     val exportFilter by GalleryDlBehaviorPreference.exportFilter.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showYtdlpSettings by remember { mutableStateOf(false) }
+    var showExportFilterDialog by remember { mutableStateOf(false) }
 
     val cookiesLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -154,25 +157,14 @@ fun GalleryDlSettingsPage(
             SettingsSection(
                 icon = Icons.Outlined.Settings,
                 title = "Media Export Filter",
-                description =
-                    "Choose which finished files KirinDL exports. Gallery DL may still " +
-                        "fetch supporting files during the job.",
+                description = "Choose which finished files KirinDL keeps after a Gallery DL job.",
             ) {
-                listOf(
-                        GalleryDlBehaviorPreference.EXPORT_ALL to "All files",
-                        GalleryDlBehaviorPreference.EXPORT_IMAGES to "Images only",
-                        GalleryDlBehaviorPreference.EXPORT_VIDEOS to "Videos only",
-                        GalleryDlBehaviorPreference.EXPORT_MEDIA to "Images + videos",
-                    )
-                    .forEach { (value, label) ->
-                        OutlinedButton(
-                            onClick = { GalleryDlBehaviorPreference.setExportFilter(value) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (exportFilter == value) "✓ $label" else label)
-                        }
-                        Spacer(Modifier.height(6.dp))
-                    }
+                OutlinedButton(
+                    onClick = { showExportFilterDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Selected: ${GalleryDlBehaviorPreference.exportFilterLabel(exportFilter)}")
+                }
             }
 
             SettingsSection(
@@ -298,6 +290,41 @@ fun GalleryDlSettingsPage(
 
     if (showYtdlpSettings) {
         YtdlpUpdateChannelDialog(onDismissRequest = { showYtdlpSettings = false })
+    }
+
+    if (showExportFilterDialog) {
+        val options =
+            listOf(
+                GalleryDlBehaviorPreference.EXPORT_ALL to "All files",
+                GalleryDlBehaviorPreference.EXPORT_IMAGES to "Images only",
+                GalleryDlBehaviorPreference.EXPORT_VIDEOS to "Videos only",
+                GalleryDlBehaviorPreference.EXPORT_MEDIA to "Images + videos",
+            )
+        AlertDialog(
+            onDismissRequest = { showExportFilterDialog = false },
+            title = { Text("Media Export Filter") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    options.forEach { (value, label) ->
+                        OutlinedButton(
+                            onClick = {
+                                GalleryDlBehaviorPreference.setExportFilter(value)
+                                showExportFilterDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (exportFilter == value) "✓ $label" else label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showExportFilterDialog = false }) {
+                    Text("Close")
+                }
+            },
+        )
     }
 }
 
