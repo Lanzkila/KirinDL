@@ -3,50 +3,11 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
-## [3.1.9] - 2026-10-02
+## [3.2.0] - 2026-10-05
 
 ### ✦ Recent changes
 
-- Expand v3.2.0 upgrade and fallback notes (`41f156f9`, 2026-10-05)
-- Remove superseded v3.1.9.2 release notes (`3e880cac`, 2026-10-05)
-- Prepare KirinDL v3.2.0 release notes (`069ab355`, 2026-10-05)
-- Support v3.2.0 Stable version jumps (`61f80ad0`, 2026-10-05)
-- Set KirinDL v3.2.0 version code (`3ac7ca7d`, 2026-10-05)
-- Bump KirinDL to v3.2.0 (`ef9cc15e`, 2026-10-05)
-- Update v3.1.9.2 notes for Expert Config and Audio (`4b1fcc9f`, 2026-10-05)
-- Polish Expert Config runner wiring (`672a6daa`, 2026-10-05)
-- Apply Gallery Expert Config only when enabled (`616a38cb`, 2026-10-05)
-- Add Expert Config enable toggle (`6f42011f`, 2026-10-05)
-- Unlock yt-dlp audio format settings (`5a524cb0`, 2026-10-05)
-- Keep Gallery export filters media-only (`c0241464`, 2026-10-05)
-- Add Expert Config toggle and audio export filter (`1660c125`, 2026-10-05)
-- Update v3.1.9.2 notes for export filter popup (`b381cf7d`, 2026-10-05)
-- Move Gallery media export filter into popup (`69bd60d2`, 2026-10-05)
-- Add KirinDL v3.1.9.2 release notes (`185ff7f5`, 2026-10-05)
-- Restore Bilibili short-link routing (`03ebdc0f`, 2026-10-05)
-- Restore dedicated Bilibili download profile (`eb65541c`, 2026-10-05)
-- Harden Download All preflight count handling (`3bfc0440`, 2026-10-05)
-- Run collection downloads in Download All mode (`c3105dde`, 2026-10-05)
-- Add Download All mode for Gallery collections (`d33eff86`, 2026-10-05)
-- Track collection mode in Gallery DL preflight (`bc9df686`, 2026-10-05)
-- Expose Gallery DL collection mode in preflight (`a33dfb11`, 2026-10-05)
-- Handle hentai source kinds in URL normalization (`a31d2a98`, 2026-10-05)
-- Use Gallery DL for hentai manga feed sources (`30d6f9eb`, 2026-10-05)
-- Route hentai manga collection links through Gallery DL (`2fa0b77e`, 2026-10-05)
-- Expand hentai manga collection metadata (`d110705b`, 2026-10-05)
-- Classify hentai manga artist and publisher sources (`8edf9820`, 2026-10-05)
-- Add hentai manga collection source kinds (`18347eb9`, 2026-10-05)
-- Use compact popup grid for Gallery DL themes (`62bc6d2d`, 2026-10-05)
-- Use integer phase progress in Media cards (`67bc6229`, 2026-10-05)
-- Simplify Gallery DL Codeberg source label (`afbd80d4`, 2026-10-05)
-- Add KirinDL v3.1.9.1 release notes (`1e268e96`, 2026-10-02)
-- Prepare Stable revision releases such as v3.1.9.1 (`b35421d2`, 2026-10-02)
-- Support four-part Stable version names (`2d8000d3`, 2026-10-02)
-- Limit Media temp path to active tasks (`57a286a6`, 2026-10-02)
-- Show temp path below Media cards (`dbc65053`, 2026-10-02)
-- Move Media progress into download status badge (`9bb7bcfc`, 2026-10-02)
-- Shorten KirinDL README (`056496e5`, 2026-10-02)
-- Publish Stable releases with all APK architectures (`7349fb03`, 2026-10-02)
+- Fix app update versioning and install handoff (`6d98c02e`, 2026-10-05)
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
 
