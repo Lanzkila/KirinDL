@@ -84,17 +84,6 @@ const val SPONSORBLOCK_CATEGORIES = "sponsorblock_categories"
 const val ARIA2C = "aria2c"
 const val ARIA2C_CONNECTIONS = "aria2c_connections"
 
-// KirinDL Bilibili-specific transfer profile. These settings are intentionally
-// separate from the global concurrent-fragment/Aria2 preferences so changing
-// Bilibili speed mode never changes another site's download behaviour.
-const val BILIBILI_SPEED_MODE = "bilibili_speed_mode"
-const val BILIBILI_CUSTOM_FRAGMENTS = "bilibili_custom_fragments"
-const val BILIBILI_LAST_AVG_SPEED = "bilibili_last_avg_speed"
-const val BILIBILI_SPEED_AUTO = 0
-const val BILIBILI_SPEED_BALANCED = 1
-const val BILIBILI_SPEED_FAST = 2
-const val BILIBILI_SPEED_CUSTOM = 3
-
 const val COOKIES = "cookies"
 const val USER_AGENT = "user_agent"
 const val USER_AGENT_STRING = "user_agent_string"
@@ -411,8 +400,6 @@ private val IntPreferenceDefaults =
         NETWORK_PAUSE_DELAY_SECONDS to 25,
         MAX_CONCURRENT_DOWNLOADS to 1,
         ARIA2C_CONNECTIONS to 16,
-        BILIBILI_SPEED_MODE to BILIBILI_SPEED_AUTO,
-        BILIBILI_CUSTOM_FRAGMENTS to 8,
         SPONSOR_DIALOG_FREQUENCY to SPONSOR_FREQ_WEEKLY,
     )
 
@@ -422,7 +409,6 @@ private val LongPreferenceDefaults = mapOf(
     GALLERY_DL_UPDATE_TIME to 0L,
     APP_UPDATE_CHECK_TIME to 0L,
     SPONSOR_DIALOG_LAST_SHOWN to 0L,
-    BILIBILI_LAST_AVG_SPEED to 0L,
 )
 
 fun String.getStringDefault() = StringPreferenceDefaults.getOrElse(this) { "" }
