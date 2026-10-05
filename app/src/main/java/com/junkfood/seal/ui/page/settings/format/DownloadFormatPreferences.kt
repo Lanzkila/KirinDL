@@ -236,7 +236,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = stringResource(id = R.string.audio_format_preference),
                         description = PreferenceStrings.getAudioFormatDesc(audioFormat),
                         icon = Icons.Outlined.MusicNote,
-                        enabled = audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
+                        enabled = !isCustomCommandEnabled && !isFormatSortingEnabled,
                         onClick = { showAudioFormatDialog = true },
                     )
                 }
@@ -245,7 +245,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Audio bitrate",
                         description = PreferenceStrings.getAudioQualityDesc(audioQuality),
                         icon = Icons.Outlined.HighQuality,
-                        enabled = audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
+                        enabled = !isCustomCommandEnabled && !isFormatSortingEnabled,
                         onClick = { showAudioQualityDialog = true },
                     )
                 }
@@ -254,7 +254,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Audio codec",
                         description = PreferenceStrings.getAudioCodecDesc(audioCodec),
                         icon = Icons.Outlined.Tune,
-                        enabled = audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
+                        enabled = !isCustomCommandEnabled && !isFormatSortingEnabled,
                         onClick = { showAudioCodecDialog = true },
                     )
                 }
@@ -263,7 +263,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Thumbnail / cover artwork",
                         description = PreferenceStrings.getAudioCoverModeDesc(audioCoverMode),
                         icon = Icons.Outlined.ArtTrack,
-                        enabled = audioSwitch && !isCustomCommandEnabled,
+                        enabled = !isCustomCommandEnabled,
                         onClick = { showAudioCoverDialog = true },
                     )
                 }
@@ -272,7 +272,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Cover image format",
                         description = PreferenceStrings.getAudioCoverFormatDesc(audioCoverFormat),
                         icon = Icons.Outlined.ArtTrack,
-                        enabled = audioSwitch && !isCustomCommandEnabled && audioCoverMode != AUDIO_COVER_NONE,
+                        enabled = !isCustomCommandEnabled && audioCoverMode != AUDIO_COVER_NONE,
                         onClick = { showAudioCoverFormatDialog = true },
                     )
                 }
@@ -281,7 +281,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = stringResource(R.string.convert_audio_format),
                         description = PreferenceStrings.getAudioConvertDesc(convertFormat),
                         icon = Icons.Outlined.Sync,
-                        enabled = audioSwitch && !isCustomCommandEnabled,
+                        enabled = !isCustomCommandEnabled,
                         onClick = { showAudioConvertDialog = true },
                         isChecked = convertAudio,
                         onChecked = {
@@ -294,7 +294,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                     PreferenceSwitch(
                         title = stringResource(id = R.string.embed_metadata),
                         description = stringResource(id = R.string.embed_metadata_desc),
-                        enabled = audioSwitch && !isCustomCommandEnabled,
+                        enabled = !isCustomCommandEnabled,
                         isChecked = embedMetadata,
                         icon = Icons.Outlined.ArtTrack,
                         onClick = {
@@ -308,7 +308,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = stringResource(R.string.crop_artwork),
                         description = stringResource(R.string.crop_artwork_desc),
                         icon = Icons.Outlined.Crop,
-                        enabled = embedMetadata && audioSwitch && !isCustomCommandEnabled,
+                        enabled = embedMetadata && !isCustomCommandEnabled,
                         isChecked = isArtworkCroppingEnabled,
                     ) {
                         isArtworkCroppingEnabled = !isArtworkCroppingEnabled
