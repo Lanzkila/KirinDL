@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Prepare KirinDL v3.2.0.1 hotfix notes (`5918fe29`, 2026-10-05)
 - Add install-ready fallback for app updates (`071fd13d`, 2026-10-05)
 - Polish app update release notes popup (`97a30c70`, 2026-10-05)
 - Use Download Manager from manual app update checks (`3a413a78`, 2026-10-05)
