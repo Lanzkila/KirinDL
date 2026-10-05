@@ -112,7 +112,11 @@ object GalleryDlRunner {
                                 "inspect_url",
                                 trimmedUrl,
                                 GalleryDlEngine.engineDirectory(context).absolutePath,
-                                compatibility.configFile.absolutePath,
+                                if (GalleryDlBehaviorPreference.isExpertConfigEnabled()) {
+                                    compatibility.configFile.absolutePath
+                                } else {
+                                    ""
+                                },
                                 cookiesPath,
                                 compatibility.cacheFile.absolutePath,
                             )
@@ -278,7 +282,11 @@ object GalleryDlRunner {
                                         trimmedUrl,
                                         outputDir.absolutePath,
                                         engineDir.absolutePath,
-                                        compatibility.configFile.absolutePath,
+                                        if (GalleryDlBehaviorPreference.isExpertConfigEnabled()) {
+                                    compatibility.configFile.absolutePath
+                                } else {
+                                    ""
+                                },
                                         cookiesPath,
                                         compatibility.cacheFile.absolutePath,
                                     )
