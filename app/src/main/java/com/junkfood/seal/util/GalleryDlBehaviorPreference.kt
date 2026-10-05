@@ -11,6 +11,7 @@ object GalleryDlBehaviorPreference {
     private const val KEY_CONFIRM_BEFORE_DOWNLOAD = "confirm_before_download"
     private const val KEY_PENDING_HOME_URL = "pending_home_url"
     private const val KEY_EXPORT_FILTER = "export_filter"
+    private const val KEY_EXPERT_CONFIG_ENABLED = "expert_config_enabled"
     private const val KEY_SITE_EXPORT_PREFIX = "site_export_"
     private const val KEY_LAST_TAB = "last_tab"
 
@@ -18,6 +19,7 @@ object GalleryDlBehaviorPreference {
     const val EXPORT_IMAGES = 1
     const val EXPORT_VIDEOS = 2
     const val EXPORT_MEDIA = 3
+    const val EXPORT_AUDIO = 4
 
     private val preferences by lazy { App.context.getSharedPreferences(PREFS_NAME, 0) }
 
@@ -25,9 +27,12 @@ object GalleryDlBehaviorPreference {
         MutableStateFlow(preferences.getBoolean(KEY_CONFIRM_BEFORE_DOWNLOAD, true))
     private val mutableExportFilter =
         MutableStateFlow(preferences.getInt(KEY_EXPORT_FILTER, EXPORT_ALL))
+    private val mutableExpertConfigEnabled =
+        MutableStateFlow(preferences.getBoolean(KEY_EXPERT_CONFIG_ENABLED, false))
 
     val confirmBeforeDownload = mutableConfirmBeforeDownload.asStateFlow()
     val exportFilter = mutableExportFilter.asStateFlow()
+    val expertConfigEnabled = mutableExpertConfigEnabled.asStateFlow()
 
     fun setConfirmBeforeDownload(value: Boolean) {
         preferences.edit().putBoolean(KEY_CONFIRM_BEFORE_DOWNLOAD, value).apply()
@@ -35,7 +40,7 @@ object GalleryDlBehaviorPreference {
     }
 
     fun setExportFilter(value: Int) {
-        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_MEDIA } ?: EXPORT_ALL
+        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_AUDIO } ?: EXPORT_ALL
         preferences.edit().putInt(KEY_EXPORT_FILTER, safeValue).apply()
         mutableExportFilter.value = safeValue
     }
@@ -45,22 +50,30 @@ object GalleryDlBehaviorPreference {
             EXPORT_IMAGES -> "Images only"
             EXPORT_VIDEOS -> "Videos only"
             EXPORT_MEDIA -> "Images + videos"
+            EXPORT_AUDIO -> "Audio only"
             else -> "All files"
         }
+
+    fun setExpertConfigEnabled(value: Boolean) {
+        preferences.edit().putBoolean(KEY_EXPERT_CONFIG_ENABLED, value).apply()
+        mutableExpertConfigEnabled.value = value
+    }
+
+    fun isExpertConfigEnabled(): Boolean = mutableExpertConfigEnabled.value
 
     fun siteExportFilter(url: String): Int? {
         val key = sitePreferenceKey(url) ?: return null
         if (!preferences.contains(key)) return null
         return preferences
             .getInt(key, EXPORT_ALL)
-            .takeIf { it in EXPORT_ALL..EXPORT_MEDIA }
+            .takeIf { it in EXPORT_ALL..EXPORT_AUDIO }
     }
 
     fun effectiveExportFilter(url: String): Int = siteExportFilter(url) ?: mutableExportFilter.value
 
     fun rememberSiteExportFilter(url: String, value: Int) {
         val key = sitePreferenceKey(url) ?: return
-        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_MEDIA } ?: EXPORT_ALL
+        val safeValue = value.takeIf { it in EXPORT_ALL..EXPORT_AUDIO } ?: EXPORT_ALL
         preferences.edit().putInt(key, safeValue).apply()
     }
 
