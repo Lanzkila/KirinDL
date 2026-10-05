@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Use Download Manager from manual app update checks (`3a413a78`, 2026-10-05)
 - Refresh auto update checks after app upgrades (`4b89f27c`, 2026-10-05)
 - Resume app update installer after permission (`7d0097c3`, 2026-10-05)
 - Sync updater state after app version changes (`96b4a16b`, 2026-10-05)
