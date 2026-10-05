@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add app update download completion receiver (`520d66fd`, 2026-10-05)
 - Fix app update versioning and install handoff (`6d98c02e`, 2026-10-05)
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
