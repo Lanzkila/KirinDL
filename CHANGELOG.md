@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Document subtitle source and language controls (`a3aaa89a`, 2026-10-07)
 - Prevent conflicting subtitle source settings (`9506d731`, 2026-10-07)
 - Add Original Selected and All subtitle language modes (`56ca3167`, 2026-10-07)
 - Clarify subtitle sources and language mode UI (`57d9f48c`, 2026-10-07)
