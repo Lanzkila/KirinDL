@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Move automatic app updates to persistent home alerts (`fba5b611`)
 - Add dedicated app update notifications (`1b9d0831`)
 - Expose persistent app update state and release notes (`3feef2a0`)
 - Add app update notification preference (`737c810a`)
