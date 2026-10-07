@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Harden first launch engine initialization (`256de36b`)
 - Clarify remote and local clip tool labels (`bd6b4413`)
 - Add app update notification toggle (`8ca93774`)
 - Replace About update checker with release note popups (`2f316c69`)
