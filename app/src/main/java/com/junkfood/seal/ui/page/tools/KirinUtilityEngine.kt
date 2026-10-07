@@ -202,6 +202,7 @@ object KirinUtilityEngine {
         context: Context,
         uri: Uri,
         edits: MetadataEdits,
+        artworkUri: Uri? = null,
     ): String = withContext(Dispatchers.IO) {
         YoutubeDL.init(context.applicationContext)
         val input = copyUriToTemp(context, uri, "kirin_metadata")
@@ -211,9 +212,25 @@ object KirinUtilityEngine {
             File(FileUtil.getExternalDownloadDirectory(), "Metadata Editor").apply { mkdirs() }
         val output = uniqueOutput(outputDir, sourceName.substringBeforeLast('.', sourceName), extension)
 
+        val artwork =
+            artworkUri?.let { copyUriToTemp(context, it, "kirin_artwork") }
+        val audioArtworkExtensions = setOf("mp3", "m4a", "aac", "flac", "ogg", "opus")
+        if (artwork != null && extension.lowercase(Locale.US) !in audioArtworkExtensions) {
+            input.delete()
+            artwork.delete()
+            throw IOException("Cover artwork replacement is supported for audio files only.")
+        }
+
         val args = buildList {
             addAll(listOf("-y", "-hide_banner", "-nostdin", "-i", input.absolutePath))
-            addAll(listOf("-map", "0", "-c", "copy"))
+            if (artwork != null) {
+                addAll(listOf("-i", artwork.absolutePath))
+                addAll(listOf("-map", "0:a?", "-map", "1:v:0"))
+                addAll(listOf("-c:a", "copy", "-c:v", "mjpeg"))
+                addAll(listOf("-disposition:v:0", "attached_pic"))
+            } else {
+                addAll(listOf("-map", "0", "-c", "copy"))
+            }
             if (edits.removeExisting) addAll(listOf("-map_metadata", "-1"))
             else addAll(listOf("-map_metadata", "0"))
             edits.title.takeIf { it.isNotBlank() }?.let { addAll(listOf("-metadata", "title=$it")) }
@@ -234,6 +251,7 @@ object KirinUtilityEngine {
             output.absolutePath
         } finally {
             input.delete()
+            artwork?.delete()
         }
     }
 
@@ -266,6 +284,7 @@ object KirinUtilityEngine {
         uri: Uri,
         startSeconds: Double,
         endSeconds: Double,
+        label: String? = null,
     ): String = withContext(Dispatchers.IO) {
         require(startSeconds >= 0.0) { "Start time must be 0 or greater." }
         require(endSeconds > startSeconds) { "End time must be greater than start time." }
@@ -278,7 +297,9 @@ object KirinUtilityEngine {
         val output =
             uniqueOutput(
                 outputDir,
-                sourceName.substringBeforeLast('.', sourceName) + " clip",
+                sourceName.substringBeforeLast('.', sourceName) +
+                    " - " +
+                    label?.takeIf { it.isNotBlank() }.orEmpty().ifBlank { "clip" },
                 extension,
             )
 
