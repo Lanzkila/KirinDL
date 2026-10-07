@@ -7,6 +7,9 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Document new More Tools utilities (`003832f9`)
+- Harden playlist selection state handling (`5501f106`)
+- Initialize bundled FFmpeg for utility tools (`fc92ea21`)
 - Fix Compose weight import in utility tools (`18a58610`)
 - Expose five new utilities in More Tools (`9a34e5c8`)
 - Add labels for new More Tools utilities (`e3d96d1e`)
