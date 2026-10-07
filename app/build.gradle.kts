@@ -23,7 +23,6 @@ val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 3, "x86_64" 
 
 val baseVersionName = currentVersion.name
 val currentVersionCode = currentVersion.code.toInt()
-val youtubedlAndroidRuntimeVersion = libs.versions.youtubedlAndroid.get()
 val pythonRuntimeVersion = "3.11"
 
 val prereleaseVersionSuffix =
@@ -67,16 +66,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         manifestPlaceholders["appLabel"] = "@string/app_name"
-        buildConfigField(
-            "String",
-            "YOUTUBEDL_ANDROID_RUNTIME_VERSION",
-            "\"$youtubedlAndroidRuntimeVersion\"",
-        )
-        buildConfigField(
-            "String",
-            "PYTHON_RUNTIME_VERSION",
-            "\"$pythonRuntimeVersion\"",
-        )
 
         ndk {
             abiFilters += if (splitApks) {
