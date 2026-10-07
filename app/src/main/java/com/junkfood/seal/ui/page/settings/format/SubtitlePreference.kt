@@ -187,7 +187,10 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
                         title = stringResource(id = R.string.auto_translated_subtitles),
                         icon = Icons.Outlined.Translate,
                         isChecked = autoTranslatedSubtitle,
-                        enabled = downloadSubtitle && autoSubtitle,
+                        enabled =
+                            downloadSubtitle &&
+                                autoSubtitle &&
+                                subtitleLanguageMode != SUBTITLE_LANGUAGE_ORIGINAL,
                     ) {
                         if (!autoTranslatedSubtitle) {
                             showAutoTranslateDialog = true
@@ -195,6 +198,15 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
                             autoTranslatedSubtitle = false
                             AUTO_TRANSLATED_SUBTITLES.updateBoolean(false)
                         }
+                    }
+                }
+
+                if (downloadSubtitle && !originalSubtitle && !autoSubtitle) {
+                    item {
+                        PreferenceInfo(
+                            text =
+                                "Choose Original / manual subtitles, Auto-generated subtitles, or both."
+                        )
                     }
                 }
 
