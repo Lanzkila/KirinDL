@@ -306,7 +306,7 @@
     <string name="enable_auto_update">Enable auto update</string>
     <string name="discard">Discard</string>
     <string name="apply">Apply</string>
-    <string name="clip_video">Clip video</string>
+    <string name="clip_video">Clip during download</string>
     <string name="clip_start">Start</string>
     <string name="clip_end">End</string>
     <string name="audio_format_preference">Preferred audio format</string>
@@ -335,7 +335,7 @@
     <string name="beta_features">Beta</string>
     <string name="enable_experimental_feature">Enable experimental feature?</string>
     <string name="clip_video_dialog_msg">Downloads using this feature will be delegated to FFmpeg to download selected sections of the video, this feature is still experimental and the cutting will not be completely accurate, not all formats support this feature and you may experience slower download speeds.</string>
-    <string name="clip_video_desc">Make video clips in the format selection page</string>
+    <string name="clip_video_desc">Download only a selected time range from the source video</string>
     <string name="embed_thumbnail" translatable="false">Embed thumbnail</string>
     <string name="embed_thumbnail_desc" translatable="false">Embed thumbnails into videos</string>
     <string name="auto_update_disabled_msg">Auto-update is not available for %1$s builds. If you don\'t have %1$s installed on your device, or would like to preview upcoming new features in KirinDL, please consider %2$s.</string>
@@ -726,8 +726,8 @@
     <string name="metadata_editor_tool">Metadata Editor</string>
     <string name="metadata_editor_tool_short_desc">Edit local media tags quickly</string>
     <string name="metadata_editor_tool_desc">Edit common media metadata such as title, artist, album, year and genre using FFmpeg stream-copy while keeping the original file untouched.</string>
-    <string name="chapter_clip_maker_tool">Chapter / Clip Maker</string>
-    <string name="chapter_clip_maker_tool_short_desc">Cut chapters or custom time ranges</string>
+    <string name="chapter_clip_maker_tool">Local Chapter / Clip Maker</string>
+    <string name="chapter_clip_maker_tool_short_desc">Cut local chapters or custom time ranges</string>
     <string name="chapter_clip_maker_tool_desc">Read embedded chapters from local media or choose a custom start/end range and create a fast stream-copy clip without re-encoding.</string>
 
 
