@@ -6,8 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AlertDialog
@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import com.junkfood.seal.R
 import com.junkfood.seal.ui.common.booleanState
+import com.junkfood.seal.ui.common.intState
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.ui.component.ConfirmButton
 import com.junkfood.seal.ui.component.DismissButton
@@ -43,12 +44,17 @@ import com.junkfood.seal.util.AUTO_TRANSLATED_SUBTITLES
 import com.junkfood.seal.util.EMBED_SUBTITLE
 import com.junkfood.seal.util.EXTRACT_AUDIO
 import com.junkfood.seal.util.KEEP_SUBTITLE_FILES
+import com.junkfood.seal.util.ORIGINAL_SUBTITLE
 import com.junkfood.seal.util.PreferenceStrings
 import com.junkfood.seal.util.PreferenceUtil.getString
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.SPONSORBLOCK
 import com.junkfood.seal.util.SUBTITLE
 import com.junkfood.seal.util.SUBTITLE_LANGUAGE
+import com.junkfood.seal.util.SUBTITLE_LANGUAGE_ALL
+import com.junkfood.seal.util.SUBTITLE_LANGUAGE_MODE
+import com.junkfood.seal.util.SUBTITLE_LANGUAGE_ORIGINAL
+import com.junkfood.seal.util.SUBTITLE_LANGUAGE_SELECTED
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +68,9 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
     val sponsorBlock by SPONSORBLOCK.booleanState
     //    var keepSubtitleFile by KEEP_SUBTITLE_FILES.booleanState
     var embedSubtitle by EMBED_SUBTITLE.booleanState
+    var originalSubtitle by ORIGINAL_SUBTITLE.booleanState
     var autoSubtitle by AUTO_SUBTITLE.booleanState
+    var subtitleLanguageMode by SUBTITLE_LANGUAGE_MODE.intState
     var autoTranslatedSubtitle by AUTO_TRANSLATED_SUBTITLES.booleanState
 
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -77,6 +85,12 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
 
     val subtitleLang by
         remember(showLanguageDialog) { mutableStateOf(SUBTITLE_LANGUAGE.getString()) }
+    val subtitleLanguageDescription =
+        when (subtitleLanguageMode) {
+            SUBTITLE_LANGUAGE_ORIGINAL -> "Original languages"
+            SUBTITLE_LANGUAGE_ALL -> "All languages"
+            else -> "Selected • $subtitleLang"
+        }
     val sponsorBlockText = stringResource(id = R.string.subtitle_sponsorblock)
     val embedSubtitleText = stringResource(R.string.embed_subtitles_mkv_msg)
 
@@ -120,10 +134,39 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
                     )
                 }
                 item {
+                    PreferenceSwitch(
+                        title = "Original / manual subtitles",
+                        description = "Subtitle tracks provided by the website or uploader",
+                        icon = Icons.Outlined.Subtitles,
+                        isChecked = originalSubtitle,
+                        enabled = downloadSubtitle,
+                        onClick = {
+                            originalSubtitle = !originalSubtitle
+                            ORIGINAL_SUBTITLE.updateBoolean(originalSubtitle)
+                        },
+                    )
+                }
+
+                item {
+                    PreferenceSwitch(
+                        title = "Auto-generated subtitles",
+                        icon = Icons.Outlined.ClosedCaption,
+                        description = "Captions generated automatically by the website",
+                        isChecked = autoSubtitle,
+                        enabled = downloadSubtitle,
+                        onClick = {
+                            autoSubtitle = !autoSubtitle
+                            AUTO_SUBTITLE.updateBoolean(autoSubtitle)
+                        },
+                    )
+                }
+
+                item {
                     PreferenceItem(
-                        title = stringResource(id = R.string.subtitle_language),
+                        title = "Subtitle language mode",
                         icon = Icons.Outlined.Language,
-                        description = subtitleLang,
+                        description = subtitleLanguageDescription,
+                        enabled = downloadSubtitle && (originalSubtitle || autoSubtitle),
                         onClick = { showLanguageDialog = true },
                     )
                 }
@@ -133,6 +176,7 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
                         title = stringResource(id = R.string.convert_subtitle),
                         description = subtitleFormatText,
                         icon = Icons.Outlined.Sync,
+                        enabled = downloadSubtitle && (originalSubtitle || autoSubtitle),
                     ) {
                         showConversionDialog = true
                     }
@@ -140,23 +184,10 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
 
                 item {
                     PreferenceSwitch(
-                        title = stringResource(id = R.string.auto_subtitle),
-                        icon = Icons.Outlined.ClosedCaption,
-                        description = stringResource(id = R.string.auto_subtitle_desc),
-                        isChecked = autoSubtitle,
-                        onClick = {
-                            autoSubtitle = !autoSubtitle
-                            AUTO_SUBTITLE.updateBoolean(autoSubtitle)
-                        },
-                    )
-                }
-
-                item {
-                    PreferenceSwitch(
                         title = stringResource(id = R.string.auto_translated_subtitles),
                         icon = Icons.Outlined.Translate,
                         isChecked = autoTranslatedSubtitle,
-                        enabled = autoSubtitle,
+                        enabled = downloadSubtitle && autoSubtitle,
                     ) {
                         if (!autoTranslatedSubtitle) {
                             showAutoTranslateDialog = true
@@ -173,7 +204,7 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
                         title = stringResource(id = R.string.embed_subtitles),
                         description = stringResource(id = R.string.embed_subtitles_desc),
                         isChecked = embedSubtitle,
-                        enabled = !downloadAudio,
+                        enabled = downloadSubtitle && (originalSubtitle || autoSubtitle) && !downloadAudio,
                         onClick = {
                             if (embedSubtitle) {
                                 embedSubtitle = false
@@ -193,7 +224,11 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
                             title = stringResource(id = R.string.keep_subtitle_files),
                             description = null,
                             isChecked = keepSubtitles,
-                            enabled = !downloadAudio && embedSubtitle,
+                            enabled =
+                                downloadSubtitle &&
+                                    (originalSubtitle || autoSubtitle) &&
+                                    !downloadAudio &&
+                                    embedSubtitle,
                             onClick = {
                                 keepSubtitles = !keepSubtitles
                                 KEEP_SUBTITLE_FILES.updateBoolean(keepSubtitles)
@@ -207,7 +242,12 @@ fun SubtitlePreference(onNavigateBack: () -> Unit) {
             }
         },
     )
-    if (showLanguageDialog) SubtitleLanguageDialog { showLanguageDialog = false }
+    if (showLanguageDialog) {
+        SubtitleLanguageDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            onModeChanged = { subtitleLanguageMode = it },
+        )
+    }
     if (showConversionDialog) SubtitleConversionDialog { showConversionDialog = false }
     if (showEmbedSubtitleDialog) {
         AlertDialog(
