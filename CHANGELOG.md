@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add artwork editing and named chapter clips (`ef862594`)
 - Document new More Tools utilities (`003832f9`)
 - Harden playlist selection state handling (`5501f106`)
 - Initialize bundled FFmpeg for utility tools (`fc92ea21`)
