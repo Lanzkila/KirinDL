@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Expose five new utilities in More Tools (`9a34e5c8`)
 - Add labels for new More Tools utilities (`e3d96d1e`)
 - Add five functional More Tools pages (`ce528603`)
 - Add shared engine for new More Tools utilities (`f28bd565`)
