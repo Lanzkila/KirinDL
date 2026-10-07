@@ -37,6 +37,8 @@ object UpdateUtil {
     private const val KEY_PENDING_DOWNLOAD_ID = "pending_download_id"
     private const val KEY_PENDING_VERSION = "pending_version"
     private const val KEY_LAST_INSTALLED_VERSION = "last_installed_version"
+    private const val KEY_LAST_CHECKED_VERSION = "last_checked_version"
+    private const val KEY_LAST_CHECKED_CHANNEL = "last_checked_channel"
     private const val KEY_WAITING_INSTALL_PERMISSION = "waiting_install_permission"
     private const val NO_DOWNLOAD_ID = -1L
     private const val APK_MIME = "application/vnd.android.package-archive"
@@ -132,7 +134,9 @@ object UpdateUtil {
             .asSequence()
             .filter { it.draft != true }
             .filter { release ->
-                if (stableChannel) release.preRelease != true else release.preRelease == true
+                // Stable users never receive GitHub pre-releases. Pre-release testers can see
+                // both channels and simply take the highest valid KirinDL version.
+                !stableChannel || release.preRelease != true
             }
             .filter { (it.tagName ?: it.name).toVersionOrNull() != null }
             .maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
@@ -158,6 +162,8 @@ object UpdateUtil {
 
         prefs.edit()
             .putString(KEY_LAST_INSTALLED_VERSION, installed)
+            .remove(KEY_LAST_CHECKED_VERSION)
+            .remove(KEY_LAST_CHECKED_CHANNEL)
             .remove(KEY_PENDING_DOWNLOAD_ID)
             .remove(KEY_PENDING_VERSION)
             .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
@@ -392,6 +398,32 @@ object UpdateUtil {
             }
             .firstOrNull()
 
+    fun shouldRunAutomaticUpdateCheck(
+        context: Context = App.context,
+        intervalMs: Long,
+    ): Boolean {
+        val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+        val installed = context.getCurrentVersionName()
+        val channel = UPDATE_CHANNEL.getInt()
+        val checkedVersion = prefs.getString(KEY_LAST_CHECKED_VERSION, null)
+        val checkedChannel = prefs.getInt(KEY_LAST_CHECKED_CHANNEL, Int.MIN_VALUE)
+        val lastChecked = APP_UPDATE_CHECK_TIME.getLong()
+        val now = System.currentTimeMillis()
+
+        if (checkedVersion != installed || checkedChannel != channel) return true
+        if (lastChecked <= 0L || now < lastChecked) return true
+        return now - lastChecked >= intervalMs
+    }
+
+    private fun recordSuccessfulAppUpdateCheck(context: Context) {
+        context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_CHECKED_VERSION, context.getCurrentVersionName())
+            .putInt(KEY_LAST_CHECKED_CHANNEL, UPDATE_CHANNEL.getInt())
+            .apply()
+        APP_UPDATE_CHECK_TIME.updateLong(System.currentTimeMillis())
+    }
+
     suspend fun checkForUpdateResult(context: Context = App.context): Result<Release?> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -400,7 +432,7 @@ object UpdateUtil {
                     val latestVersion = (latestRelease.tagName ?: latestRelease.name).toVersion()
                     if (currentVersion < latestVersion) latestRelease else null
                 }
-                .also { APP_UPDATE_CHECK_TIME.updateLong(System.currentTimeMillis()) }
+                .onSuccess { recordSuccessfulAppUpdateCheck(context) }
         }
 
     suspend fun checkForUpdate(context: Context = App.context): Release? =
