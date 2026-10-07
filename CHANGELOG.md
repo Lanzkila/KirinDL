@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Clarify subtitle sources and language mode UI (`57d9f48c`, 2026-10-07)
 - Separate original and automatic subtitle download logic (`23e7b0f0`, 2026-10-07)
 - Add subtitle source and language mode preferences (`365a6b24`, 2026-10-07)
 - Document collapsible runtime engine slots (`4392af70`, 2026-10-07)
