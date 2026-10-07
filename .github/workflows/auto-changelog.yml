@@ -130,16 +130,27 @@ jobs:
           end_marker = "<!-- KIRIN-AUTO-CHANGELOG:END -->"
 
           if entries:
-              lines = [
-                  start_marker,
-                  f"## [{stable_version}] - {stable_date}",
-                  "",
-                  "### ✦ Recent changes",
-                  "",
-              ]
+              # Keep recent development work separated by calendar day. A new day's work gets
+              # a new top-level block instead of being appended under the date of the last
+              # Stable tag (for example, 2026-10-07 must not be mixed into 2026-10-05).
+              grouped = {}
               for day, short_sha, subject in entries:
-                  lines.append(f"- {subject} (`{short_sha}`, {day})")
-              lines.extend(["", end_marker, ""])
+                  grouped.setdefault(day, []).append((short_sha, subject))
+
+              lines = [start_marker]
+              for day in sorted(grouped.keys(), reverse=True):
+                  lines.extend(
+                      [
+                          f"## {day}",
+                          "",
+                          "### ✦ Recent changes",
+                          "",
+                      ]
+                  )
+                  for short_sha, subject in grouped[day]:
+                      lines.append(f"- {subject} (`{short_sha}`)")
+                  lines.append("")
+              lines.extend([end_marker, ""])
               block = "\n".join(lines)
           else:
               block = ""
