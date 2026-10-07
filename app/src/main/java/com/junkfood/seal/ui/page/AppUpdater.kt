@@ -24,6 +24,14 @@ fun AppUpdater() {
     LaunchedEffect(Unit) {
         UpdateUtil.syncInstalledVersionState(context)
 
+        // Restore a previously detected update before honoring the network-check cooldown.
+        // This keeps the Home alert visible across launches until the newer APK is installed.
+        UpdateUtil.restoreCachedAvailableUpdate(context)?.let { cached ->
+            if (APP_UPDATE_NOTIFICATIONS.getBoolean()) {
+                NotificationUtil.notifyAppUpdateAvailable(cached)
+            }
+        }
+
         if (
             !PreferenceUtil.isNetworkAvailableForDownload() ||
                 !PreferenceUtil.isAutoUpdateEnabled()
