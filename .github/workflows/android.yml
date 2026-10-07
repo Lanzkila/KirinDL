@@ -123,17 +123,23 @@ jobs:
 
           release_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$")
           channel = os.environ["RELEASE_CHANNEL"]
-          published_versions = []
+          published = []
           for release in releases:
               if release.get("draft"):
                   continue
-              if channel == "stable" and release.get("prerelease"):
-                  continue
               match = release_re.fullmatch(release.get("tag_name", ""))
-              if match:
-                  major, minor, patch = map(int, match.groups()[:3])
-                  build = int(match.group(4) or 0)
-                  published_versions.append((major, minor, patch, build))
+              if not match:
+                  continue
+              major, minor, patch = map(int, match.groups()[:3])
+              build = int(match.group(4) or 0)
+              published.append(
+                  {
+                      "version": (major, minor, patch, build),
+                      "id": release.get("id"),
+                      "prerelease": bool(release.get("prerelease")),
+                      "tag": release.get("tag_name", ""),
+                  }
+              )
 
           text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
           match = re.search(
@@ -150,15 +156,38 @@ jobs:
           source_build = int(match.group(4) or 0)
           source_version = (source_major, source_minor, source_patch, source_build)
 
-          if published_versions:
-              latest_version = max(published_versions)
-              if source_version > latest_version:
-                  major, minor, patch, build = source_version
-              else:
-                  major, minor, patch, build = latest_version
-                  build += 1
-          else:
+          # If the exact source version already exists as a tested Pre-release and the
+          # Stable channel is requested, promote that release metadata only. Do not rebuild
+          # or replace its APK assets under the same Android versionCode.
+          promote_release = None
+          if channel == "stable":
+              promote_release = next(
+                  (
+                      release
+                      for release in published
+                      if release["version"] == source_version and release["prerelease"]
+                  ),
+                  None,
+              )
+
+          promote_only = promote_release is not None
+          release_id = str(promote_release["id"]) if promote_release else ""
+
+          if promote_only:
               major, minor, patch, build = source_version
+          else:
+              # Both channels consider every published numeric release. This guarantees
+              # that a newly built Stable remains newer than every earlier Pre-release.
+              published_versions = [release["version"] for release in published]
+              if published_versions:
+                  latest_version = max(published_versions)
+                  if source_version > latest_version:
+                      major, minor, patch, build = source_version
+                  else:
+                      major, minor, patch, build = latest_version
+                      build += 1
+              else:
+                  major, minor, patch, build = source_version
 
           version = (
               f"{major}.{minor}.{patch}.{build}"
@@ -178,12 +207,21 @@ jobs:
               out.write(f"version={version}\n")
               out.write(f"version_code={version_code}\n")
               out.write(f"release_notes_path={release_notes_path}\n")
+              out.write(f"promote_only={'true' if promote_only else 'false'}\n")
+              out.write(f"release_id={release_id}\n")
 
-          print(f"Next KirinDL {channel}: v{version}")
-          print(f"Version code: {version_code}")
-          print(f"Release notes: {release_notes_path}")
+          if promote_only:
+              print(
+                  f"Promote existing KirinDL Pre-release v{version} to Stable "
+                  f"(release id {release_id}); APK rebuild will be skipped."
+              )
+          else:
+              print(f"Next KirinDL {channel}: v{version}")
+              print(f"Version code: {version_code}")
+              print(f"Release notes: {release_notes_path}")
 
       - name: Stage generated version
+        if: ${{ steps.version.outputs.promote_only != 'true' }}
         shell: python
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -231,7 +269,7 @@ jobs:
           print(f"Staged stable version {os.environ['RELEASE_VERSION']} ({version_code})")
 
       - name: Validate release notes
-        if: ${{ github.event_name == 'push' || inputs.publish_release }}
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only != 'true' }}
         shell: bash
         env:
           RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
@@ -254,6 +292,7 @@ jobs:
           echo "Release notes validated: $RELEASE_NOTES_PATH"
 
       - name: Prepare KirinDL release signing
+        if: ${{ steps.version.outputs.promote_only != 'true' }}
         shell: bash
         env:
           KIRIN_KEYSTORE_BASE64: ${{ secrets.KIRIN_KEYSTORE_BASE64 }}
@@ -281,9 +320,11 @@ jobs:
             -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
       - name: Build signed Release APKs
+        if: ${{ steps.version.outputs.promote_only != 'true' }}
         run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
       - name: Verify all Release APKs and create checksums
+        if: ${{ steps.version.outputs.promote_only != 'true' }}
         id: assets
         shell: bash
         env:
@@ -336,6 +377,7 @@ jobs:
           echo "Verified Universal, ARM64-v8a, ARMv7, x86 and x86_64 Release APKs."
 
       - name: Upload signed Release artifacts
+        if: ${{ steps.version.outputs.promote_only != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: KirinDL-${{ steps.channel.outputs.channel }}-${{ steps.version.outputs.version }}-${{ github.run_number }}
@@ -350,8 +392,28 @@ jobs:
           retention-days: 30
           compression-level: 0
 
+      - name: Promote tested Pre-release to Stable
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.version.outputs.release_id }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ -n "$RELEASE_ID" ]] || {
+            echo "::error::Promotion requested without an existing GitHub release id."
+            exit 1
+          }
+          gh api \
+            --method PATCH \
+            "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -F prerelease=false \
+            -f make_latest=true >/dev/null
+          echo "Promoted KirinDL v$RELEASE_VERSION from Pre-release to Stable without rebuilding APKs."
+
       - name: Publish GitHub Release
-        if: ${{ github.event_name == 'push' || inputs.publish_release }}
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only != 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
