@@ -161,10 +161,13 @@ jobs:
           source_build = int(match.group(4) or 0)
           source_version = (source_major, source_minor, source_patch, source_build)
 
-          # If the exact source version already exists as a tested Pre-release and the
-          # Stable channel is requested, promote that release metadata only. Do not rebuild
-          # or replace its APK assets under the same Android versionCode.
+          # If the exact source version already exists in the opposite channel, switch
+          # only the GitHub release metadata. Never rebuild or replace APK assets under the
+          # same Android versionCode.
           promote_release = None
+          demote_release = None
+          fallback_stable_release = None
+
           if channel == "stable":
               promote_release = next(
                   (
@@ -174,11 +177,37 @@ jobs:
                   ),
                   None,
               )
+          else:
+              demote_release = next(
+                  (
+                      release
+                      for release in published
+                      if release["version"] == source_version and not release["prerelease"]
+                  ),
+                  None,
+              )
+              if demote_release is not None:
+                  stable_candidates = [
+                      release
+                      for release in published
+                      if not release["prerelease"] and release["version"] < source_version
+                  ]
+                  fallback_stable_release = (
+                      max(stable_candidates, key=lambda item: item["version"])
+                      if stable_candidates
+                      else None
+                  )
 
           promote_only = promote_release is not None
-          release_id = str(promote_release["id"]) if promote_release else ""
+          demote_only = demote_release is not None
+          metadata_only = promote_only or demote_only
+          transition_release = promote_release or demote_release
+          release_id = str(transition_release["id"]) if transition_release else ""
+          fallback_stable_release_id = (
+              str(fallback_stable_release["id"]) if fallback_stable_release else ""
+          )
 
-          if promote_only:
+          if metadata_only:
               major, minor, patch, build = source_version
           else:
               # Both channels consider every published numeric release. This guarantees
@@ -213,11 +242,19 @@ jobs:
               out.write(f"version_code={version_code}\n")
               out.write(f"release_notes_path={release_notes_path}\n")
               out.write(f"promote_only={'true' if promote_only else 'false'}\n")
+              out.write(f"demote_only={'true' if demote_only else 'false'}\n")
+              out.write(f"metadata_only={'true' if metadata_only else 'false'}\n")
               out.write(f"release_id={release_id}\n")
+              out.write(f"fallback_stable_release_id={fallback_stable_release_id}\n")
 
           if promote_only:
               print(
                   f"Promote existing KirinDL Pre-release v{version} to Stable "
+                  f"(release id {release_id}); APK rebuild will be skipped."
+              )
+          elif demote_only:
+              print(
+                  f"Move existing KirinDL Stable v{version} back to Pre-release "
                   f"(release id {release_id}); APK rebuild will be skipped."
               )
           else:
@@ -226,7 +263,7 @@ jobs:
               print(f"Release notes: {release_notes_path}")
 
       - name: Stage generated version
-        if: ${{ steps.version.outputs.promote_only != 'true' }}
+        if: ${{ steps.version.outputs.metadata_only != 'true' }}
         shell: python
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -275,7 +312,7 @@ jobs:
 
       - name: Prepare Pre-release notes from new commits
         id: prerelease_notes
-        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'prerelease' && steps.version.outputs.promote_only != 'true' }}
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'prerelease' && steps.version.outputs.metadata_only != 'true' }}
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
@@ -414,7 +451,7 @@ jobs:
           print(f"Prepared notes: {notes_path}")
 
       - name: Validate Stable release notes
-        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'stable' }}
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'stable' && steps.version.outputs.demote_only != 'true' }}
         shell: bash
         env:
           RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
@@ -433,7 +470,7 @@ jobs:
           echo "Stable release notes validated: $RELEASE_NOTES_PATH"
 
       - name: Validate Pre-release notes
-        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'prerelease' && steps.version.outputs.promote_only != 'true' }}
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'prerelease' && steps.version.outputs.metadata_only != 'true' }}
         shell: bash
         env:
           PRE_RELEASE_NOTES_PATH: ${{ steps.prerelease_notes.outputs.path }}
@@ -451,7 +488,7 @@ jobs:
           echo "Pre-release notes validated: $PRE_RELEASE_NOTES_PATH"
 
       - name: Prepare KirinDL release signing
-        if: ${{ steps.version.outputs.promote_only != 'true' }}
+        if: ${{ steps.version.outputs.metadata_only != 'true' }}
         shell: bash
         env:
           KIRIN_KEYSTORE_BASE64: ${{ secrets.KIRIN_KEYSTORE_BASE64 }}
@@ -479,11 +516,11 @@ jobs:
             -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
       - name: Build signed Release APKs
-        if: ${{ steps.version.outputs.promote_only != 'true' }}
+        if: ${{ steps.version.outputs.metadata_only != 'true' }}
         run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
       - name: Verify all Release APKs and create checksums
-        if: ${{ steps.version.outputs.promote_only != 'true' }}
+        if: ${{ steps.version.outputs.metadata_only != 'true' }}
         id: assets
         shell: bash
         env:
@@ -536,7 +573,7 @@ jobs:
           echo "Verified Universal, ARM64-v8a, ARMv7, x86 and x86_64 Release APKs."
 
       - name: Upload signed Release artifacts
-        if: ${{ steps.version.outputs.promote_only != 'true' }}
+        if: ${{ steps.version.outputs.metadata_only != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: KirinDL-${{ steps.channel.outputs.channel }}-${{ steps.version.outputs.version }}-${{ github.run_number }}
@@ -550,6 +587,35 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
+
+      - name: Move Stable release back to Pre-release
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.demote_only == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.version.outputs.release_id }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          FALLBACK_STABLE_RELEASE_ID: ${{ steps.version.outputs.fallback_stable_release_id }}
+        run: |
+          set -euo pipefail
+          [[ -n "$RELEASE_ID" ]] || {
+            echo "::error::Pre-release transition requested without an existing GitHub release id."
+            exit 1
+          }
+          gh api \
+            --method PATCH \
+            "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -F prerelease=true \
+            -f make_latest=false >/dev/null
+
+          if [[ -n "$FALLBACK_STABLE_RELEASE_ID" ]]; then
+            gh api \
+              --method PATCH \
+              "repos/$GITHUB_REPOSITORY/releases/$FALLBACK_STABLE_RELEASE_ID" \
+              -f make_latest=true >/dev/null
+          fi
+
+          echo "Moved KirinDL v$RELEASE_VERSION back to Pre-release without rebuilding APKs."
 
       - name: Promote tested Pre-release to Stable
         if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only == 'true' }}
@@ -576,7 +642,7 @@ jobs:
           echo "Stable notes loaded from $RELEASE_NOTES_PATH."
 
       - name: Publish GitHub Release
-        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only != 'true' }}
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.metadata_only != 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
