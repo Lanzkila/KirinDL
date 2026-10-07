@@ -451,7 +451,7 @@ internal fun EngineUpdateCenterSection(
 private fun EngineHealthOverview(
     ytdlp: String,
     gallery: String,
-)) {
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
