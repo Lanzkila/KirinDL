@@ -789,6 +789,40 @@ fun ChapterClipMakerPage(onNavigateBack: () -> Unit) {
     }
 }
 
+private fun buildPlaylistExport(
+    format: String,
+    entries: List<com.junkfood.seal.util.PlaylistEntry>,
+): String {
+    val items =
+        entries.mapNotNull { entry ->
+            KirinUtilityEngine.playlistEntryUrl(entry)?.let { url ->
+                (entry.title ?: entry.id ?: "Untitled") to url
+            }
+        }
+    return when (format.lowercase(Locale.US)) {
+        "json" ->
+            items.joinToString(
+                prefix = "[\n",
+                postfix = "\n]",
+                separator = ",\n",
+            ) { (title, url) ->
+                "  {\"title\":\"${escapeJson(title)}\",\"url\":\"${escapeJson(url)}\"}"
+            }
+        "m3u" ->
+            buildString {
+                appendLine("#EXTM3U")
+                items.forEach { (title, url) ->
+                    appendLine("#EXTINF:-1,$title")
+                    appendLine(url)
+                }
+            }
+        else -> items.joinToString("\n") { it.second } + "\n"
+    }
+}
+
+private fun escapeJson(value: String): String =
+    value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+
 private fun formatBytes(value: Long): String {
     if (value < 1024) return "$value B"
     val kb = value / 1024.0
