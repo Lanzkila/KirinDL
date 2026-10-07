@@ -714,6 +714,22 @@
     <string name="thumbnail_download_desc">Download high-quality video thumbnails in multiple resolutions with support for various image format conversions and custom sizing.</string>
     <string name="thumbnail_download_short_desc">Save thumbnails in multiple sizes</string>
     <string name="coming_soon_placeholder">Coming Soon</string>
+    <string name="subtitle_downloader_tool">Subtitle Downloader</string>
+    <string name="subtitle_downloader_tool_short_desc">Download subtitles without the video</string>
+    <string name="subtitle_downloader_tool_desc">Fetch manual and auto-generated subtitle tracks, choose a language and export subtitles without downloading the video.</string>
+    <string name="playlist_extractor_tool">Playlist / Channel Extractor</string>
+    <string name="playlist_extractor_tool_short_desc">Extract and queue collection links</string>
+    <string name="playlist_extractor_tool_desc">Extract links from playlists and channels, select the entries you want, copy them or queue them directly for download.</string>
+    <string name="media_inspector_tool">Media Inspector</string>
+    <string name="media_inspector_tool_short_desc">Inspect codec, bitrate and tracks</string>
+    <string name="media_inspector_tool_desc">Inspect local audio and video files to view duration, resolution, bitrate, codec MIME types and embedded media tracks.</string>
+    <string name="metadata_editor_tool">Metadata Editor</string>
+    <string name="metadata_editor_tool_short_desc">Edit local media tags quickly</string>
+    <string name="metadata_editor_tool_desc">Edit common media metadata such as title, artist, album, year and genre using FFmpeg stream-copy while keeping the original file untouched.</string>
+    <string name="chapter_clip_maker_tool">Chapter / Clip Maker</string>
+    <string name="chapter_clip_maker_tool_short_desc">Cut chapters or custom time ranges</string>
+    <string name="chapter_clip_maker_tool_desc">Read embedded chapters from local media or choose a custom start/end range and create a fast stream-copy clip without re-encoding.</string>
+
 
     <!-- Thumbnail Downloader tool strings -->
     <string name="thumbnail_download_subtitle">Original highest-quality YouTube thumbnails</string>
