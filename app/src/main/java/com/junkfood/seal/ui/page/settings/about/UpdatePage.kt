@@ -48,9 +48,12 @@ import com.junkfood.seal.ui.component.PreferenceSubtitle
 import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.ui.page.UpdateDialog
 import com.junkfood.seal.util.APP_UPDATE_CHECK_TIME
+import com.junkfood.seal.util.APP_UPDATE_NOTIFICATIONS
 import com.junkfood.seal.util.AUTO_UPDATE
+import com.junkfood.seal.util.NotificationUtil
 import com.junkfood.seal.util.PRE_RELEASE
 import com.junkfood.seal.util.PreferenceUtil
+import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateInt
@@ -72,6 +75,7 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
             canScroll = { true },
         )
     var automaticChecks by remember { mutableStateOf(PreferenceUtil.isAutoUpdateEnabled()) }
+    var updateNotifications by remember { mutableStateOf(APP_UPDATE_NOTIFICATIONS.getBoolean()) }
     var updateChannel by UPDATE_CHANNEL.intState
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -120,6 +124,33 @@ fun UpdatePage(onNavigateBack: () -> Unit) {
                         automaticChecks = !automaticChecks
                         AUTO_UPDATE.updateBoolean(automaticChecks)
                     }
+                }
+
+                item {
+                    PreferenceSwitch(
+                        title = "Update notifications",
+                        icon = null,
+                        isChecked = updateNotifications,
+                    ) {
+                        updateNotifications = !updateNotifications
+                        APP_UPDATE_NOTIFICATIONS.updateBoolean(updateNotifications)
+                        if (!updateNotifications) {
+                            NotificationUtil.cancelAppUpdateAvailableNotification()
+                        } else {
+                            UpdateUtil.availableAppUpdate.value?.let(
+                                NotificationUtil::notifyAppUpdateAvailable
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    PreferenceInfo(
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        text =
+                            "Update notifications are separate from download notifications. " +
+                                "The Home update alert still appears while a newer KirinDL version is available.",
+                    )
                 }
 
                 item {
