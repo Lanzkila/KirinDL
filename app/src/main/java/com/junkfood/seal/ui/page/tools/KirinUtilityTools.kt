@@ -768,6 +768,28 @@ fun ChapterClipMakerPage(onNavigateBack: () -> Unit) {
                         }
                     }
                 }
+
+                Button(
+                    onClick = {
+                        val input = uri ?: return@Button
+                        scope.launch {
+                            busy = true
+                            status = "Splitting ${chapters.size} chapters…"
+                            runCatching {
+                                KirinUtilityEngine.splitChapters(context, input, chapters)
+                            }.onSuccess {
+                                status = "Created ${it.size} chapter clips in Downloads/KirinDL/Clips."
+                            }.onFailure {
+                                status = it.message ?: "Chapter split failed."
+                            }
+                            busy = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = uri != null && chapters.isNotEmpty() && !busy,
+                ) {
+                    Text("Split all chapters")
+                }
             }
         }
 
