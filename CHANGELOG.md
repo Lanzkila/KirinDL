@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Keep only yt-dlp and gallery-dl in Engine Update Center (`99dcd267`)
 - Set KirinDL v3.2.0.3 version code (`3d8526d6`)
 - Bump KirinDL source to v3.2.0.3 (`a90100b9`)
 - Support moving a Stable release back to Pre-release (`f1d29592`)
