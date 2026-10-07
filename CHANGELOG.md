@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Support moving a Stable release back to Pre-release (`f1d29592`)
 - Remove duplicate app update cache implementation (`ed893b14`)
 - Restore cached update alert before cooldown checks (`60fc50b5`)
 - Persist available app updates across launches (`bff9e988`)
