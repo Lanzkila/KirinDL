@@ -22,6 +22,9 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -52,6 +55,9 @@ object UpdateUtil {
         "https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest"
 
     private val jsonFormat = Json { ignoreUnknownKeys = true }
+
+    private val _availableAppUpdate = MutableStateFlow<Release?>(null)
+    val availableAppUpdate: StateFlow<Release?> = _availableAppUpdate.asStateFlow()
 
     private fun getClient(): OkHttpClient =
         OkHttpClient.Builder()
@@ -170,6 +176,8 @@ object UpdateUtil {
             .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
             .apply()
         APP_UPDATE_CHECK_TIME.updateLong(0L)
+        _availableAppUpdate.value = null
+        NotificationUtil.cancelAppUpdateAvailableNotification(context)
         return previous != null
     }
 
@@ -433,7 +441,13 @@ object UpdateUtil {
                     val latestVersion = (latestRelease.tagName ?: latestRelease.name).toVersion()
                     if (currentVersion < latestVersion) latestRelease else null
                 }
-                .onSuccess { recordSuccessfulAppUpdateCheck(context) }
+                .onSuccess { candidate ->
+                    _availableAppUpdate.value = candidate
+                    recordSuccessfulAppUpdateCheck(context)
+                    if (candidate == null) {
+                        NotificationUtil.cancelAppUpdateAvailableNotification(context)
+                    }
+                }
         }
 
     suspend fun checkForUpdate(context: Context = App.context): Release? =
@@ -448,6 +462,30 @@ object UpdateUtil {
                 } ?: throw IOException("Current KirinDL release notes were not found")
             }
         }
+    suspend fun getLatestStableReleaseResult(): Result<Release> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                getReleaseList()
+                    .asSequence()
+                    .filter { it.draft != true && it.preRelease != true }
+                    .filter { (it.tagName ?: it.name).toVersionOrNull() != null }
+                    .maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
+                    ?: throw IOException("No Stable KirinDL release notes were found")
+            }
+        }
+
+    suspend fun getLatestPreReleaseResult(): Result<Release> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                getReleaseList()
+                    .asSequence()
+                    .filter { it.draft != true && it.preRelease == true }
+                    .filter { (it.tagName ?: it.name).toVersionOrNull() != null }
+                    .maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
+                    ?: throw IOException("No KirinDL Pre-release notes were found")
+            }
+        }
+
 
     fun installedVersionName(context: Context = App.context): String =
         context.getCurrentVersionName()
