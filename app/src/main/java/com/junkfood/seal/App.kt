@@ -13,6 +13,7 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.content.getSystemService
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -57,6 +58,7 @@ import com.yausername.youtubedl_android.YoutubeDL
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -144,33 +146,27 @@ class App : Application(), SingletonImageLoader.Factory {
         clipboard = getSystemService()!!
         connectivityManager = getSystemService()!!
 
-        applicationScope.launch((Dispatchers.IO)) {
-            try {
+        applicationScope.launch(Dispatchers.IO) {
+            initializeBundledEngine("yt-dlp") {
                 YoutubeDL.init(this@App)
-                // Keep the installed yt-dlp version in sync even on a fresh install.
-                // The engine is bundled and initialized above, so relying only on the
-                // updater to write YT_DLP_VERSION leaves Engine Update Center showing
-                // "Unknown" until the first successful online update.
                 YoutubeDL.getInstance()
                     .version(this@App)
                     ?.takeIf { it.isNotBlank() }
                     ?.let { YT_DLP_VERSION.updateString(it) }
-
-                FFmpeg.init(this@App)
-                Aria2c.init(this@App)
-                // Pre-build the Netscape cookie file so it exists before the first
-                // download. Wrapped in runCatching so a disk-full IOException here
-                // does NOT propagate into the catch(Throwable) block above and
-                // accidentally show the crash-report screen on the first app launch.
-                runCatching {
-                    DownloadUtil.getCookiesContentFromDatabase().getOrNull()?.let {
-                        FileUtil.writeContentToFile(it, getCookiesFile())
-                    }
-                }
-                UpdateUtil.deleteOutdatedApk()
-            } catch (th: Throwable) {
-                withContext(Dispatchers.Main) { startCrashReportActivity(th) }
             }
+            initializeBundledEngine("FFmpeg") { FFmpeg.init(this@App) }
+            initializeBundledEngine("Aria2c") { Aria2c.init(this@App) }
+
+            // Cookie preparation and updater-state cleanup are helpful startup work, but neither
+            // is allowed to take down the whole app if storage/OEM timing is temporarily bad.
+            runCatching {
+                DownloadUtil.getCookiesContentFromDatabase().getOrNull()?.let {
+                    FileUtil.writeContentToFile(it, getCookiesFile())
+                }
+            }.onFailure { Log.e(STARTUP_TAG, "Cookie preparation failed", it) }
+
+            runCatching { UpdateUtil.deleteOutdatedApk() }
+                .onFailure { Log.e(STARTUP_TAG, "Updater startup sync failed", it) }
         }
 
         videoDownloadDir = VIDEO_DIRECTORY.getString(getExternalDownloadDirectory().absolutePath)
@@ -193,6 +189,28 @@ class App : Application(), SingletonImageLoader.Factory {
         }
     }
 
+    private suspend fun initializeBundledEngine(
+        name: String,
+        initialize: () -> Unit,
+    ) {
+        var lastError: Throwable? = null
+        repeat(2) { attempt ->
+            try {
+                initialize()
+                return
+            } catch (error: Throwable) {
+                lastError = error
+                if (attempt == 0) {
+                    // First launch after an APK replacement can race native-library extraction on
+                    // some OEM devices. One short retry avoids turning that transient race into a
+                    // crash-report screen.
+                    delay(350)
+                }
+            }
+        }
+        Log.e(STARTUP_TAG, "$name initialization failed after retry", lastError)
+    }
+
     override fun onLowMemory() {
         super.onLowMemory()
         GlobalContext.getOrNull()?.get<DownloaderV2>()?.cleanup()
@@ -211,6 +229,7 @@ class App : Application(), SingletonImageLoader.Factory {
     }
 
     companion object {
+        private const val STARTUP_TAG = "KirinDL.Startup"
         lateinit var clipboard: ClipboardManager
         lateinit var videoDownloadDir: String
         lateinit var audioDownloadDir: String
