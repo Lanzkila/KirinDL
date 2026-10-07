@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add shared engine for new More Tools utilities (`f28bd565`)
 - Chain Pre-release notes from the previous published release (`422ae697`)
 - Base release notes on latest Stable commits (`8d8fcb99`)
 - Generate notes for every Stable and Pre-release publish (`d843430a`)
