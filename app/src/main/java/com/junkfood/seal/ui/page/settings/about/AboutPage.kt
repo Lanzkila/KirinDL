@@ -103,15 +103,11 @@ fun AboutPage(
         )
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val installedVersion = packageInfo.versionName ?: "Unknown"
-
     var isAutoUpdateEnabled by remember { mutableStateOf(PreferenceUtil.isAutoUpdateEnabled()) }
     var availableRelease by remember { mutableStateOf<UpdateUtil.Release?>(null) }
     var showUpdateDialog by remember { mutableStateOf(false) }
-    var isCheckingUpdate by remember { mutableStateOf(false) }
-    var appUpdateStatus by remember {
-        mutableStateOf("v$installedVersion • Tap to check for updates")
-    }
+    var isLoadingStableNotes by remember { mutableStateOf(false) }
+    var isLoadingPreReleaseNotes by remember { mutableStateOf(false) }
 
     val uriHandler = LocalUriHandler.current
     fun openUrl(url: String) {
@@ -134,123 +130,60 @@ fun AboutPage(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    Card(
-                        onClick = {
-                            when {
-                                isCheckingUpdate -> Unit
-                                availableRelease != null -> showUpdateDialog = true
-                                else -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ReleaseNotesCard(
+                            title = "Stable Release Notes",
+                            description =
+                                if (isLoadingStableNotes) "Loading Stable notes…"
+                                else "Latest Stable changelog",
+                            icon = Icons.Outlined.NewReleases,
+                            loading = isLoadingStableNotes,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (!isLoadingStableNotes) {
+                                    isLoadingStableNotes = true
                                     scope.launch {
-                                        isCheckingUpdate = true
-                                        appUpdateStatus =
-                                            "v$installedVersion • Checking for updates…"
-
-                                        if (!PreferenceUtil.isNetworkAvailableForDownload()) {
-                                            appUpdateStatus =
-                                                "v$installedVersion • Offline — tap to retry"
-                                            context.makeToast("No network connection")
-                                            isCheckingUpdate = false
-                                            return@launch
-                                        }
-
-                                        // Manual check from About intentionally ignores the startup
-                                        // cooldown, matching Komikku's force-check behaviour.
-                                        UpdateUtil.checkForUpdateResult(context)
-                                            .onSuccess { release ->
-                                                availableRelease = release
-                                                if (release != null) {
-                                                    val version =
-                                                        release.tagName
-                                                            ?: release.name
-                                                            ?: "New version"
-                                                    appUpdateStatus =
-                                                        "Installed v$installedVersion  →  $version available"
-                                                    showUpdateDialog = true
-                                                } else {
-                                                    appUpdateStatus =
-                                                        "v$installedVersion • Up to date"
-                                                    context.makeToast("KirinDL is up to date")
-                                                }
+                                        UpdateUtil.getLatestStableReleaseResult()
+                                            .onSuccess {
+                                                availableRelease = it
+                                                showUpdateDialog = true
                                             }
-                                            .onFailure { error ->
-                                                APP_UPDATE_CHECK_TIME.updateLong(0L)
-                                                error.printStackTrace()
-                                                availableRelease = null
-                                                appUpdateStatus =
-                                                    "v$installedVersion • Check failed — tap to retry"
-                                                context.makeToast(
-                                                    "Could not check for KirinDL updates"
-                                                )
+                                            .onFailure {
+                                                context.makeToast("Could not load Stable release notes")
                                             }
-
-                                        isCheckingUpdate = false
+                                        isLoadingStableNotes = false
                                     }
                                 }
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    if (availableRelease != null) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-                                    },
-                            ),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.NewReleases,
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text =
-                                        if (availableRelease != null) {
-                                            "New Update"
-                                        } else {
-                                            "App Update"
-                                        },
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = appUpdateStatus,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (availableRelease != null && !isCheckingUpdate) {
-                                    Spacer(modifier = Modifier.height(5.dp))
-                                    Text(
-                                        text = "Tap to reopen update details",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
+                            },
+                        )
+                        ReleaseNotesCard(
+                            title = "Pre-release Notes",
+                            description =
+                                if (isLoadingPreReleaseNotes) "Loading Pre-release notes…"
+                                else "Latest testing changelog",
+                            icon = Icons.Outlined.AutoAwesome,
+                            loading = isLoadingPreReleaseNotes,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (!isLoadingPreReleaseNotes) {
+                                    isLoadingPreReleaseNotes = true
+                                    scope.launch {
+                                        UpdateUtil.getLatestPreReleaseResult()
+                                            .onSuccess {
+                                                availableRelease = it
+                                                showUpdateDialog = true
+                                            }
+                                            .onFailure {
+                                                context.makeToast("No Pre-release notes are available")
+                                            }
+                                        isLoadingPreReleaseNotes = false
+                                    }
                                 }
-                            }
-                            if (isCheckingUpdate) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(22.dp),
-                                    strokeWidth = 2.dp,
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+                            },
+                        )
                     }
                 }
 
@@ -444,26 +377,54 @@ fun AboutPage(
             UpdateDialog(
                 onDismissRequest = { showUpdateDialog = false },
                 release = release,
-                isUpdateAvailable = true,
-                onBackgroundUpdate =
-                    if (UpdateUtil.hasBackgroundAppUpdate(release)) {
-                        {
-                            UpdateUtil.enqueueBackgroundAppUpdate(context, release)
-                                .onSuccess {
-                                    context.makeToast(
-                                        "KirinDL update is downloading in the background"
-                                    )
-                                }
-                                .onFailure { error ->
-                                    error.printStackTrace()
-                                    context.makeToast(
-                                        "Could not start the background update"
-                                    )
-                                }
-                        }
-                    } else {
-                        null
-                    },
+                isUpdateAvailable = false,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReleaseNotesCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    loading: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 132.dp),
+        enabled = !loading,
+        shape = RoundedCornerShape(12.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+            ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
