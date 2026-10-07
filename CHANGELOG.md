@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add split all chapters control (`d9f2b9fb`)
 - Add cover artwork controls to metadata editor (`39f29e52`)
 - Add playlist export serializers (`c082e99c`)
 - Add playlist TXT JSON and M3U export (`5990a7db`)
