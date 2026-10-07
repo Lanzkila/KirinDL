@@ -94,6 +94,7 @@ const val COOKIES = "cookies"
 const val USER_AGENT = "user_agent"
 const val USER_AGENT_STRING = "user_agent_string"
 const val AUTO_UPDATE = "auto_update"
+const val APP_UPDATE_NOTIFICATIONS = "app_update_notifications"
 const val UPDATE_CHANNEL = "update_channel"
 const val PRIVATE_MODE = "private_mode"
 private const val DYNAMIC_COLOR = "dynamic_color"
@@ -353,6 +354,7 @@ private val BooleanPreferenceDefaults =
         EMBED_METADATA to true,
         USE_CUSTOM_AUDIO_PRESET to false,
         AUTO_UPDATE to true,
+        APP_UPDATE_NOTIFICATIONS to true,
         NOTIFICATION_SOUND to true,
         NOTIFICATION_VIBRATE to true,
         NOTIFICATION_LED to true,
