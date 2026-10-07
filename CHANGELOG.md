@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Apply custom Gallery DL accent color (`a9d55a1e`, 2026-10-07)
+- Add custom color editor to Gallery DL appearance (`d6677be9`, 2026-10-07)
 - Add custom Gallery DL accent preference (`7cd368ac`, 2026-10-07)
 - Keep v3.2.0.2 notes focused on updater and progress (`dcdcde60`, 2026-10-07)
 - Prepare KirinDL v3.2.0.2 prerelease notes (`d0dc2ba9`, 2026-10-07)
