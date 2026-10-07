@@ -122,6 +122,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     val image by remember(index) { mutableIntStateOf(DrawableList[index]) }
 
     val galleryTheme by GalleryDlThemePreference.style.collectAsState()
+    val galleryCustomAccent by GalleryDlThemePreference.customAccent.collectAsState()
     val appSettings by PreferenceUtil.AppSettingsStateFlow.collectAsState()
     val sealPlusFollowTheme by SealPlusThemePreference.followTheme.collectAsState()
     val customThemeColors by CustomThemeColorPreference.colors.collectAsState()
@@ -129,6 +130,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     var showButtonColorDialog by remember { mutableStateOf(false) }
     var showCustomThemeDialog by remember { mutableStateOf(false) }
     var showGalleryThemeDialog by remember { mutableStateOf(false) }
+    var showGalleryCustomColorDialog by remember { mutableStateOf(false) }
     var favoriteColorPair by remember { mutableStateOf(PreferenceUtil.getFavoriteColorPair()) }
     val previewDarkTheme = LocalDarkTheme.current.isDarkTheme()
 
@@ -338,7 +340,12 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                 PreferenceSubtitle(text = "Gallery DL")
                 PreferenceItem(
                     title = "Gallery DL appearance",
-                    description = "${galleryTheme.title} • ${galleryThemeShortInfo(galleryTheme)}",
+                    description =
+                        if (galleryTheme == GalleryDlThemeStyle.CUSTOM) {
+                            "${galleryTheme.title} • ${CustomThemeColorPreference.toHex(galleryCustomAccent)}"
+                        } else {
+                            "${galleryTheme.title} • ${galleryThemeShortInfo(galleryTheme)}"
+                        },
                     icon = Icons.Outlined.Palette,
                     onClick = { showGalleryThemeDialog = true },
                 )
@@ -390,10 +397,26 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
     if (showGalleryThemeDialog) {
         GalleryDlThemeDialog(
             selected = galleryTheme,
+            customAccent = galleryCustomAccent,
             onDismiss = { showGalleryThemeDialog = false },
             onSelect = {
-                GalleryDlThemePreference.setStyle(it)
-                showGalleryThemeDialog = false
+                if (it == GalleryDlThemeStyle.CUSTOM) {
+                    showGalleryThemeDialog = false
+                    showGalleryCustomColorDialog = true
+                } else {
+                    GalleryDlThemePreference.setStyle(it)
+                    showGalleryThemeDialog = false
+                }
+            },
+        )
+    }
+    if (showGalleryCustomColorDialog) {
+        GalleryDlCustomColorDialog(
+            color = galleryCustomAccent,
+            onDismiss = { showGalleryCustomColorDialog = false },
+            onSave = {
+                GalleryDlThemePreference.setCustomAccent(it)
+                showGalleryCustomColorDialog = false
             },
         )
     }
@@ -412,10 +435,14 @@ private fun galleryThemeShortInfo(style: GalleryDlThemeStyle): String =
         GalleryDlThemeStyle.TEAL -> "Teal"
         GalleryDlThemeStyle.INDIGO -> "Indigo"
         GalleryDlThemeStyle.LIME -> "Bright lime"
+        GalleryDlThemeStyle.CUSTOM -> "Custom accent"
     }
 
 @Composable
-private fun galleryThemePreviewColor(style: GalleryDlThemeStyle): Color =
+private fun galleryThemePreviewColor(
+    style: GalleryDlThemeStyle,
+    customAccent: Int,
+): Color =
     when (style) {
         GalleryDlThemeStyle.APP_DEFAULT -> MaterialTheme.colorScheme.primary
         GalleryDlThemeStyle.KIRIN_CYAN -> Color(0xFF18BFEA)
@@ -428,11 +455,13 @@ private fun galleryThemePreviewColor(style: GalleryDlThemeStyle): Color =
         GalleryDlThemeStyle.TEAL -> Color(0xFF20B7A6)
         GalleryDlThemeStyle.INDIGO -> Color(0xFF6674E8)
         GalleryDlThemeStyle.LIME -> Color(0xFF91C94B)
+        GalleryDlThemeStyle.CUSTOM -> Color(customAccent)
     }
 
 @Composable
 private fun GalleryDlThemeDialog(
     selected: GalleryDlThemeStyle,
+    customAccent: Int,
     onDismiss: () -> Unit,
     onSelect: (GalleryDlThemeStyle) -> Unit,
 ) {
@@ -463,6 +492,7 @@ private fun GalleryDlThemeDialog(
                             GalleryDlThemeTile(
                                 style = style,
                                 selected = selected == style,
+                                customAccent = customAccent,
                                 onSelect = onSelect,
                             )
                         }
@@ -486,9 +516,10 @@ private fun GalleryDlThemeDialog(
 private fun RowScope.GalleryDlThemeTile(
     style: GalleryDlThemeStyle,
     selected: Boolean,
+    customAccent: Int,
     onSelect: (GalleryDlThemeStyle) -> Unit,
 ) {
-    val previewColor = galleryThemePreviewColor(style)
+    val previewColor = galleryThemePreviewColor(style, customAccent)
 
     Surface(
         modifier = Modifier.weight(1f),
@@ -542,6 +573,63 @@ private fun RowScope.GalleryDlThemeTile(
             )
         }
     }
+}
+
+@Composable
+private fun GalleryDlCustomColorDialog(
+    color: Int,
+    onDismiss: () -> Unit,
+    onSave: (Int) -> Unit,
+) {
+    var value by remember(color) {
+        mutableStateOf(CustomThemeColorPreference.toHex(color))
+    }
+    val parsed = CustomThemeColorPreference.parseHex(value)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Gallery DL custom color") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Set the Gallery DL accent only. Background and text still follow the active KirinDL theme.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = { Text("Accent color") },
+                    placeholder = { Text("#18BFEA") },
+                    supportingText = { Text("Use #RRGGBB or #AARRGGBB") },
+                    singleLine = true,
+                    isError = parsed == null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ColorPreviewBox(
+                    colorValue = parsed,
+                    label = "Gallery DL preview",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(onClick = { value = "#FF18BFEA" }) {
+                    Text("Reset to Kirin Cyan")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = parsed != null,
+                onClick = { onSave(parsed!!) },
+            ) {
+                Text("Save & use Custom")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable
