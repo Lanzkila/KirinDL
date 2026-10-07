@@ -1,6 +1,6 @@
 KirinDL Pre-release trigger.
 
 Update this file only when explicitly publishing a KirinDL Pre-release build.
-Current prepared source: v3.2.0.4
-Publish requested: 2026-10-07
+Current prepared source: v3.2.0.5
+Publish requested: 2026-10-08
 Channel: Pre-release only — do not promote to Stable.
