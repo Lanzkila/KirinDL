@@ -285,6 +285,9 @@ KirinDL already receives most extractor-level fixes through its independent engi
 
 ---
 
+<details>
+<summary><strong>Legacy SealPlus changelog (v3.0.0 and older) — Show / Hide</strong></summary>
+
 ## [3.0.0] - 2026-07-30
 
 ### 🧰 Dedicated "More Tools" Section & Tool Suite
@@ -2023,3 +2026,5 @@ Download the appropriate APK for your device:
 [1.12.1]: https://github.com/JunkFood02/Seal/releases/tag/v1.12.1
 
 [1.13.0]: https://github.com/JunkFood02/Seal/releases/tag/v1.13.0
+
+</details>
