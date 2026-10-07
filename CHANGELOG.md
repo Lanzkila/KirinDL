@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add playlist export serializers (`c082e99c`)
 - Add playlist TXT JSON and M3U export (`5990a7db`)
 - Add efficient split-all-chapters engine (`4c41cd58`)
 - Add artwork editing and named chapter clips (`ef862594`)
