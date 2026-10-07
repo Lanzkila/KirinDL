@@ -3,6 +3,15 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
+## 2026-10-08
+
+### ✦ Recent changes
+
+- Set KirinDL v3.2.0.5 version code [skip ci] (`cdeb4990`)
+- Bump KirinDL source to v3.2.0.5 [skip ci] (`7a2ce61f`)
+- Make first-launch updater migration non-fatal [skip ci] (`07451b7e`)
+- Harden pre-engine startup crash path [skip ci] (`d272e5a0`)
+
 ## 2026-10-07
 
 ### ✦ Recent changes
