@@ -31,12 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.junkfood.seal.BuildConfig
 import com.junkfood.seal.Downloader
 import com.junkfood.seal.util.GalleryDlEngine
-import com.junkfood.seal.util.ARIA2C
-import com.junkfood.seal.util.ARIA2C_CONNECTIONS
-import com.junkfood.seal.util.CONCURRENT
 import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getLong
@@ -77,7 +73,6 @@ internal fun EngineUpdateCenterSection(
     var lastChecked by remember { mutableStateOf<String?>(null) }
     var ytdlpAutoUpdate by remember { mutableStateOf(YT_DLP_AUTO_UPDATE.getBoolean()) }
     var galleryAutoUpdate by remember { mutableStateOf(GALLERY_DL_AUTO_UPDATE.getBoolean()) }
-    var runtimeEnginesExpanded by remember { mutableStateOf(false) }
 
     val channelLabel =
         if (YT_DLP_UPDATE_CHANNEL.getInt() == YT_DLP_NIGHTLY) "Nightly" else "Stable"
@@ -180,10 +175,6 @@ internal fun EngineUpdateCenterSection(
         EngineHealthOverview(
             ytdlp = ytdlpInstalled.ifBlank { "Unknown" },
             gallery = galleryInstalled ?: "Not installed",
-            aria2 =
-                if (ARIA2C.getBoolean()) "Enabled • ${ARIA2C_CONNECTIONS.getInt()} direct connections"
-                else "Disabled",
-            fragments = "yt-dlp native • ${CONCURRENT.getInt()} fragments",
         )
 
         EngineStatusCard(
@@ -334,48 +325,6 @@ internal fun EngineUpdateCenterSection(
         }
 
         OutlinedButton(
-            onClick = { runtimeEnginesExpanded = !runtimeEnginesExpanded },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                if (runtimeEnginesExpanded) {
-                    "Hide Aria2 / FFmpeg / Python"
-                } else {
-                    "Show Aria2 / FFmpeg / Python"
-                }
-            )
-        }
-
-        if (runtimeEnginesExpanded) {
-            RuntimeEngineSlot(
-                title = "Aria2",
-                installed = "Runtime pack ${BuildConfig.YOUTUBEDL_ANDROID_RUNTIME_VERSION}",
-                status =
-                    if (ARIA2C.getBoolean()) {
-                        "Enabled • ${ARIA2C_CONNECTIONS.getInt()} direct connections"
-                    } else {
-                        "Bundled • currently disabled"
-                    },
-                description =
-                    "External downloader runtime bundled with KirinDL. Updated together with the app runtime package.",
-            )
-            RuntimeEngineSlot(
-                title = "FFmpeg",
-                installed = "Runtime pack ${BuildConfig.YOUTUBEDL_ANDROID_RUNTIME_VERSION}",
-                status = "Bundled with KirinDL",
-                description =
-                    "Used for merge, remux, conversion and audio extraction. Updated together with the app runtime package.",
-            )
-            RuntimeEngineSlot(
-                title = "Python",
-                installed = BuildConfig.PYTHON_RUNTIME_VERSION,
-                status = "Bundled with KirinDL",
-                description =
-                    "Embedded Python runtime used by Gallery DL helpers and app-side Python code. Updated together with the KirinDL APK.",
-            )
-        }
-
-        OutlinedButton(
             onClick = {
                 scope.launch {
                     busyAction = "Checking all engines…"
@@ -499,56 +448,10 @@ internal fun EngineUpdateCenterSection(
 }
 
 @Composable
-private fun RuntimeEngineSlot(
-    title: String,
-    installed: String,
-    status: String,
-    description: String,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                "Installed: $installed",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                status,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "Update method: KirinDL app update",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
 private fun EngineHealthOverview(
     ytdlp: String,
     gallery: String,
-    aria2: String,
-    fragments: String,
-) {
+)) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -565,10 +468,6 @@ private fun EngineHealthOverview(
             )
             EngineHealthLine("yt-dlp", ytdlp)
             EngineHealthLine("gallery-dl", gallery)
-            EngineHealthLine("Aria2 direct", aria2)
-            EngineHealthLine("Fragments", fragments)
-            EngineHealthLine("FFmpeg", "Bundled with KirinDL")
-            EngineHealthLine("Python bridge", "Bundled • Gallery DL runtime")
         }
     }
 }
