@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Keep v3.2.0.2 notes focused on updater and progress (`dcdcde60`, 2026-10-07)
 - Prepare KirinDL v3.2.0.2 prerelease notes (`d0dc2ba9`, 2026-10-07)
 - Add dedicated Stable and Pre-release release channels (`66496bcc`, 2026-10-07)
 - Set KirinDL v3.2.0.2 version code (`2cbf426b`, 2026-10-07)
