@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add app update notification toggle (`8ca93774`)
 - Replace About update checker with release note popups (`2f316c69`)
 - Add persistent Morphe-style app update alert (`b1ca48aa`)
 - Move automatic app updates to persistent home alerts (`fba5b611`)
