@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Document custom Gallery DL appearance color (`8ed4a5ea`, 2026-10-07)
 - Apply custom Gallery DL accent color (`a9d55a1e`, 2026-10-07)
 - Add custom color editor to Gallery DL appearance (`d6677be9`, 2026-10-07)
 - Add custom Gallery DL accent preference (`7cd368ac`, 2026-10-07)
