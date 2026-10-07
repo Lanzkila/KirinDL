@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Set KirinDL v3.2.0.4 version code (`4a04b3da`)
+- Bump KirinDL source to v3.2.0.4 (`550e184a`)
 - Remove unused runtime version BuildConfig labels (`22222141`)
 - Fix Engine Update Center cleanup syntax (`e865e28e`)
 - Keep only yt-dlp and gallery-dl in Engine Update Center (`99dcd267`)
