@@ -553,6 +553,8 @@ fun MetadataEditorPage(onNavigateBack: () -> Unit) {
     var album by remember { mutableStateOf("") }
     var year by remember { mutableStateOf("") }
     var genre by remember { mutableStateOf("") }
+    var artworkUri by remember { mutableStateOf<Uri?>(null) }
+    var artworkName by remember { mutableStateOf("") }
     var removeExisting by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
@@ -562,6 +564,11 @@ fun MetadataEditorPage(onNavigateBack: () -> Unit) {
             uri = picked
             fileName = picked?.lastPathSegment.orEmpty()
             status = if (picked != null) "Ready to edit metadata." else status
+        }
+    val artworkPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked: Uri? ->
+            artworkUri = picked
+            artworkName = picked?.lastPathSegment.orEmpty()
         }
 
     UtilityToolPage(
@@ -599,6 +606,38 @@ fun MetadataEditorPage(onNavigateBack: () -> Unit) {
                     singleLine = true,
                 )
             }
+            Text("Cover artwork", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { artworkPicker.launch(arrayOf("image/*")) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(if (artworkUri == null) "Choose image" else "Replace image")
+                }
+                if (artworkUri != null) {
+                    OutlinedButton(
+                        onClick = {
+                            artworkUri = null
+                            artworkName = ""
+                        },
+                    ) {
+                        Text("Clear")
+                    }
+                }
+            }
+            if (artworkName.isNotBlank()) {
+                Text(
+                    artworkName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "Artwork replacement is supported for common audio containers.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Remove existing metadata")
@@ -622,6 +661,7 @@ fun MetadataEditorPage(onNavigateBack: () -> Unit) {
                                 context,
                                 input,
                                 MetadataEdits(title, artist, album, year, genre, removeExisting),
+                                artworkUri = artworkUri,
                             )
                         }.onSuccess {
                             status = "Saved edited copy to $it"
