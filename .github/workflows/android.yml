@@ -4,15 +4,24 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Publish the next KirinDL Stable version after the signed build succeeds"
+        description: "Publish the resolved KirinDL release after the signed build succeeds"
         required: true
         default: false
         type: boolean
+      release_channel:
+        description: "Release channel used for manual workflow runs"
+        required: true
+        default: "stable"
+        type: choice
+        options:
+          - stable
+          - prerelease
   push:
     branches:
       - main
     paths:
       - '.kirin-release-trigger'
+      - '.kirin-prerelease-trigger'
 
 permissions:
   contents: write
@@ -53,12 +62,51 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      - name: Resolve next stable revision
+      - name: Resolve release channel
+        id: channel
+        shell: python
+        env:
+          INPUT_RELEASE_CHANNEL: ${{ inputs.release_channel }}
+        run: |
+          import json
+          import os
+
+          event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+          channel = (os.environ.get("INPUT_RELEASE_CHANNEL") or "stable").strip().lower()
+
+          if event_name == "push":
+              with open(os.environ["GITHUB_EVENT_PATH"], "r", encoding="utf-8") as fh:
+                  event = json.load(fh)
+              head = event.get("head_commit") or {}
+              changed = set(head.get("added", []) + head.get("modified", []) + head.get("removed", []))
+              stable_trigger = ".kirin-release-trigger" in changed
+              prerelease_trigger = ".kirin-prerelease-trigger" in changed
+
+              if stable_trigger and prerelease_trigger:
+                  raise SystemExit("Stable and Pre-release trigger files changed in the same push")
+              if prerelease_trigger:
+                  channel = "prerelease"
+              elif stable_trigger:
+                  channel = "stable"
+
+          if channel not in {"stable", "prerelease"}:
+              raise SystemExit(f"Unsupported release channel: {channel}")
+
+          prerelease = channel == "prerelease"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"channel={channel}\n")
+              out.write(f"prerelease={'true' if prerelease else 'false'}\n")
+              out.write(f"make_latest={'false' if prerelease else 'true'}\n")
+
+          print(f"KirinDL release channel: {channel}")
+
+      - name: Resolve next release version
         id: version
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_CHANNEL: ${{ steps.channel.outputs.channel }}
         run: |
           import json
           import os
@@ -73,16 +121,19 @@ jobs:
           )
           releases = json.loads(raw)
 
-          stable_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$")
-          stable_versions = []
+          release_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$")
+          channel = os.environ["RELEASE_CHANNEL"]
+          published_versions = []
           for release in releases:
-              if release.get("draft") or release.get("prerelease"):
+              if release.get("draft"):
                   continue
-              match = stable_re.fullmatch(release.get("tag_name", ""))
+              if channel == "stable" and release.get("prerelease"):
+                  continue
+              match = release_re.fullmatch(release.get("tag_name", ""))
               if match:
                   major, minor, patch = map(int, match.groups()[:3])
                   build = int(match.group(4) or 0)
-                  stable_versions.append((major, minor, patch, build))
+                  published_versions.append((major, minor, patch, build))
 
           text = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
           match = re.search(
@@ -99,8 +150,8 @@ jobs:
           source_build = int(match.group(4) or 0)
           source_version = (source_major, source_minor, source_patch, source_build)
 
-          if stable_versions:
-              latest_version = max(stable_versions)
+          if published_versions:
+              latest_version = max(published_versions)
               if source_version > latest_version:
                   major, minor, patch, build = source_version
               else:
@@ -128,7 +179,7 @@ jobs:
               out.write(f"version_code={version_code}\n")
               out.write(f"release_notes_path={release_notes_path}\n")
 
-          print(f"Next KirinDL Stable: v{version}")
+          print(f"Next KirinDL {channel}: v{version}")
           print(f"Version code: {version_code}")
           print(f"Release notes: {release_notes_path}")
 
@@ -144,7 +195,7 @@ jobs:
 
           parts = os.environ["RELEASE_VERSION"].split(".")
           if len(parts) not in (3, 4):
-              raise SystemExit("Stable version must have three or four numeric components")
+              raise SystemExit("KirinDL version must have three or four numeric components")
           major, minor, patch = parts[:3]
           build = parts[3] if len(parts) == 4 else "0"
           version_code = os.environ["VERSION_CODE"]
@@ -229,10 +280,10 @@ jobs:
             -storepass "$KIRIN_KEYSTORE_PASSWORD" \
             -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
-      - name: Build signed Stable Release APKs
+      - name: Build signed Release APKs
         run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
-      - name: Verify all Stable APKs and create checksums
+      - name: Verify all Release APKs and create checksums
         id: assets
         shell: bash
         env:
@@ -255,7 +306,7 @@ jobs:
           for NAME in "${REQUIRED_APKS[@]}"; do
             APK="$APK_DIR/$NAME"
             [[ -f "$APK" ]] || {
-              echo "::error::Missing Stable APK: $NAME"
+              echo "::error::Missing Release APK: $NAME"
               exit 1
             }
 
@@ -282,12 +333,12 @@ jobs:
           )
 
           echo "apk_dir=$APK_DIR" >> "$GITHUB_OUTPUT"
-          echo "Verified Universal, ARM64-v8a, ARMv7, x86 and x86_64 Stable APKs."
+          echo "Verified Universal, ARM64-v8a, ARMv7, x86 and x86_64 Release APKs."
 
       - name: Upload signed Release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: KirinDL-Release-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          name: KirinDL-${{ steps.channel.outputs.channel }}-${{ steps.version.outputs.version }}-${{ github.run_number }}
           path: |
             ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-universal.apk
             ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-arm64-v8a.apk
@@ -306,7 +357,8 @@ jobs:
           tag_name: v${{ steps.version.outputs.version }}
           name: KirinDL v${{ steps.version.outputs.version }}
           body_path: ${{ steps.version.outputs.release_notes_path }}
-          make_latest: true
+          prerelease: ${{ steps.channel.outputs.prerelease }}
+          make_latest: ${{ steps.channel.outputs.make_latest }}
           fail_on_unmatched_files: true
           files: |
             ${{ steps.assets.outputs.apk_dir }}/KirinDL-${{ steps.version.outputs.version }}-universal.apk
