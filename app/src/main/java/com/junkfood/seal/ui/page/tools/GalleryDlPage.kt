@@ -116,7 +116,10 @@ private fun isDownloadAllSource(
 }
 
 @Composable
-private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
+private fun kirinGalleryColors(
+    style: GalleryDlThemeStyle,
+    customAccent: Int,
+): KirinGalleryColors {
     val scheme = MaterialTheme.colorScheme
     val accent =
         when (style) {
@@ -131,6 +134,7 @@ private fun kirinGalleryColors(style: GalleryDlThemeStyle): KirinGalleryColors {
             GalleryDlThemeStyle.TEAL -> Color(0xFF20B7A6)
             GalleryDlThemeStyle.INDIGO -> Color(0xFF6674E8)
             GalleryDlThemeStyle.LIME -> Color(0xFF91C94B)
+            GalleryDlThemeStyle.CUSTOM -> Color(customAccent)
         }
     val onAccent =
         if (style == GalleryDlThemeStyle.APP_DEFAULT) {
@@ -165,10 +169,11 @@ fun GalleryDlPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val themeStyle by GalleryDlThemePreference.style.collectAsStateWithLifecycle()
+    val customAccent by GalleryDlThemePreference.customAccent.collectAsStateWithLifecycle()
     val confirmBeforeDownload by
         GalleryDlBehaviorPreference.confirmBeforeDownload.collectAsStateWithLifecycle()
     val exportFilter by GalleryDlBehaviorPreference.exportFilter.collectAsStateWithLifecycle()
-    val colors = kirinGalleryColors(themeStyle)
+    val colors = kirinGalleryColors(themeStyle, customAccent)
     val clipboard = LocalClipboardManager.current
 
     var selectedTab by rememberSaveable {
