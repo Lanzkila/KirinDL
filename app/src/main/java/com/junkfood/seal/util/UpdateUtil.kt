@@ -61,6 +61,38 @@ object UpdateUtil {
     private val _availableAppUpdate = MutableStateFlow<Release?>(null)
     val availableAppUpdate: StateFlow<Release?> = _availableAppUpdate.asStateFlow()
 
+    fun restoreCachedAvailableUpdate(context: Context = App.context): Release? {
+        val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+        val cached =
+            prefs.getString(KEY_CACHED_AVAILABLE_RELEASE, null)
+                ?.let { raw -> runCatching { jsonFormat.decodeFromString<Release>(raw) }.getOrNull() }
+                ?.takeIf { release ->
+                    val remote = (release.tagName ?: release.name).toVersionOrNull()
+                    remote != null && context.getCurrentVersion() < remote
+                }
+
+        _availableAppUpdate.value = cached
+        if (cached == null) {
+            prefs.edit().remove(KEY_CACHED_AVAILABLE_RELEASE).apply()
+        }
+        return cached
+    }
+
+    private fun cacheAvailableUpdate(
+        context: Context,
+        release: Release?,
+    ) {
+        val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+        if (release == null) {
+            prefs.edit().remove(KEY_CACHED_AVAILABLE_RELEASE).apply()
+        } else {
+            prefs.edit()
+                .putString(KEY_CACHED_AVAILABLE_RELEASE, jsonFormat.encodeToString(Release.serializer(), release))
+                .apply()
+        }
+        _availableAppUpdate.value = release
+    }
+
     private fun getClient(): OkHttpClient =
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -173,6 +205,7 @@ object UpdateUtil {
             .putString(KEY_LAST_INSTALLED_VERSION, installed)
             .remove(KEY_LAST_CHECKED_VERSION)
             .remove(KEY_LAST_CHECKED_CHANNEL)
+            .remove(KEY_CACHED_AVAILABLE_RELEASE)
             .remove(KEY_PENDING_DOWNLOAD_ID)
             .remove(KEY_PENDING_VERSION)
             .remove(KEY_AVAILABLE_RELEASE_JSON)
