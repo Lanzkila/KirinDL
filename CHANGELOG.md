@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Support safe Stable and Pre-release channel transitions (`64e5bff0`)
 - Collapse legacy SealPlus changelog without removing history (`7e4279b5`)
 - Document subtitle source and language controls (`a3aaa89a`)
 - Prevent conflicting subtitle source settings (`9506d731`)
