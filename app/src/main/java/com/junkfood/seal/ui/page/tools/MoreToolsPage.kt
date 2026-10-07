@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -101,6 +102,11 @@ private enum class AccentStyle { PRIMARY, SECONDARY, TERTIARY }
 
 private const val TOOL_MEDIA_CONVERTER = 6
 private const val TOOL_MANGA_CONVERTER = 7
+private const val TOOL_SUBTITLE_DOWNLOADER = 8
+private const val TOOL_PLAYLIST_EXTRACTOR = 9
+private const val TOOL_MEDIA_INSPECTOR = 10
+private const val TOOL_METADATA_EDITOR = 11
+private const val TOOL_CHAPTER_CLIP_MAKER = 12
 
 // Converter tools stay at the top because they are full utilities rather than small actions.
 // Existing IDs remain stable so old click routing is not changed.
@@ -119,6 +125,46 @@ private val tools = listOf(
         shortDescRes = R.string.manga_converter_short_desc,
         descRes = R.string.manga_converter_desc,
         icon = Icons.Outlined.Image,
+        isComingSoon = false,
+    ),
+    ToolItem(
+        id = TOOL_SUBTITLE_DOWNLOADER,
+        titleRes = R.string.subtitle_downloader_tool,
+        shortDescRes = R.string.subtitle_downloader_tool_short_desc,
+        descRes = R.string.subtitle_downloader_tool_desc,
+        icon = Icons.Outlined.Subtitles,
+        isComingSoon = false,
+    ),
+    ToolItem(
+        id = TOOL_PLAYLIST_EXTRACTOR,
+        titleRes = R.string.playlist_extractor_tool,
+        shortDescRes = R.string.playlist_extractor_tool_short_desc,
+        descRes = R.string.playlist_extractor_tool_desc,
+        icon = Icons.Outlined.PlaylistAdd,
+        isComingSoon = false,
+    ),
+    ToolItem(
+        id = TOOL_MEDIA_INSPECTOR,
+        titleRes = R.string.media_inspector_tool,
+        shortDescRes = R.string.media_inspector_tool_short_desc,
+        descRes = R.string.media_inspector_tool_desc,
+        icon = Icons.Outlined.Info,
+        isComingSoon = false,
+    ),
+    ToolItem(
+        id = TOOL_METADATA_EDITOR,
+        titleRes = R.string.metadata_editor_tool,
+        shortDescRes = R.string.metadata_editor_tool_short_desc,
+        descRes = R.string.metadata_editor_tool_desc,
+        icon = Icons.Outlined.Description,
+        isComingSoon = false,
+    ),
+    ToolItem(
+        id = TOOL_CHAPTER_CLIP_MAKER,
+        titleRes = R.string.chapter_clip_maker_tool,
+        shortDescRes = R.string.chapter_clip_maker_tool_short_desc,
+        descRes = R.string.chapter_clip_maker_tool_desc,
+        icon = Icons.Outlined.VideoLibrary,
         isComingSoon = false,
     ),
     ToolItem(
@@ -174,7 +220,32 @@ fun MoreToolsPage(
     onNavigateToGalleryDl: (() -> Unit)? = null,
 ) {
     var activeConverter by remember { mutableStateOf<Int?>(null) }
-    BackHandler(enabled = activeConverter != null) { activeConverter = null }
+    var activeUtility by remember { mutableStateOf<Int?>(null) }
+    BackHandler(enabled = activeConverter != null || activeUtility != null) {
+        if (activeUtility != null) activeUtility = null else activeConverter = null
+    }
+    when (activeUtility) {
+        TOOL_SUBTITLE_DOWNLOADER -> {
+            SubtitleDownloaderPage(onNavigateBack = { activeUtility = null })
+            return
+        }
+        TOOL_PLAYLIST_EXTRACTOR -> {
+            PlaylistExtractorPage(onNavigateBack = { activeUtility = null })
+            return
+        }
+        TOOL_MEDIA_INSPECTOR -> {
+            MediaInspectorPage(onNavigateBack = { activeUtility = null })
+            return
+        }
+        TOOL_METADATA_EDITOR -> {
+            MetadataEditorPage(onNavigateBack = { activeUtility = null })
+            return
+        }
+        TOOL_CHAPTER_CLIP_MAKER -> {
+            ChapterClipMakerPage(onNavigateBack = { activeUtility = null })
+            return
+        }
+    }
     when (activeConverter) {
         TOOL_MEDIA_CONVERTER -> {
             MediaConverterPage(onNavigateBack = { activeConverter = null })
@@ -247,6 +318,11 @@ fun MoreToolsPage(
                             when (tool.id) {
                                 TOOL_MEDIA_CONVERTER -> activeConverter = TOOL_MEDIA_CONVERTER
                                 TOOL_MANGA_CONVERTER -> activeConverter = TOOL_MANGA_CONVERTER
+                                TOOL_SUBTITLE_DOWNLOADER -> activeUtility = TOOL_SUBTITLE_DOWNLOADER
+                                TOOL_PLAYLIST_EXTRACTOR -> activeUtility = TOOL_PLAYLIST_EXTRACTOR
+                                TOOL_MEDIA_INSPECTOR -> activeUtility = TOOL_MEDIA_INSPECTOR
+                                TOOL_METADATA_EDITOR -> activeUtility = TOOL_METADATA_EDITOR
+                                TOOL_CHAPTER_CLIP_MAKER -> activeUtility = TOOL_CHAPTER_CLIP_MAKER
                                 1 -> onNavigateToBatchUrlImport?.invoke()
                                 2 -> onNavigateToVideoInfoDownload?.invoke()
                                 3 -> onNavigateToCommentDownload?.invoke()
