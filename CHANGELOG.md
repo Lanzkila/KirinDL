@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Make app update checks version and channel aware (`2ed79da7`, 2026-10-07)
 - Remove stale Bilibili smart profile references (`121f7589`, 2026-10-05)
 - Document Media progress stability fix (`1b164ab3`, 2026-10-05)
 - Show guarded Media transfer phases correctly (`599b2d3f`, 2026-10-05)
