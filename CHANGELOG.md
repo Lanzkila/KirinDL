@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Persist available app updates across launches (`bff9e988`)
 - Restore persistent update alert before cooldown (`85b920a7`)
 - Persist available app update across launches (`6bdcc3b9`)
 - Harden first launch engine initialization (`256de36b`)
