@@ -337,6 +337,71 @@ object KirinUtilityEngine {
         }
     }
 
+    suspend fun splitChapters(
+        context: Context,
+        uri: Uri,
+        chapters: List<ChapterMark>,
+    ): List<String> = withContext(Dispatchers.IO) {
+        require(chapters.isNotEmpty()) { "No chapters are available to split." }
+
+        YoutubeDL.init(context.applicationContext)
+        val input = copyUriToTemp(context, uri, "kirin_split")
+        val sourceName = DocumentFile.fromSingleUri(context, uri)?.name ?: input.name
+        val extension = sourceName.substringAfterLast('.', "mp4").take(10).ifBlank { "mp4" }
+        val outputDir = File(FileUtil.getExternalDownloadDirectory(), "Clips").apply { mkdirs() }
+        val outputs = mutableListOf<String>()
+
+        try {
+            chapters.forEachIndexed { index, chapter ->
+                coroutineContext.ensureActive()
+                if (chapter.endSeconds <= chapter.startSeconds) return@forEachIndexed
+
+                val output =
+                    uniqueOutput(
+                        outputDir,
+                        sourceName.substringBeforeLast('.', sourceName) +
+                            " - " +
+                            chapter.title.ifBlank { "Chapter ${index + 1}" },
+                        extension,
+                    )
+                val duration = chapter.endSeconds - chapter.startSeconds
+                val args =
+                    listOf(
+                        "-y",
+                        "-hide_banner",
+                        "-nostdin",
+                        "-ss",
+                        seconds(chapter.startSeconds),
+                        "-i",
+                        input.absolutePath,
+                        "-t",
+                        seconds(duration),
+                        "-map",
+                        "0",
+                        "-c",
+                        "copy",
+                        "-avoid_negative_ts",
+                        "make_zero",
+                        output.absolutePath,
+                    )
+
+                val result = runFfmpeg(context, args)
+                if (result.first != 0 || !output.exists() || output.length() == 0L) {
+                    output.delete()
+                    throw IOException(
+                        "FFmpeg chapter split failed at ${chapter.title.ifBlank { "chapter ${index + 1}" }} " +
+                            "with exit code ${result.first}"
+                    )
+                }
+                scan(context, output)
+                outputs += output.absolutePath
+            }
+            outputs
+        } finally {
+            input.delete()
+        }
+    }
+
     private fun MediaFormat.intOrNull(key: String): Int? =
         runCatching { if (containsKey(key)) getInteger(key) else null }.getOrNull()
 
