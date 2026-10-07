@@ -94,12 +94,17 @@ import com.junkfood.seal.util.NOT_SPECIFIED
 import com.junkfood.seal.util.OPUS
 import com.junkfood.seal.util.PreferenceStrings
 import com.junkfood.seal.util.PreferenceUtil
+import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateInt
 import com.junkfood.seal.util.PreferenceUtil.updateString
 import com.junkfood.seal.util.RES_HIGHEST
 import com.junkfood.seal.util.RES_LOWEST
 import com.junkfood.seal.util.SUBTITLE_LANGUAGE
+import com.junkfood.seal.util.SUBTITLE_LANGUAGE_ALL
+import com.junkfood.seal.util.SUBTITLE_LANGUAGE_MODE
+import com.junkfood.seal.util.SUBTITLE_LANGUAGE_ORIGINAL
+import com.junkfood.seal.util.SUBTITLE_LANGUAGE_SELECTED
 import com.junkfood.seal.util.ULTRA_LOW
 import com.junkfood.seal.util.getStringDefault
 
@@ -825,18 +830,26 @@ private const val subtitleOptions = "https://github.com/yt-dlp/yt-dlp#subtitle-o
 private const val sortingFormats = "https://github.com/yt-dlp/yt-dlp#sorting-formats"
 
 @Composable
-fun SubtitleLanguageDialog(onDismissRequest: () -> Unit) {
+fun SubtitleLanguageDialog(
+    onDismissRequest: () -> Unit,
+    onModeChanged: (Int) -> Unit = {},
+) {
     var languages by SUBTITLE_LANGUAGE.stringState
+    val initialMode = SUBTITLE_LANGUAGE_MODE.getInt()
     SubtitleLanguageDialogImpl(
         onDismissRequest = onDismissRequest,
         initialLanguages = languages,
+        initialMode = initialMode,
         onReset = {
             SUBTITLE_LANGUAGE.let {
                 languages = it.getStringDefault()
-                it.updateString(languages)
             }
         },
-        onConfirm = { SUBTITLE_LANGUAGE.updateString(it) },
+        onConfirm = { mode, value ->
+            SUBTITLE_LANGUAGE_MODE.updateInt(mode)
+            SUBTITLE_LANGUAGE.updateString(value)
+            onModeChanged(mode)
+        },
     )
 }
 
@@ -845,35 +858,106 @@ fun SubtitleLanguageDialog(onDismissRequest: () -> Unit) {
 private fun SubtitleLanguageDialogImpl(
     onDismissRequest: () -> Unit = {},
     initialLanguages: String = "en.*,.*-orig",
+    initialMode: Int = SUBTITLE_LANGUAGE_SELECTED,
     onReset: () -> Unit = {},
-    onConfirm: (String) -> Unit = {},
+    onConfirm: (Int, String) -> Unit = { _, _ -> },
 ) {
     var languages by remember(initialLanguages) { mutableStateOf(initialLanguages) }
+    var mode by remember(initialMode) { mutableIntStateOf(initialMode) }
     val uriHandler = LocalUriHandler.current
+
     SealDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text(stringResource(id = R.string.subtitle_language)) },
+        title = { Text("Subtitle language mode") },
         icon = { Icon(Icons.Outlined.Language, null, tint = MaterialTheme.colorScheme.primary) },
         text = {
-            Column() {
+            Column {
                 Text(
-                    text = stringResource(id = R.string.subtitle_language_desc),
+                    text =
+                        "Choose how KirinDL selects subtitle languages. Source type (Original / Auto) is controlled separately on the Subtitle page.",
                     modifier = Modifier.padding(horizontal = 24.dp),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                ProvideTextStyle(
-                    value = LocalTextStyle.current.merge(fontFamily = FontFamily.Monospace)
+
+                Column(
+                    modifier = Modifier.padding(horizontal = 24.dp),
                 ) {
-                    OutlinedTextField(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                        value = languages,
-                        onValueChange = { languages = it },
-                        label = { Text(stringResource(id = R.string.subtitle_language)) },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    OutlinedButton(
+                        onClick = { mode = SUBTITLE_LANGUAGE_ORIGINAL },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (mode == SUBTITLE_LANGUAGE_ORIGINAL) {
+                                "✓ Original"
+                            } else {
+                                "Original"
+                            }
+                        )
+                    }
+                    Text(
+                        "Use original/manual site tracks and original auto-caption variants when available.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { mode = SUBTITLE_LANGUAGE_SELECTED },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (mode == SUBTITLE_LANGUAGE_SELECTED) {
+                                "✓ Selected"
+                            } else {
+                                "Selected"
+                            }
+                        )
+                    }
+                    Text(
+                        "Use your yt-dlp language filter below. Existing KirinDL language settings are preserved here.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { mode = SUBTITLE_LANGUAGE_ALL },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (mode == SUBTITLE_LANGUAGE_ALL) {
+                                "✓ All"
+                            } else {
+                                "All"
+                            }
+                        )
+                    }
+                    Text(
+                        "Download every available subtitle language except live chat.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
 
+                if (mode == SUBTITLE_LANGUAGE_SELECTED) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    ProvideTextStyle(
+                        value = LocalTextStyle.current.merge(fontFamily = FontFamily.Monospace)
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                            value = languages,
+                            onValueChange = { languages = it },
+                            label = { Text(stringResource(id = R.string.subtitle_language)) },
+                            supportingText = {
+                                Text("Examples: en.*,.*-orig  •  en,ja  •  en.*")
+                            },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier =
                         Modifier.padding(horizontal = 16.dp)
@@ -885,24 +969,26 @@ private fun SubtitleLanguageDialogImpl(
                         label = stringResource(id = R.string.reset),
                         icon = Icons.Outlined.Sync,
                     ) {
+                        mode = SUBTITLE_LANGUAGE_SELECTED
                         onReset()
+                        languages = SUBTITLE_LANGUAGE.getStringDefault()
                     }
                     OutlinedButtonChip(
                         label = stringResource(R.string.yt_dlp_docs),
                         icon = Icons.AutoMirrored.Outlined.OpenInNew,
                     ) {
-                        uriHandler.openUri(sortingFormats)
+                        uriHandler.openUri(subtitleOptions)
                     }
                 }
             }
         },
         confirmButton = {
-            ConfirmButton() {
-                onConfirm(languages)
+            ConfirmButton {
+                onConfirm(mode, languages)
                 onDismissRequest()
             }
         },
-        dismissButton = { DismissButton() { onDismissRequest() } },
+        dismissButton = { DismissButton { onDismissRequest() } },
     )
 }
 
