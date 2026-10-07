@@ -11,6 +11,7 @@ import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.PlaylistEntry
 import com.junkfood.seal.util.VideoInfo
+import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import java.io.File
@@ -352,6 +353,7 @@ object KirinUtilityEngine {
         context: Context,
         arguments: List<String>,
     ): Pair<Int, List<String>> {
+        FFmpeg.init(context.applicationContext)
         val instance = YoutubeDL.getInstance()
         val ffmpegPath =
             reflectedFile(instance, "ffmpegPath")
