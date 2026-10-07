@@ -38,6 +38,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -268,7 +271,162 @@ jobs:
 
           print(f"Staged stable version {os.environ['RELEASE_VERSION']} ({version_code})")
 
-      - name: Validate release notes
+      - name: Prepare Stable / Pre-release notes
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only != 'true' }}
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_CHANNEL: ${{ steps.channel.outputs.channel }}
+          RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          channel = os.environ["RELEASE_CHANNEL"]
+          version = os.environ["RELEASE_VERSION"]
+          notes_path = Path(os.environ["RELEASE_NOTES_PATH"])
+          target_tag = f"v{version}"
+          version_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$")
+
+          def parse_version(tag):
+              match = version_re.fullmatch(tag or "")
+              if not match:
+                  return None
+              major, minor, patch = map(int, match.groups()[:3])
+              build = int(match.group(4) or 0)
+              return (major, minor, patch, build)
+
+          target_version = parse_version(target_tag)
+          if target_version is None:
+              raise SystemExit(f"Unsupported KirinDL release version: {target_tag}")
+
+          raw = subprocess.check_output(
+              ["gh", "api", f"repos/{repo}/releases?per_page=100"],
+              text=True,
+          )
+          releases = json.loads(raw)
+          previous = []
+          for release in releases:
+              if release.get("draft"):
+                  continue
+              tag = release.get("tag_name", "")
+              parsed = parse_version(tag)
+              if parsed is None or parsed >= target_version:
+                  continue
+              previous.append((parsed, tag))
+
+          previous_tag = max(previous, default=(None, None))[1]
+
+          ignored_subject_prefixes = (
+              "chore(changelog):",
+              "Trigger Kirin pre-release",
+              "Trigger pre-release",
+              "Trigger yt-dlp",
+              "Trigger devpatch",
+              "Trigger ARM64",
+              "Run Kirin pre-release",
+              "Trigger KirinDL v",
+              "Remove temporary",
+              "Restore manual",
+              "Temporary trigger",
+              "Temporary CI",
+          )
+          ignored_only_paths = {
+              ".kirin-prerelease-trigger",
+              ".kirin-release-trigger",
+              ".github/workflows/android.yml",
+              ".github/workflows/auto-changelog.yml",
+              "CHANGELOG.md",
+          }
+
+          rev_range = f"{previous_tag}..HEAD" if previous_tag else "HEAD"
+          log = subprocess.check_output(
+              [
+                  "git",
+                  "log",
+                  rev_range,
+                  "--no-merges",
+                  "--date=short",
+                  "--pretty=format:%H%x1f%h%x1f%ad%x1f%s",
+              ],
+              text=True,
+          )
+
+          changes = []
+          for line in log.splitlines():
+              if not line.strip():
+                  continue
+              full_sha, short_sha, day, subject = line.split("\x1f", 3)
+              if subject.startswith(ignored_subject_prefixes):
+                  continue
+
+              changed_paths = subprocess.check_output(
+                  [
+                      "git",
+                      "diff-tree",
+                      "--no-commit-id",
+                      "--name-only",
+                      "-r",
+                      full_sha,
+                  ],
+                  text=True,
+              ).splitlines()
+              if changed_paths and set(changed_paths).issubset(ignored_only_paths):
+                  continue
+
+              changes.append((day, short_sha, subject))
+
+          start_marker = "<!-- KIRIN-AUTO-RELEASE-NOTES:START -->"
+          end_marker = "<!-- KIRIN-AUTO-RELEASE-NOTES:END -->"
+          previous_label = previous_tag or "repository start"
+
+          generated = [
+              start_marker,
+              f"## Changes since {previous_label}",
+              "",
+          ]
+          if changes:
+              for day, short_sha, subject in changes:
+                  generated.append(f"- {subject} (`{short_sha}`, {day})")
+          else:
+              generated.append("- No additional user-facing source changes were detected.")
+          generated.extend(["", end_marker])
+          generated_block = "\n".join(generated)
+
+          existing = notes_path.read_text(encoding="utf-8") if notes_path.exists() else ""
+          marker_pattern = re.compile(
+              re.escape(start_marker) + r".*?" + re.escape(end_marker),
+              re.S,
+          )
+
+          if existing.strip():
+              if marker_pattern.search(existing):
+                  prepared = marker_pattern.sub(generated_block, existing)
+              else:
+                  prepared = existing.rstrip() + "\n\n" + generated_block + "\n"
+          else:
+              channel_label = "Pre-release" if channel == "prerelease" else "Stable"
+              prepared = (
+                  f"# KirinDL v{version}\n\n"
+                  f"### {channel_label}\n\n"
+                  f"This release was published through the KirinDL {channel_label} channel.\n\n"
+                  f"{generated_block}\n"
+              )
+
+          notes_path.parent.mkdir(parents=True, exist_ok=True)
+          notes_path.write_text(prepared, encoding="utf-8")
+
+          print(f"Prepared {channel} release notes: {notes_path}")
+          print(f"Previous release: {previous_label}")
+          print(f"Included changes: {len(changes)}")
+
+      - name: Validate prepared release notes
         if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only != 'true' }}
         shell: bash
         env:
@@ -276,19 +434,18 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          if [[ ! -f "$RELEASE_NOTES_PATH" ]]; then
-            echo "::error::Missing release notes: $RELEASE_NOTES_PATH"
-            echo "::error::Create release-notes/v$RELEASE_VERSION.md before publishing."
+          [[ -s "$RELEASE_NOTES_PATH" ]] || {
+            echo "::error::Prepared release notes are missing or empty: $RELEASE_NOTES_PATH"
             exit 1
-          fi
-          if [[ ! -s "$RELEASE_NOTES_PATH" ]]; then
-            echo "::error::Release notes file is empty: $RELEASE_NOTES_PATH"
+          }
+          grep -Fq "KirinDL v$RELEASE_VERSION" "$RELEASE_NOTES_PATH" || {
+            echo "::error::$RELEASE_NOTES_PATH does not contain the expected KirinDL v$RELEASE_VERSION heading."
             exit 1
-          fi
-          if ! grep -Fq "KirinDL v$RELEASE_VERSION" "$RELEASE_NOTES_PATH"; then
-            echo "::error::$RELEASE_NOTES_PATH does not contain the expected heading: KirinDL v$RELEASE_VERSION"
+          }
+          grep -Fq "<!-- KIRIN-AUTO-RELEASE-NOTES:START -->" "$RELEASE_NOTES_PATH" || {
+            echo "::error::Automatic change summary is missing from $RELEASE_NOTES_PATH"
             exit 1
-          fi
+          }
           echo "Release notes validated: $RELEASE_NOTES_PATH"
 
       - name: Prepare KirinDL release signing
