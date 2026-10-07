@@ -73,9 +73,15 @@ const val SUBTITLE = "subtitle"
 const val EMBED_SUBTITLE = "embed_subtitle"
 const val KEEP_SUBTITLE_FILES = "keep_subtitle"
 const val SUBTITLE_LANGUAGE = "sub_lang"
+const val SUBTITLE_LANGUAGE_MODE = "subtitle_language_mode"
+const val ORIGINAL_SUBTITLE = "original_subtitle"
 const val AUTO_SUBTITLE = "auto_subtitle"
 const val CONVERT_SUBTITLE = "convert_subtitle"
 const val AUTO_TRANSLATED_SUBTITLES = "translated_subs"
+
+const val SUBTITLE_LANGUAGE_ORIGINAL = 0
+const val SUBTITLE_LANGUAGE_SELECTED = 1
+const val SUBTITLE_LANGUAGE_ALL = 2
 
 const val TEMPLATE_ID = "template_id"
 const val MAX_FILE_SIZE = "max_file_size"
@@ -362,6 +368,7 @@ private val BooleanPreferenceDefaults =
         QUEUE_BULK_CONFIRM to true,
         FORMAT_MP4_ONLY to true,
         DOWNLOAD_DOCS to false,
+        ORIGINAL_SUBTITLE to true,
         LIVE_FROM_START to false,
         HLS_SPLIT_DISCONTINUITY to false,
         WRITE_ALL_THUMBNAILS to false,
@@ -393,6 +400,7 @@ private val IntPreferenceDefaults =
         UPDATE_CHANNEL to STABLE,
         SHOW_SPONSOR_MSG to 0,
         CONVERT_SUBTITLE to NOT_SPECIFIED,
+        SUBTITLE_LANGUAGE_MODE to SUBTITLE_LANGUAGE_SELECTED,
         DOWNLOAD_TYPE_INITIALIZATION to USE_PREVIOUS_SELECTION,
         YT_DLP_UPDATE_CHANNEL to YT_DLP_STABLE,
         DOWNLOAD_TYPE to DownloadType.Video.ordinal,
