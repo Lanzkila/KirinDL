@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Base release notes on latest Stable commits (`8d8fcb99`)
 - Generate notes for every Stable and Pre-release publish (`d843430a`)
 - Support safe Stable and Pre-release channel transitions (`64e5bff0`)
 - Collapse legacy SealPlus changelog without removing history (`7e4279b5`)
