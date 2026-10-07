@@ -151,6 +151,27 @@ jobs:
           )
           cleaned = pattern.sub("", original)
 
+          # Keep the inherited SealPlus/Seal history intact, but collapse it on GitHub so the
+          # KirinDL changelog stays readable. This is enforced here (not only manually in the
+          # markdown file) so future Auto Changelog runs cannot accidentally expand/remove it.
+          legacy_heading = "## [3.0.0] - 2026-07-30"
+          legacy_summary = (
+              "<summary><strong>Legacy SealPlus changelog "
+              "(v3.0.0 and older) — Show / Hide</strong></summary>"
+          )
+          if legacy_heading in cleaned and legacy_summary not in cleaned:
+              legacy_index = cleaned.index(legacy_heading)
+              current_history = cleaned[:legacy_index].rstrip()
+              legacy_history = cleaned[legacy_index:].strip()
+              cleaned = (
+                  current_history
+                  + "\n\n<details>\n"
+                  + legacy_summary
+                  + "\n\n"
+                  + legacy_history
+                  + "\n\n</details>\n"
+              )
+
           header_end = cleaned.find("\n\n", cleaned.find("\n\n") + 2)
           if header_end == -1:
               raise SystemExit("Could not locate CHANGELOG.md header")
