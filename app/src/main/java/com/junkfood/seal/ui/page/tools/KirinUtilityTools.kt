@@ -273,6 +273,7 @@ fun PlaylistExtractorPage(
     onNavigateBack: () -> Unit,
     downloader: DownloaderV2 = koinInject(),
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
     var url by remember { mutableStateOf("") }
@@ -280,12 +281,32 @@ fun PlaylistExtractorPage(
     val selected = remember { mutableStateListOf<Int>() }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
+    var exportFormat by remember { mutableStateOf("txt") }
 
     val entries = playlist?.entries.orEmpty()
+    val selectedEntries = selected.mapNotNull { entries.getOrNull(it) }
     val selectedUrls =
         selected.mapNotNull { index ->
             entries.getOrNull(index)?.let(KirinUtilityEngine::playlistEntryUrl)
         }.distinct()
+
+    val exportLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("text/plain")
+        ) { outputUri: Uri? ->
+            if (outputUri != null) {
+                runCatching {
+                    val data = buildPlaylistExport(exportFormat, selectedEntries)
+                    context.contentResolver.openOutputStream(outputUri)?.bufferedWriter()?.use {
+                        it.write(data)
+                    } ?: error("Unable to open export destination.")
+                }.onSuccess {
+                    status = "Exported ${selectedEntries.size} entries as ${exportFormat.uppercase(Locale.US)}."
+                }.onFailure {
+                    status = it.message ?: "Export failed."
+                }
+            }
+        }
 
     UtilityToolPage(
         title = "Playlist / Channel Extractor",
@@ -419,6 +440,20 @@ fun PlaylistExtractorPage(
                     ) {
                         Text("Queue selected")
                     }
+                }
+
+                Text("Export selected", style = MaterialTheme.typography.labelLarge)
+                FlowingChips(
+                    labels = listOf("txt", "json", "m3u"),
+                    selected = exportFormat,
+                    onSelect = { exportFormat = it },
+                )
+                OutlinedButton(
+                    onClick = { exportLauncher.launch("kirindl-links.$exportFormat") },
+                    enabled = selectedEntries.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Export ${exportFormat.uppercase(Locale.US)}")
                 }
             }
         }
