@@ -63,6 +63,11 @@ enum class GalleryDlThemeStyle(
         key = "lime",
         title = "Lime",
         description = "Bright lime accent with the current app light/dark surfaces.",
+    ),
+    CUSTOM(
+        key = "custom",
+        title = "Custom",
+        description = "Use your own Gallery DL accent color.",
     );
 
     companion object {
@@ -81,6 +86,8 @@ enum class GalleryDlThemeStyle(
 object GalleryDlThemePreference {
     private const val PREFS_NAME = "kirin_gallery_ui"
     private const val KEY_THEME = "gallery_theme"
+    private const val KEY_CUSTOM_ACCENT = "gallery_custom_accent"
+    private const val DEFAULT_CUSTOM_ACCENT = 0xFF18BFEA.toInt()
 
     private val preferences by lazy {
         App.context.getSharedPreferences(PREFS_NAME, 0)
@@ -95,8 +102,19 @@ object GalleryDlThemePreference {
 
     val style = mutableStyle.asStateFlow()
 
+    private val mutableCustomAccent =
+        MutableStateFlow(preferences.getInt(KEY_CUSTOM_ACCENT, DEFAULT_CUSTOM_ACCENT))
+
+    val customAccent = mutableCustomAccent.asStateFlow()
+
     fun setStyle(value: GalleryDlThemeStyle) {
         preferences.edit().putString(KEY_THEME, value.key).apply()
         mutableStyle.value = value
+    }
+
+    fun setCustomAccent(value: Int) {
+        preferences.edit().putInt(KEY_CUSTOM_ACCENT, value).apply()
+        mutableCustomAccent.value = value
+        setStyle(GalleryDlThemeStyle.CUSTOM)
     }
 }
