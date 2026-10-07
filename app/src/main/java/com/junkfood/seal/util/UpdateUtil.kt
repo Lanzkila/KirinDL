@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -43,6 +44,7 @@ object UpdateUtil {
     private const val KEY_LAST_INSTALLED_VERSION = "last_installed_version"
     private const val KEY_LAST_CHECKED_VERSION = "last_checked_version"
     private const val KEY_LAST_CHECKED_CHANNEL = "last_checked_channel"
+    private const val KEY_AVAILABLE_RELEASE_JSON = "available_release_json"
     private const val KEY_WAITING_INSTALL_PERMISSION = "waiting_install_permission"
     private const val NO_DOWNLOAD_ID = -1L
     private const val APK_MIME = "application/vnd.android.package-archive"
@@ -173,6 +175,7 @@ object UpdateUtil {
             .remove(KEY_LAST_CHECKED_CHANNEL)
             .remove(KEY_PENDING_DOWNLOAD_ID)
             .remove(KEY_PENDING_VERSION)
+            .remove(KEY_AVAILABLE_RELEASE_JSON)
             .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
             .apply()
         APP_UPDATE_CHECK_TIME.updateLong(0L)
@@ -443,15 +446,37 @@ object UpdateUtil {
                 }
                 .onSuccess { candidate ->
                     _availableAppUpdate.value = candidate
-                    recordSuccessfulAppUpdateCheck(context)
-                    if (candidate == null) {
+                    val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+                    if (candidate != null) {
+                        prefs.edit()
+                            .putString(KEY_AVAILABLE_RELEASE_JSON, jsonFormat.encodeToString(candidate))
+                            .apply()
+                    } else {
+                        prefs.edit().remove(KEY_AVAILABLE_RELEASE_JSON).apply()
                         NotificationUtil.cancelAppUpdateAvailableNotification(context)
                     }
+                    recordSuccessfulAppUpdateCheck(context)
                 }
         }
 
     suspend fun checkForUpdate(context: Context = App.context): Release? =
         checkForUpdateResult(context).getOrNull()
+    fun restoreCachedAvailableUpdate(context: Context = App.context): Release? {
+        _availableAppUpdate.value?.let { return it }
+
+        val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+        val raw = prefs.getString(KEY_AVAILABLE_RELEASE_JSON, null) ?: return null
+        val cached = runCatching { jsonFormat.decodeFromString<Release>(raw) }.getOrNull()
+        val cachedVersion = (cached?.tagName ?: cached?.name).toVersionOrNull()
+        if (cached == null || cachedVersion == null || context.getCurrentVersion() >= cachedVersion) {
+            prefs.edit().remove(KEY_AVAILABLE_RELEASE_JSON).apply()
+            return null
+        }
+
+        _availableAppUpdate.value = cached
+        return cached
+    }
+
 
     suspend fun getCurrentReleaseResult(context: Context = App.context): Result<Release> =
         withContext(Dispatchers.IO) {
