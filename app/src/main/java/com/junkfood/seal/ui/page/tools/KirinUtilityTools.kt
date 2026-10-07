@@ -312,7 +312,7 @@ fun PlaylistExtractorPage(
                                 if (result is PlaylistResult) {
                                     playlist = result
                                     selected.clear()
-                                    result.entries.orEmpty().indices.forEach(selected::add)
+                                    result.entries.orEmpty().indices.forEach { selected.add(it) }
                                     status = "Found ${result.entries.orEmpty().size} entries."
                                 } else {
                                     status = "This URL resolved to a single video, not a playlist/channel."
@@ -344,7 +344,7 @@ fun PlaylistExtractorPage(
                     OutlinedButton(
                         onClick = {
                             selected.clear()
-                            entries.indices.forEach(selected::add)
+                            entries.indices.forEach { selected.add(it) }
                         }
                     ) {
                         Text("Select all")
