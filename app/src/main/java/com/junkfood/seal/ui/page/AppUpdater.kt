@@ -8,10 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.junkfood.seal.util.APP_UPDATE_CHECK_TIME
 import com.junkfood.seal.util.PreferenceUtil
-import com.junkfood.seal.util.PreferenceUtil.getLong
-import com.junkfood.seal.util.PreferenceUtil.updateLong
 import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.makeToast
 import java.util.concurrent.TimeUnit
@@ -51,14 +48,12 @@ fun AppUpdater() {
             return@LaunchedEffect
         }
 
-        val now = System.currentTimeMillis()
-        val lastChecked = APP_UPDATE_CHECK_TIME.getLong()
-        val checkedRecently =
-            lastChecked > 0L &&
-                now >= lastChecked &&
-                now - lastChecked < AUTO_UPDATE_CHECK_INTERVAL_MS
-
-        if (checkedRecently) {
+        if (
+            !UpdateUtil.shouldRunAutomaticUpdateCheck(
+                context = context,
+                intervalMs = AUTO_UPDATE_CHECK_INTERVAL_MS,
+            )
+        ) {
             return@LaunchedEffect
         }
 
@@ -70,9 +65,8 @@ fun AppUpdater() {
                 }
             }
             .onFailure { error ->
-                // UpdateUtil records the attempt time. A failed network/API request should not
-                // silence automatic checks for the whole cooldown window, so clear it again.
-                APP_UPDATE_CHECK_TIME.updateLong(0L)
+                // Failed network/API checks are not recorded as successful checks, so the next
+                // eligible app start can retry without waiting through the normal cooldown.
                 error.printStackTrace()
             }
     }
