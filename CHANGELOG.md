@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add app update notification preference (`737c810a`)
 - Resolve release channel from trigger commit reliably (`c2e43054`)
 - Fix automatic update timestamp preference import (`fe54e9ec`)
 - Fix Compose scoped weight usage (`f12af5eb`)
