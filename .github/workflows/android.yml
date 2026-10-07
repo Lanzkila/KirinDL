@@ -271,15 +271,15 @@ jobs:
 
           print(f"Staged stable version {os.environ['RELEASE_VERSION']} ({version_code})")
 
-      - name: Prepare Stable / Pre-release notes
-        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only != 'true' }}
+      - name: Prepare Pre-release notes from new commits
+        id: prerelease_notes
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'prerelease' && steps.version.outputs.promote_only != 'true' }}
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          RELEASE_CHANNEL: ${{ steps.channel.outputs.channel }}
-          RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RUNNER_TEMP: ${{ runner.temp }}
         run: |
           import json
           import os
@@ -288,9 +288,7 @@ jobs:
           from pathlib import Path
 
           repo = os.environ["GITHUB_REPOSITORY"]
-          channel = os.environ["RELEASE_CHANNEL"]
           version = os.environ["RELEASE_VERSION"]
-          notes_path = Path(os.environ["RELEASE_NOTES_PATH"])
           target_tag = f"v{version}"
           version_re = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$")
 
@@ -306,26 +304,26 @@ jobs:
           if target_version is None:
               raise SystemExit(f"Unsupported KirinDL release version: {target_tag}")
 
-          raw = subprocess.check_output(
-              ["gh", "api", f"repos/{repo}/releases?per_page=100"],
-              text=True,
+          releases = json.loads(
+              subprocess.check_output(
+                  ["gh", "api", f"repos/{repo}/releases?per_page=100"],
+                  text=True,
+              )
           )
-          releases = json.loads(raw)
 
-          # Release notes are always based on the latest Stable release, never the previous
-          # Pre-release. This makes every testing build a cumulative "what changed since Stable"
-          # report, which is much easier to compare against the recommended public build.
-          previous_stable = []
+          # Chain each Pre-release from the most recent published numeric release:
+          # Stable -> .1, .1 -> .2, .2 -> .3, and so on.
+          previous = []
           for release in releases:
-              if release.get("draft") or release.get("prerelease"):
+              if release.get("draft"):
                   continue
               tag = release.get("tag_name", "")
               parsed = parse_version(tag)
               if parsed is None or parsed >= target_version:
                   continue
-              previous_stable.append((parsed, tag))
+              previous.append((parsed, tag))
 
-          previous_tag = max(previous_stable, default=(None, None))[1]
+          previous_tag = max(previous, default=(None, None))[1]
 
           ignored_subject_prefixes = (
               "chore(changelog):",
@@ -347,10 +345,11 @@ jobs:
               ".github/workflows/android.yml",
               ".github/workflows/auto-changelog.yml",
               "CHANGELOG.md",
+              "release-notes/README.md",
           }
 
           rev_range = f"{previous_tag}..HEAD" if previous_tag else "HEAD"
-          log = subprocess.check_output(
+          raw = subprocess.check_output(
               [
                   "git",
                   "log",
@@ -363,7 +362,7 @@ jobs:
           )
 
           changes = []
-          for line in log.splitlines():
+          for line in raw.splitlines():
               if not line.strip():
                   continue
               full_sha, short_sha, day, subject = line.split("\x1f", 3)
@@ -381,57 +380,39 @@ jobs:
                   ],
                   text=True,
               ).splitlines()
+
               if changed_paths and set(changed_paths).issubset(ignored_only_paths):
                   continue
 
               changes.append((day, short_sha, subject))
 
-          start_marker = "<!-- KIRIN-AUTO-RELEASE-NOTES:START -->"
-          end_marker = "<!-- KIRIN-AUTO-RELEASE-NOTES:END -->"
           previous_label = previous_tag or "repository start"
-
-          generated = [
-              start_marker,
-              f"## Changes since Stable {previous_label}",
+          lines = [
+              f"# KirinDL v{version}",
+              "",
+              "### Pre-release testing build",
+              "",
+              f"## Changes since {previous_label}",
               "",
           ]
           if changes:
               for day, short_sha, subject in changes:
-                  generated.append(f"- {subject} (`{short_sha}`, {day})")
+                  lines.append(f"- {subject} (`{short_sha}`, {day})")
           else:
-              generated.append("- No additional user-facing source changes were detected.")
-          generated.extend(["", end_marker])
-          generated_block = "\n".join(generated)
+              lines.append("- No additional user-facing source changes were detected.")
 
-          existing = notes_path.read_text(encoding="utf-8") if notes_path.exists() else ""
-          marker_pattern = re.compile(
-              re.escape(start_marker) + r".*?" + re.escape(end_marker),
-              re.S,
-          )
+          notes_path = Path(os.environ["RUNNER_TEMP"]) / "kirindl-prerelease-notes.md"
+          notes_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-          if existing.strip():
-              if marker_pattern.search(existing):
-                  prepared = marker_pattern.sub(generated_block, existing)
-              else:
-                  prepared = existing.rstrip() + "\n\n" + generated_block + "\n"
-          else:
-              channel_label = "Pre-release" if channel == "prerelease" else "Stable"
-              prepared = (
-                  f"# KirinDL v{version}\n\n"
-                  f"### {channel_label}\n\n"
-                  f"This release was published through the KirinDL {channel_label} channel.\n\n"
-                  f"{generated_block}\n"
-              )
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"path={notes_path}\n")
 
-          notes_path.parent.mkdir(parents=True, exist_ok=True)
-          notes_path.write_text(prepared, encoding="utf-8")
+          print(f"Pre-release baseline: {previous_label}")
+          print(f"Included new commits: {len(changes)}")
+          print(f"Prepared notes: {notes_path}")
 
-          print(f"Prepared {channel} release notes: {notes_path}")
-          print(f"Stable baseline: {previous_label}")
-          print(f"Included changes: {len(changes)}")
-
-      - name: Validate prepared release notes
-        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only != 'true' }}
+      - name: Validate Stable release notes
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'stable' }}
         shell: bash
         env:
           RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
@@ -439,18 +420,33 @@ jobs:
         run: |
           set -euo pipefail
           [[ -s "$RELEASE_NOTES_PATH" ]] || {
-            echo "::error::Prepared release notes are missing or empty: $RELEASE_NOTES_PATH"
+            echo "::error::Stable release notes are missing or empty: $RELEASE_NOTES_PATH"
+            echo "::error::Stable releases must use release-notes/v$RELEASE_VERSION.md"
             exit 1
           }
           grep -Fq "KirinDL v$RELEASE_VERSION" "$RELEASE_NOTES_PATH" || {
             echo "::error::$RELEASE_NOTES_PATH does not contain the expected KirinDL v$RELEASE_VERSION heading."
             exit 1
           }
-          grep -Fq "<!-- KIRIN-AUTO-RELEASE-NOTES:START -->" "$RELEASE_NOTES_PATH" || {
-            echo "::error::Automatic change summary is missing from $RELEASE_NOTES_PATH"
+          echo "Stable release notes validated: $RELEASE_NOTES_PATH"
+
+      - name: Validate Pre-release notes
+        if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'prerelease' && steps.version.outputs.promote_only != 'true' }}
+        shell: bash
+        env:
+          PRE_RELEASE_NOTES_PATH: ${{ steps.prerelease_notes.outputs.path }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ -s "$PRE_RELEASE_NOTES_PATH" ]] || {
+            echo "::error::Generated Pre-release notes are missing or empty."
             exit 1
           }
-          echo "Release notes validated: $RELEASE_NOTES_PATH"
+          grep -Fq "KirinDL v$RELEASE_VERSION" "$PRE_RELEASE_NOTES_PATH" || {
+            echo "::error::Generated Pre-release notes do not contain KirinDL v$RELEASE_VERSION."
+            exit 1
+          }
+          echo "Pre-release notes validated: $PRE_RELEASE_NOTES_PATH"
 
       - name: Prepare KirinDL release signing
         if: ${{ steps.version.outputs.promote_only != 'true' }}
@@ -560,18 +556,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ steps.version.outputs.release_id }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
         run: |
           set -euo pipefail
           [[ -n "$RELEASE_ID" ]] || {
             echo "::error::Promotion requested without an existing GitHub release id."
             exit 1
           }
+          RELEASE_BODY="$(cat "$RELEASE_NOTES_PATH")"
           gh api \
             --method PATCH \
             "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
             -F prerelease=false \
-            -f make_latest=true >/dev/null
+            -f make_latest=true \
+            -f body="$RELEASE_BODY" >/dev/null
           echo "Promoted KirinDL v$RELEASE_VERSION from Pre-release to Stable without rebuilding APKs."
+          echo "Stable notes loaded from $RELEASE_NOTES_PATH."
 
       - name: Publish GitHub Release
         if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.version.outputs.promote_only != 'true' }}
@@ -579,7 +579,7 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: KirinDL v${{ steps.version.outputs.version }}
-          body_path: ${{ steps.version.outputs.release_notes_path }}
+          body_path: ${{ steps.channel.outputs.channel == 'prerelease' && steps.prerelease_notes.outputs.path || steps.version.outputs.release_notes_path }}
           prerelease: ${{ steps.channel.outputs.prerelease }}
           make_latest: ${{ steps.channel.outputs.make_latest }}
           fail_on_unmatched_files: true
