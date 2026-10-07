@@ -71,17 +71,19 @@ jobs:
         env:
           INPUT_RELEASE_CHANNEL: ${{ inputs.release_channel }}
         run: |
-          import json
           import os
+          import subprocess
 
           event_name = os.environ.get("GITHUB_EVENT_NAME", "")
           channel = (os.environ.get("INPUT_RELEASE_CHANNEL") or "stable").strip().lower()
 
           if event_name == "push":
-              with open(os.environ["GITHUB_EVENT_PATH"], "r", encoding="utf-8") as fh:
-                  event = json.load(fh)
-              head = event.get("head_commit") or {}
-              changed = set(head.get("added", []) + head.get("modified", []) + head.get("removed", []))
+              changed = set(
+                  subprocess.check_output(
+                      ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", os.environ["GITHUB_SHA"]],
+                      text=True,
+                  ).splitlines()
+              )
               stable_trigger = ".kirin-release-trigger" in changed
               prerelease_trigger = ".kirin-prerelease-trigger" in changed
 
