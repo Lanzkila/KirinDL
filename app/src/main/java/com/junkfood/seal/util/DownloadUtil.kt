@@ -351,13 +351,17 @@ object DownloadUtil {
                     /*            if (debug) {
                         addOption("-v")
                     }*/
-                    if (autoSubtitle) {
+                    if (downloadSubtitle && autoSubtitle) {
                         addOption("--write-auto-subs")
                     }
-                    
-                    // No player_skip or player_client to get all format types
-                    // Format ID consistency will be maintained through caching within the same session
-                    if (autoSubtitle && !autoTranslatedSubtitles) {
+
+                    // Subtitle probing follows the master switch as well. Original mode always
+                    // excludes YouTube's generated translation variants.
+                    if (
+                        downloadSubtitle &&
+                            (subtitleLanguageMode == SUBTITLE_LANGUAGE_ORIGINAL ||
+                                (autoSubtitle && !autoTranslatedSubtitles))
+                    ) {
                         addOption("--extractor-args", "youtube:skip=translated_subs")
                     }
                     
@@ -465,6 +469,8 @@ object DownloadUtil {
         val noCheckCertificate: Boolean,
         val mergeAudioStream: Boolean,
         val mergeToMkv: Boolean,
+        val originalSubtitle: Boolean = true,
+        val subtitleLanguageMode: Int = SUBTITLE_LANGUAGE_SELECTED,
         val downloadDocs: Boolean = false,
     ) {
         companion object {
@@ -526,6 +532,8 @@ object DownloadUtil {
             fun createFromPreferences(): DownloadPreferences {
                 val downloadSubtitle = SUBTITLE.getBoolean()
                 val embedSubtitle = EMBED_SUBTITLE.getBoolean()
+                val originalSubtitle = ORIGINAL_SUBTITLE.getBoolean()
+                val autoSubtitle = AUTO_SUBTITLE.getBoolean()
                 return DownloadPreferences(
                     extractAudio = EXTRACT_AUDIO.getBoolean(),
                     createThumbnail = THUMBNAIL.getBoolean(),
@@ -537,7 +545,7 @@ object DownloadUtil {
                     embedSubtitle = embedSubtitle,
                     keepSubtitle = KEEP_SUBTITLE_FILES.getBoolean(),
                     subtitleLanguage = SUBTITLE_LANGUAGE.getString(),
-                    autoSubtitle = AUTO_SUBTITLE.getBoolean(),
+                    autoSubtitle = autoSubtitle,
                     autoTranslatedSubtitles = AUTO_TRANSLATED_SUBTITLES.getBoolean(),
                     convertSubtitle = CONVERT_SUBTITLE.getInt(),
                     concurrentFragments = CONCURRENT.getInt(),
@@ -578,7 +586,12 @@ object DownloadUtil {
                     noCheckCertificate = NO_CHECK_CERTIFICATE.getBoolean(),
                     mergeAudioStream = false,
                     mergeToMkv =
-                        (downloadSubtitle && embedSubtitle) || MERGE_OUTPUT_MKV.getBoolean(),
+                        (downloadSubtitle &&
+                            embedSubtitle &&
+                            (originalSubtitle || autoSubtitle)) ||
+                            MERGE_OUTPUT_MKV.getBoolean(),
+                    originalSubtitle = originalSubtitle,
+                    subtitleLanguageMode = SUBTITLE_LANGUAGE_MODE.getInt(),
                 )
             }
         }
@@ -834,8 +847,93 @@ object DownloadUtil {
             // Fragment back-off: exponential starting at 1s, capped at 60s.
             .addOption("--retry-sleep", "fragment:exp=1:60")
 
+    private fun subtitleLanguageSelector(
+        videoInfo: VideoInfo,
+        preferences: DownloadPreferences,
+    ): String? =
+        with(preferences) {
+            when (subtitleLanguageMode) {
+                SUBTITLE_LANGUAGE_ORIGINAL -> {
+                    val manualLanguages =
+                        if (originalSubtitle) {
+                            videoInfo.subtitles.keys.filterNot {
+                                it.equals("live_chat", ignoreCase = true)
+                            }
+                        } else {
+                            emptyList()
+                        }
+                    val originalAutoLanguages =
+                        if (autoSubtitle) {
+                            videoInfo.automaticCaptions.keys.filter {
+                                it.endsWith("-orig", ignoreCase = true)
+                            }
+                        } else {
+                            emptyList()
+                        }
+
+                    // If an extractor exposes concrete original tracks, request only those.
+                    // Otherwise ask for all non-live-chat tracks while translated YouTube
+                    // captions are disabled separately below.
+                    (manualLanguages + originalAutoLanguages)
+                        .distinct()
+                        .takeIf { it.isNotEmpty() && (!autoSubtitle || originalAutoLanguages.isNotEmpty()) }
+                        ?.joinToString(",")
+                        ?: "all,-live_chat"
+                }
+
+                SUBTITLE_LANGUAGE_ALL -> "all,-live_chat"
+                else -> subtitleLanguage.trim().takeIf { it.isNotEmpty() }
+            }
+        }
+
+    private fun YoutubeDLRequest.addSubtitleOptions(
+        videoInfo: VideoInfo,
+        preferences: DownloadPreferences,
+        allowEmbed: Boolean,
+    ): YoutubeDLRequest =
+        this.apply {
+            with(preferences) {
+                if (!downloadSubtitle || (!originalSubtitle && !autoSubtitle)) {
+                    return@apply
+                }
+
+                val originalLanguageMode =
+                    subtitleLanguageMode == SUBTITLE_LANGUAGE_ORIGINAL
+
+                if (originalLanguageMode || (autoSubtitle && !autoTranslatedSubtitles)) {
+                    addOption("--extractor-args", "youtube:skip=translated_subs")
+                }
+
+                subtitleLanguageSelector(videoInfo, preferences)?.let {
+                    addOption("--sub-langs", it)
+                }
+
+                if (autoSubtitle) {
+                    addOption("--write-auto-subs")
+                }
+
+                if (allowEmbed && embedSubtitle) {
+                    addOption("--embed-subs")
+                    if (originalSubtitle && keepSubtitle) {
+                        addOption("--write-subs")
+                    }
+                } else if (originalSubtitle) {
+                    addOption("--write-subs")
+                }
+
+                when (convertSubtitle) {
+                    CONVERT_ASS -> addOption("--convert-subs", "ass")
+                    CONVERT_SRT -> addOption("--convert-subs", "srt")
+                    CONVERT_VTT -> addOption("--convert-subs", "vtt")
+                    CONVERT_LRC -> addOption("--convert-subs", "lrc")
+                    else -> {}
+                }
+            }
+        }
+
     private fun YoutubeDLRequest.addOptionsForVideoDownloads(
-        downloadPreferences: DownloadPreferences
+        downloadPreferences: DownloadPreferences,
+        videoInfo: VideoInfo,
     ): YoutubeDLRequest =
         this.apply {
             downloadPreferences.run {
@@ -860,35 +958,13 @@ object DownloadUtil {
                     applyFormatSorter(this, toFormatSorter())
                 }
                 
-                // No player_skip - format IDs selected by user are passed explicitly via -f flag
-                // This ensures correct format is downloaded regardless of client selection
-                if (downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles) {
-                    addOption("--extractor-args", "youtube:skip=translated_subs")
-                }
-                
-                if (downloadSubtitle) {
-                    if (autoSubtitle) {
-                        addOption("--write-auto-subs")
-                    }
-                    subtitleLanguage
-                        .takeIf { it.isNotEmpty() }
-                        ?.let { addOption("--sub-langs", it) }
-                    if (embedSubtitle) {
-                        addOption("--embed-subs")
-                        if (keepSubtitle) {
-                            addOption("--write-subs")
-                        }
-                    } else {
-                        addOption("--write-subs")
-                    }
-                    when (convertSubtitle) {
-                        CONVERT_ASS -> addOption("--convert-subs", "ass")
-                        CONVERT_SRT -> addOption("--convert-subs", "srt")
-                        CONVERT_VTT -> addOption("--convert-subs", "vtt")
-                        CONVERT_LRC -> addOption("--convert-subs", "lrc")
-                        else -> {}
-                    }
-                }
+                // Subtitle source and language selection are handled together so manual/original
+                // tracks and auto-generated captions never accidentally enable each other.
+                addSubtitleOptions(
+                    videoInfo = videoInfo,
+                    preferences = downloadPreferences,
+                    allowEmbed = true,
+                )
                 if (mergeToMkv) {
                     addOption("--remux-video", "mkv")
                     addOption("--merge-output-format", "mkv")
@@ -975,33 +1051,18 @@ object DownloadUtil {
         id: String,
         preferences: DownloadPreferences,
         playlistUrl: String,
+        videoInfo: VideoInfo,
     ): YoutubeDLRequest =
         this.apply {
             with(preferences) {
                 addOption("-x")
                 
-                // No player_skip for audio - format ID explicitly passed
-                if (downloadSubtitle && autoSubtitle && !autoTranslatedSubtitles) {
-                    addOption("--extractor-args", "youtube:skip=translated_subs")
-                }
-                
-                if (downloadSubtitle) {
-                    addOption("--write-subs")
-
-                    if (autoSubtitle) {
-                        addOption("--write-auto-subs")
-                    }
-                    subtitleLanguage
-                        .takeIf { it.isNotEmpty() }
-                        ?.let { addOption("--sub-langs", it) }
-                    when (convertSubtitle) {
-                        CONVERT_ASS -> addOption("--convert-subs", "ass")
-                        CONVERT_SRT -> addOption("--convert-subs", "srt")
-                        CONVERT_VTT -> addOption("--convert-subs", "vtt")
-                        CONVERT_LRC -> addOption("--convert-subs", "lrc")
-                        else -> {}
-                    }
-                }
+                // Audio extraction can still keep subtitle sidecar files, but cannot embed them.
+                addSubtitleOptions(
+                    videoInfo = videoInfo,
+                    preferences = preferences,
+                    allowEmbed = false,
+                )
                 if (formatIdString.isNotEmpty()) {
                     addOption("-f", formatIdString)
                     if (mergeAudioStream) {
@@ -1262,11 +1323,12 @@ object DownloadUtil {
                             id = videoInfo.id,
                             preferences = downloadPreferences,
                             playlistUrl = playlistUrl,
+                            videoInfo = videoInfo,
                         )
                     } else {
                         if (privateDirectory) pathBuilder.append(App.privateDownloadDir)
                         else pathBuilder.append(videoDownloadDir)
-                        addOptionsForVideoDownloads(downloadPreferences)
+                        addOptionsForVideoDownloads(downloadPreferences, videoInfo)
                     }
                     if (sponsorBlock) {
                         addOption("--sponsorblock-remove", sponsorBlockCategory)
