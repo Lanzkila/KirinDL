@@ -16,6 +16,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
 import com.junkfood.seal.App.Companion.context
+import com.junkfood.seal.MainActivity
 import com.junkfood.seal.NotificationActionReceiver
 import com.junkfood.seal.NotificationActionReceiver.Companion.ACTION_CANCEL_TASK
 import com.junkfood.seal.NotificationActionReceiver.Companion.ACTION_ERROR_REPORT
@@ -36,6 +37,10 @@ object NotificationUtil {
     private const val PROGRESS_INITIAL = 0
     private const val CHANNEL_ID = "download_notification"
     private const val SERVICE_CHANNEL_ID = "download_service"
+    private const val APP_UPDATE_CHANNEL_ID = "kirindl_app_update_available"
+    private const val APP_UPDATE_NOTIFICATION_ID = 32100
+    private const val APP_UPDATE_NOTICE_PREFS = "kirin_app_update_notice"
+    private const val KEY_LAST_NOTIFIED_VERSION = "last_notified_version"
     private const val NOTIFICATION_GROUP_ID = "seal.download.notification"
     private const val DEFAULT_NOTIFICATION_ID = 100
     const val SERVICE_NOTIFICATION_ID = 123
@@ -155,9 +160,90 @@ object NotificationUtil {
                 enableVibration(false)
                 enableLights(false)
             }
+        val appUpdateChannel =
+            NotificationChannel(
+                APP_UPDATE_CHANNEL_ID,
+                "KirinDL app updates",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Notify when a new KirinDL version is available"
+                enableVibration(true)
+                setShowBadge(true)
+            }
+
         notificationManager.createNotificationChannelGroup(channelGroup)
         notificationManager.createNotificationChannel(channel)
         notificationManager.createNotificationChannel(serviceChannel)
+        notificationManager.createNotificationChannel(appUpdateChannel)
+    }
+
+    fun notifyAppUpdateAvailable(release: UpdateUtil.Release) {
+        if (!APP_UPDATE_NOTIFICATIONS.getBoolean()) return
+        if (!areNotificationsEnabled()) return
+
+        val version = (release.tagName ?: release.name ?: "New version").removePrefix("v")
+        val prefs = context.getSharedPreferences(APP_UPDATE_NOTICE_PREFS, Context.MODE_PRIVATE)
+        if (prefs.getString(KEY_LAST_NOTIFIED_VERSION, null) == version) return
+
+        val intent =
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val pendingIntent =
+            PendingIntent.getActivity(
+                context,
+                APP_UPDATE_NOTIFICATION_ID,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+
+        val channelId =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                APP_UPDATE_CHANNEL_ID
+            } else {
+                CHANNEL_ID
+            }
+
+        val notification =
+            NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(R.drawable.ic_stat_seal)
+                .setContentTitle("KirinDL update available")
+                .setContentText("Version $version is ready. Tap to view update details.")
+                .setStyle(
+                    NotificationCompat.BigTextStyle()
+                        .bigText("KirinDL $version is available. Open KirinDL to read the release notes and update.")
+                )
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+        notificationManager.notify(APP_UPDATE_NOTIFICATION_ID, notification)
+        prefs.edit().putString(KEY_LAST_NOTIFIED_VERSION, version).apply()
+    }
+
+    fun cancelAppUpdateAvailableNotification(clearRememberedVersion: Boolean = true) {
+        notificationManager.cancel(APP_UPDATE_NOTIFICATION_ID)
+        if (clearRememberedVersion) {
+            context.getSharedPreferences(APP_UPDATE_NOTICE_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_LAST_NOTIFIED_VERSION)
+                .apply()
+        }
+    }
+
+    fun cancelAppUpdateAvailableNotification(
+        targetContext: Context,
+        clearRememberedVersion: Boolean = true,
+    ) {
+        val manager =
+            targetContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(APP_UPDATE_NOTIFICATION_ID)
+        if (clearRememberedVersion) {
+            targetContext.getSharedPreferences(APP_UPDATE_NOTICE_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_LAST_NOTIFIED_VERSION)
+                .apply()
+        }
     }
 
     fun notifyProgress(
