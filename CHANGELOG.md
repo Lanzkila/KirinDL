@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Collapse legacy SealPlus changelog without removing history (`7e4279b5`, 2026-10-07)
 - Document subtitle source and language controls (`a3aaa89a`, 2026-10-07)
 - Prevent conflicting subtitle source settings (`9506d731`, 2026-10-07)
 - Add Original Selected and All subtitle language modes (`56ca3167`, 2026-10-07)
