@@ -60,6 +60,7 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -138,6 +139,7 @@ import com.junkfood.seal.ui.common.HapticFeedback.slightHapticFeedback
 import com.junkfood.seal.ui.common.LocalDarkTheme
 import com.junkfood.seal.ui.common.LocalGradientDarkMode
 import com.junkfood.seal.ui.common.ThemedIconColors
+import com.junkfood.seal.ui.page.UpdateDialog
 import com.junkfood.seal.ui.page.downloadv2.UiAction
 import com.junkfood.seal.ui.page.downloadv2.configure.Config
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialog
@@ -162,6 +164,7 @@ import com.junkfood.seal.util.HOME_COMPACT_ACTIVITY
 import com.junkfood.seal.util.SMART_DOWNLOAD_PROFILE
 import com.junkfood.seal.util.SmartDownloadProfiles
 import com.junkfood.seal.util.SiteProfileManager
+import com.junkfood.seal.util.UpdateUtil
 import java.io.File
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
@@ -221,6 +224,16 @@ fun NewHomePage(
     val uriHandler = LocalUriHandler.current
     val activity = context as? Activity
     val scope = rememberCoroutineScope()
+    val availableAppUpdate by UpdateUtil.availableAppUpdate.collectAsStateWithLifecycle()
+    var hiddenUpdateTag by remember { mutableStateOf<String?>(null) }
+    var showAppUpdateDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(availableAppUpdate?.tagName, availableAppUpdate?.name) {
+        val currentTag = availableAppUpdate?.tagName ?: availableAppUpdate?.name
+        if (currentTag != null && hiddenUpdateTag != null && hiddenUpdateTag != currentTag) {
+            hiddenUpdateTag = null
+        }
+    }
     
     var showExitDialog by remember { mutableStateOf(false) }
     var urlText by remember { mutableStateOf("") }
@@ -822,6 +835,18 @@ fun NewHomePage(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            val update = availableAppUpdate
+            val updateTag = update?.tagName ?: update?.name
+            if (update != null && updateTag != hiddenUpdateTag) {
+                item {
+                    HomeAppUpdateAlert(
+                        release = update,
+                        onOpen = { showAppUpdateDialog = true },
+                        onDismissForSession = { hiddenUpdateTag = updateTag },
+                    )
+                }
+            }
+
             // KirinDL branding
             item {
                 Box(
@@ -943,6 +968,33 @@ fun NewHomePage(
         }
     }
 
+    if (showAppUpdateDialog) {
+        availableAppUpdate?.let { release ->
+            UpdateDialog(
+                onDismissRequest = { showAppUpdateDialog = false },
+                release = release,
+                isUpdateAvailable = true,
+                onBackgroundUpdate =
+                    if (UpdateUtil.hasBackgroundAppUpdate(release)) {
+                        {
+                            UpdateUtil.enqueueBackgroundAppUpdate(context, release)
+                                .onSuccess {
+                                    context.makeToast(
+                                        "KirinDL update is downloading in Android Download Manager"
+                                    )
+                                }
+                                .onFailure { error ->
+                                    error.printStackTrace()
+                                    context.makeToast("Could not start the app update download")
+                                }
+                        }
+                    } else {
+                        null
+                    },
+            )
+        }
+    }
+
     // Download Dialog
     var preferences by remember {
         mutableStateOf(DownloadUtil.DownloadPreferences.createFromPreferences())
@@ -1005,6 +1057,64 @@ private fun HomeInputLabel(title: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.SemiBold,
     )
+}
+
+@Composable
+private fun HomeAppUpdateAlert(
+    release: UpdateUtil.Release,
+    onOpen: () -> Unit,
+    onDismissForSession: () -> Unit,
+) {
+    val version = (release.tagName ?: release.name ?: "New version").removePrefix("v")
+    Card(
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+            ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.NewReleases,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(10.dp).size(22.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "KirinDL update available",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text =
+                        "v$version • " +
+                            if (release.preRelease == true) "Pre-release • Tap for notes"
+                            else "Stable • Tap for notes",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onDismissForSession) {
+                Icon(
+                    imageVector = Icons.Outlined.Clear,
+                    contentDescription = "Hide until next app launch",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 @Composable
