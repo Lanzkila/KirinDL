@@ -311,17 +311,21 @@ jobs:
               text=True,
           )
           releases = json.loads(raw)
-          previous = []
+
+          # Release notes are always based on the latest Stable release, never the previous
+          # Pre-release. This makes every testing build a cumulative "what changed since Stable"
+          # report, which is much easier to compare against the recommended public build.
+          previous_stable = []
           for release in releases:
-              if release.get("draft"):
+              if release.get("draft") or release.get("prerelease"):
                   continue
               tag = release.get("tag_name", "")
               parsed = parse_version(tag)
               if parsed is None or parsed >= target_version:
                   continue
-              previous.append((parsed, tag))
+              previous_stable.append((parsed, tag))
 
-          previous_tag = max(previous, default=(None, None))[1]
+          previous_tag = max(previous_stable, default=(None, None))[1]
 
           ignored_subject_prefixes = (
               "chore(changelog):",
@@ -388,7 +392,7 @@ jobs:
 
           generated = [
               start_marker,
-              f"## Changes since {previous_label}",
+              f"## Changes since Stable {previous_label}",
               "",
           ]
           if changes:
@@ -423,7 +427,7 @@ jobs:
           notes_path.write_text(prepared, encoding="utf-8")
 
           print(f"Prepared {channel} release notes: {notes_path}")
-          print(f"Previous release: {previous_label}")
+          print(f"Stable baseline: {previous_label}")
           print(f"Included changes: {len(changes)}")
 
       - name: Validate prepared release notes
