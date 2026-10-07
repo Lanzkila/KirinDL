@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add dedicated Stable and Pre-release release channels (`66496bcc`, 2026-10-07)
 - Set KirinDL v3.2.0.2 version code (`2cbf426b`, 2026-10-07)
 - Bump KirinDL source to v3.2.0.2 (`cee6d69d`, 2026-10-07)
 - Use version-aware automatic update cooldown (`901fe04e`, 2026-10-07)
