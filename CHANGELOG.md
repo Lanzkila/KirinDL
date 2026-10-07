@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Polish More Tools release notes (`9790dcf2`)
 - Add split all chapters control (`d9f2b9fb`)
 - Add cover artwork controls to metadata editor (`39f29e52`)
 - Add playlist export serializers (`c082e99c`)
