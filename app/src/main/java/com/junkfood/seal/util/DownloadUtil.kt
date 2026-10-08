@@ -4,6 +4,7 @@ import android.media.MediaCodecList
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.util.AtomicFile
 import android.webkit.CookieManager
 import androidx.annotation.CheckResult
 import com.junkfood.seal.App
@@ -52,6 +53,38 @@ import java.util.Locale
 object DownloadUtil {
 
     private val jsonFormat = Json { ignoreUnknownKeys = true }
+    private val cookiesFileLock = Any()
+
+    /** Explain Youtube's actual authentication challenge without hiding yt-dlp's error. */
+    private fun explainYouTubeVerification(
+        url: String,
+        cookiesEnabled: Boolean,
+        cause: Throwable,
+    ): Throwable {
+        val host = runCatching { Uri.parse(url).host.orEmpty().lowercase(Locale.ROOT) }
+            .getOrDefault("")
+        val isYoutube = host == "youtu.be" || host == "youtube.com" ||
+            host.endsWith(".youtube.com") || host == "youtube-nocookie.com" ||
+            host.endsWith(".youtube-nocookie.com")
+        val originalError = cause.message.orEmpty()
+        if (!isYoutube || !originalError.contains("sign in to confirm", ignoreCase = true) ||
+            !originalError.contains("bot", ignoreCase = true)) return cause
+
+        val cookieAdvice = if (cookiesEnabled) {
+            "Use Cookies is enabled. Check that a valid https://www.youtube.com profile " +
+                "has login cookies that have not expired."
+        } else {
+            "Open Settings > Network > Cookies, add https://www.youtube.com, " +
+                "sign in or import your own cookies, and enable Use Cookies."
+        }
+        return IllegalStateException(
+            "YouTube requested account/bot verification (not a KirinDL app crash). " +
+                cookieAdvice + " Update yt-dlp from Engine Updates if needed. " +
+                "YouTube may still limit this session, so access is not guaranteed.\n\n" +
+                "Original yt-dlp error: " + originalError,
+            cause,
+        )
+    }
 
     // -------------------------------------------------------------------------
     // Manual cookie content parsing
@@ -308,6 +341,8 @@ object DownloadUtil {
                     jsonFormat.decodeFromString<VideoInfo>(this)
                 } else playlistInfo
             }
+        }.recoverCatching { error ->
+            throw explainYouTubeVerification(playlistURL, downloadPreferences.cookies, error)
         }
 
     @CheckResult
@@ -377,7 +412,9 @@ object DownloadUtil {
                     addOption("-R", "3")
                     addOption("--socket-timeout", "15")
                 }
-            return getVideoInfo(request, taskKey)
+            return getVideoInfo(request, taskKey).recoverCatching { error ->
+                throw explainYouTubeVerification(url, preferences.cookies, error)
+            }
         }
     }
 
@@ -414,7 +451,9 @@ object DownloadUtil {
             addOption("-R", "3")
             addOption("--socket-timeout", "20")
         }
-        return getVideoInfo(request)
+        return getVideoInfo(request).recoverCatching { error ->
+            throw explainYouTubeVerification(url, COOKIES.getBoolean(), error)
+        }
     }
 
     @Serializable
@@ -598,7 +637,12 @@ object DownloadUtil {
     }
 
     private fun YoutubeDLRequest.enableCookies(userAgentString: String): YoutubeDLRequest {
-        refreshCookiesFile()
+        // The old code passed --cookies even when rebuilding the file had failed.
+        // Do not silently attach an invalid or stale cookie path.
+        if (!refreshCookiesFile()) {
+            Log.w(TAG, "Cookie refresh failed; yt-dlp request will be unauthenticated")
+            return this
+        }
         return this.addOption("--cookies", context.getCookiesFile().absolutePath).apply {
             if (userAgentString.isNotEmpty()) {
                 addOption("--add-header", "User-Agent:$userAgentString")
@@ -607,23 +651,27 @@ object DownloadUtil {
     }
 
     /**
-     * Rebuilds the on-disk Netscape cookie file from the current in-memory WebView cookie store.
-     * Called automatically before every download when cookies are enabled.
+     * Synchronized atomic replacement avoids truncated cookies.txt while metadata
+     * and download requests are running concurrently. No user data is cleared.
      */
-    fun refreshCookiesFile() {
-        context.getCookiesFile().let { cookiesFile ->
-            getCookieListFromDatabase()
-                .mapCatching { it.toCookiesFileContent() }
-                // Use mapCatching (not onSuccess) so an IOException from writeText
-                // (e.g. disk full) is captured inside the Result and handled by the
-                // onFailure below, rather than propagating as an uncaught exception
-                // and leaving a partial/corrupt cookies.txt on disk.
-                .mapCatching { content -> FileUtil.writeContentToFile(content, cookiesFile) }
-                .onFailure { err ->
-                    Log.w(TAG, "Failed to refresh cookies file: ${err.message}")
-                    if (cookiesFile.exists()) cookiesFile.delete()
+    fun refreshCookiesFile(): Boolean = synchronized(cookiesFileLock) {
+        val result = getCookieListFromDatabase()
+            .mapCatching { it.toCookiesFileContent() }
+            .mapCatching { cookieText ->
+                val file = AtomicFile(context.getCookiesFile())
+                val stream = file.startWrite()
+                try {
+                    stream.write(cookieText.toByteArray(Charsets.UTF_8))
+                    file.finishWrite(stream)
+                } catch (error: Throwable) {
+                    file.failWrite(stream)
+                    throw error
                 }
+            }
+        result.onFailure { error ->
+            Log.w(TAG, "Failed to refresh cookies from saved profiles: ${error.message}")
         }
+        result.isSuccess
     }
 
     private fun YoutubeDLRequest.useDownloadArchive(): YoutubeDLRequest =
@@ -1400,7 +1448,7 @@ object DownloadUtil {
                             downloadTimeMillis = if (downloadTiming[0] > 0L) downloadTiming[1] - downloadTiming[0] else -1L,
                             averageSpeedBytesPerSec = computeAvgSpeed(videoInfo, downloadTiming),
                         )
-                    } else Result.failure(th)
+                    } else Result.failure(explainYouTubeVerification(url, cookies, th))
                 }
             return onFinishDownloading(
                 preferences = this,
