@@ -1,8 +1,9 @@
 KirinDL Pre-release trigger.
-
-Update this file only when explicitly publishing a KirinDL Pre-release build.
-Current prepared source: v3.2.0.7
+Update this file only when explicitly publishing the prepared pre-release.
+Current prepared source: v3.2.0.8
 Publish requested: 2026-10-08
-Channel: Pre-release only — do not promote to Stable.
-Purpose: YouTube bot-verification recovery and HttpOnly/canonical-profile cookie fixes.
-Validation retry: Enable release unit-test tasks under AGP 9 before compiling the APK.
+Channel: Pre-release only — do not promote Stable.
+Purpose: Restore the v3.1.9.1 About page, apply saved extractor arguments,
+keep login settings on retries, and expose YouTube cookie recovery directly.
+Validation: Recovery and cookie regression tests plus signed APK verification.
+YouTube verification on the reported phone remains unconfirmed.

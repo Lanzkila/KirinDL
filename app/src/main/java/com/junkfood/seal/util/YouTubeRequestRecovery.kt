@@ -34,8 +34,11 @@ internal object YouTubeRequestRecovery {
         request: YoutubeDLRequest,
         cancellationCheck: () -> Unit = {},
         onRetry: (String) -> Unit = {},
+        extractorArgs: String = "",
         runRequest: (YoutubeDLRequest) -> T,
     ): T {
+        ExtractorArguments.merge(request, extractorArgs)
+        val explicitClient = ExtractorArguments.hasPlayerClient(request)
         cancellationCheck()
         val firstError = try {
             return runRequest(request)
@@ -45,14 +48,32 @@ internal object YouTubeRequestRecovery {
         }
 
         cancellationCheck()
-        addFallbackClients(request)
-        onRetry("Retrying YouTube with another playback client...")
-        cancellationCheck()
-        val fallbackError = try {
-            return runRequest(request)
-        } catch (error: Exception) {
-            if (!isRecoverable(error)) throw error
-            error
+        if (!explicitClient) addFallbackClients(request)
+        // An IPv6 route can be challenged independently of IPv4. Respect either
+        // address-family choice when the user or command already supplied one.
+        val changedRoute = isBotChallenge(firstError) &&
+            listOf("-4", "--force-ipv4", "-6", "--force-ipv6").none(request::hasOption)
+        if (changedRoute) request.addOption("-4")
+        val fallbackError = if (explicitClient && !changedRoute) {
+            firstError
+        } else {
+            onRetry(if (changedRoute) "Retrying YouTube over IPv4..."
+                else "Retrying YouTube with another playback client...")
+            cancellationCheck()
+            try {
+                return runRequest(request)
+            } catch (error: Exception) {
+                if (!isRecoverable(error)) {
+                    if (changedRoute && !isCancellation(error) && isNetworkFailure(error)) {
+                        // Keep the verification action available if this device has no
+                        // working IPv4 route; another retry on that route cannot help.
+                        if (error !== firstError) firstError.addSuppressed(error)
+                        throw firstError
+                    }
+                    throw error
+                }
+                error
+            }
         }
 
         // A stale logged-in session can itself trigger the bot wall. Try only a direct
@@ -82,14 +103,23 @@ internal object YouTubeRequestRecovery {
     }
 
     private fun isRecoverable(error: Exception): Boolean {
-        if (error is YoutubeDL.CanceledException || error is CancellationException ||
-            error is InterruptedException) return false
+        if (isCancellation(error)) return false
         val message = error.message.orEmpty()
         return isBotChallenge(error) ||
             message.contains("HTTP Error 403", ignoreCase = true) ||
             message.contains("The page needs to be reloaded", ignoreCase = true) ||
             message.contains("Requested format is not available", ignoreCase = true)
     }
+
+    private fun isCancellation(error: Exception): Boolean =
+        error is YoutubeDL.CanceledException || error is CancellationException ||
+            error is InterruptedException
+
+    private fun isNetworkFailure(error: Exception): Boolean =
+        listOf("timed out", "Unable to connect", "Connection reset", "Network is unreachable",
+            "Failed to establish", "HTTP Error 5").any {
+            error.message.orEmpty().contains(it, ignoreCase = true)
+        }
 
     private fun isDirectVideo(url: String, noPlaylist: Boolean): Boolean = runCatching {
         val uri = URI(url.trim())
@@ -107,20 +137,6 @@ internal object YouTubeRequestRecovery {
     }.getOrDefault(false)
 
     private fun addFallbackClients(request: YoutubeDLRequest) {
-        val parts = request.getArguments("--extractor-args").orEmpty()
-            .filterNotNull()
-            .filter { it.substringBefore(':').equals("youtube", ignoreCase = true) }
-            .flatMap { it.substringAfter(':', "").split(';') }
-            .filter { it.isNotBlank() }
-            .filterNot {
-                it.substringBefore('=').trim().lowercase(Locale.ROOT).replace('-', '_') ==
-                    "player_client"
-            }
-        // yt-dlp replaces a repeated extractor's whole argument body. Merge first so
-        // subtitle/comment/PO-token settings survive this temporary client override.
-        request.addOption(
-            "--extractor-args",
-            "youtube:${(parts + "player_client=$FALLBACK_CLIENTS").joinToString(";")}",
-        )
+        ExtractorArguments.merge(request, "youtube:player_client=$FALLBACK_CLIENTS")
     }
 }

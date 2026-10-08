@@ -70,6 +70,7 @@ object DownloadUtil {
             Log.i(TAG, message)
             callback?.invoke(-1f, -1L, message)
         },
+        extractorArgs = EXTRACTOR_ARGS.getString(),
     ) { retryRequest ->
         YoutubeDL.getInstance().execute(retryRequest, processId, callback)
     }
@@ -83,8 +84,7 @@ object DownloadUtil {
         if (cause is YoutubeDL.CanceledException || cause is CancellationException ||
             cause is InterruptedException) return cause
         val originalError = cause.message.orEmpty()
-        if (!isYouTubeUrl(url) || !originalError.contains("sign in to confirm", ignoreCase = true) ||
-            !originalError.contains("bot", ignoreCase = true)) return cause
+        if (!isYouTubeVerificationError(url, cause)) return cause
 
         val cookieAdvice = if (cookiesEnabled) {
             "Use Cookies is enabled. Check that a valid https://www.youtube.com profile " +
@@ -94,9 +94,9 @@ object DownloadUtil {
                 "sign in or import your own cookies, and enable Use Cookies."
         }
         return IllegalStateException(
-            "YouTube still requested account/bot verification after automatic recovery. " +
-                cookieAdvice + " Update yt-dlp from Engine Updates if needed. " +
-                "YouTube may still limit this session, so access is not guaranteed.\n\n" +
+            "YouTube requires session verification. Tap Sign in / cookies to open the " +
+                "cookie settings, sign in or import your cookies, then retry. " +
+                cookieAdvice + "\n\n" +
                 "Original yt-dlp error: " + originalError,
             cause,
         )
@@ -612,6 +612,11 @@ object DownloadUtil {
             }
         }
     }
+
+    fun DownloadPreferences.withCurrentCookieSettings(): DownloadPreferences = copy(
+        cookies = COOKIES.getBoolean(),
+        userAgentString = if (USER_AGENT.getBoolean()) USER_AGENT_STRING.getString() else "",
+    )
 
     /**
      * Synchronized atomic replacement avoids truncated cookies.txt while metadata

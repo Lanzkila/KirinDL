@@ -26,6 +26,8 @@ import com.junkfood.seal.download.Task.RestartableAction.FetchInfo
 import com.junkfood.seal.download.Task.TypeInfo
 import com.junkfood.seal.download.Task.PauseReason
 import com.junkfood.seal.util.DownloadUtil
+import com.junkfood.seal.util.isYouTubeVerificationError
+import com.junkfood.seal.util.DownloadUtil.withCurrentCookieSettings
 import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.MAX_CONCURRENT_DOWNLOADS
 import com.junkfood.seal.util.NotificationUtil
@@ -756,7 +758,8 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                             return@onFailure
                         }
                         val retries = retryCountMap.getOrDefault(id, 0)
-                        val isNetworkError = isNetworkError(throwable)
+                        val isNetworkError = !isYouTubeVerificationError(url, throwable) &&
+                            isNetworkError(throwable)
                         val networkUnavailable = !PreferenceUtil.isNetworkAvailableForDownload()
                         if (networkUnavailable) {
                             ensureNetworkDegradedStart()
@@ -909,11 +912,24 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
     private fun Task.restartImpl() {
         when (val preState = downloadState) {
             is DownloadState.Restartable -> {
-                downloadState =
+                val nextState =
                     when (preState.action) {
                         Download -> ReadyWithInfo
                         FetchInfo -> Idle
                     }
+                // Manual retry after signing in must refresh the task's cookie switch;
+                // otherwise an error created without cookies stays unauthenticated.
+                val retryPreferences = if (preState is DownloadState.Error &&
+                    isYouTubeVerificationError(url, preState.throwable)) {
+                    preferences.withCurrentCookieSettings()
+                } else preferences
+                if (retryPreferences != preferences) {
+                    val retryState = state.copy(downloadState = nextState)
+                    taskStateMap.remove(this)
+                    enqueue(copy(preferences = retryPreferences), retryState)
+                } else {
+                    downloadState = nextState
+                }
             }
             else -> {
                 throw IllegalStateException()

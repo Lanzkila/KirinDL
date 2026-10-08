@@ -377,7 +377,9 @@ fun GeneralDownloadPreferences(onNavigateBack: () -> Unit, navigateToTemplate: (
                         },
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
                         label = { Text("Extractor args") },
-                        supportingText = { Text("Example: youtube:player_client=android") },
+                        supportingText = {
+                            Text("Example: youtube:player_client=web_safari. Use one extractor per line.")
+                        },
                         singleLine = false,
                         maxLines = 3,
                     )

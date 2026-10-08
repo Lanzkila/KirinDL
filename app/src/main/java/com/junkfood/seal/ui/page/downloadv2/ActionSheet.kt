@@ -70,6 +70,8 @@ import com.junkfood.seal.ui.component.ActionSheetItem
 import com.junkfood.seal.ui.component.ActionSheetPrimaryButton
 import com.junkfood.seal.ui.component.SealModalBottomSheet
 import com.junkfood.seal.ui.page.downloadv2.configure.PreferencesMock
+import com.junkfood.seal.ui.page.settings.network.YouTubeCookiesButton
+import com.junkfood.seal.util.isYouTubeVerificationError
 import com.junkfood.seal.ui.theme.ErrorTonalPalettes
 import com.junkfood.seal.ui.theme.SealTheme
 import com.junkfood.seal.util.Format
@@ -331,6 +333,11 @@ fun LazyListScope.ActionButtons(
             }
         }
         is Error -> {
+            if (isYouTubeVerificationError(task.url, downloadState.throwable)) {
+                item(key = "YouTubeCookiesButton") {
+                    YouTubeCookiesButton(modifier = Modifier.fillMaxWidth())
+                }
+            }
             item(key = "RetryButton") {
                 RetryButton(modifier = Modifier.animateItem()) {
                     onActionPost(task, UiAction.Retry)

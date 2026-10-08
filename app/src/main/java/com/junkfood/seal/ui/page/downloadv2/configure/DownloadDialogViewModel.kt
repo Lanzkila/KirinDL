@@ -11,6 +11,7 @@ import com.junkfood.seal.util.PlaylistResult
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.VideoInfo
 import com.junkfood.seal.util.makeToast
+import com.junkfood.seal.util.isYouTubeVerificationError
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
 
 private const val TAG = "DownloadDialogViewModel"
 
@@ -191,29 +193,32 @@ class DownloadDialogViewModel(private val downloader: DownloaderV2) : ViewModel(
                         url = url,
                         preferences = primaryPreferences,
                         taskKey = taskKey,
+                        cancellationCheck = { ensureActive() },
                     )
 
+                ensureActive()
                 // Preset can enqueue without this metadata pass, but Custom cannot.
-                // Retry format discovery once with a clean metadata-only profile so stale
-                // cookies/subtitle/sorter/forced-IPv4 settings do not make Custom fail while
-                // the actual download path is otherwise healthy.
+                // Retry metadata without subtitle/sorter options; preserve the login
+                // session, user agent and explicit network route. A verification wall
+                // needs a valid session rather than another anonymous metadata pass.
                 val result =
                     if (
                         primaryResult.isFailure &&
                             primaryResult.exceptionOrNull() !is YoutubeDL.CanceledException
+                            && primaryResult.exceptionOrNull()?.let {
+                                isYouTubeVerificationError(url, it)
+                            } != true
                     ) {
                         DownloadUtil.fetchVideoInfoFromUrl(
                             url = url,
                             preferences =
                                 primaryPreferences.copy(
-                                    cookies = false,
                                     autoSubtitle = false,
                                     autoTranslatedSubtitles = false,
                                     formatSorting = false,
-                                    forceIpv4 = false,
-                                    userAgentString = "",
                                 ),
                             taskKey = taskKey,
+                            cancellationCheck = { ensureActive() },
                         )
                     } else {
                         primaryResult

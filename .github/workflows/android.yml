@@ -545,6 +545,7 @@ jobs:
           :app:testGenericReleaseUnitTest
           --tests com.junkfood.seal.util.YouTubeRequestRecoveryTest
           --tests com.junkfood.seal.util.NetscapeCookieParserTest
+          --tests com.junkfood.seal.util.ExtractorArgumentsTest
           assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
       - name: Verify all Release APKs and create checksums

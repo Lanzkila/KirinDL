@@ -154,6 +154,8 @@ import com.junkfood.seal.ui.page.settings.command.CommandTemplateDialog
 import com.junkfood.seal.ui.page.settings.format.AudioQuickSettingsDialog
 import com.junkfood.seal.ui.page.settings.format.VideoQuickSettingsDialog
 import com.junkfood.seal.ui.page.settings.network.CookiesQuickSettingsDialog
+import com.junkfood.seal.ui.page.settings.network.YouTubeCookiesButton
+import com.junkfood.seal.util.isYouTubeVerificationError
 import com.junkfood.seal.ui.theme.SealTheme
 import com.junkfood.seal.util.AUDIO_CONVERSION_FORMAT
 import com.junkfood.seal.util.AUDIO_CONVERT
@@ -169,6 +171,7 @@ import com.junkfood.seal.util.DownloadType.Playlist
 import com.junkfood.seal.util.DownloadType.Video
 import com.junkfood.seal.util.DownloadType.entries
 import com.junkfood.seal.util.DownloadUtil
+import com.junkfood.seal.util.DownloadUtil.withCurrentCookieSettings
 import com.junkfood.seal.util.EXTRACT_AUDIO
 import com.junkfood.seal.util.FORMAT_SELECTION
 import com.junkfood.seal.util.PreferenceStrings
@@ -363,8 +366,19 @@ private fun ErrorPage(modifier: Modifier = Modifier, state: Error, onActionPost:
             overflow = TextOverflow.Clip,
         )
 
+        if (isYouTubeVerificationError(url, state.throwable)) {
+            YouTubeCookiesButton(modifier = Modifier.padding(bottom = 12.dp))
+        }
         Row(modifier = Modifier) {
-            FilledTonalButton(onClick = { onActionPost(state.action) }) { Text(stringResource(R.string.retry)) }
+            FilledTonalButton(onClick = {
+                // A retry after changing cookies must use that session, while keeping
+                // the user's selected audio/video and format settings.
+                onActionPost(when (val action = state.action) {
+                    is Action.FetchFormats -> action.copy(preferences = action.preferences.withCurrentCookieSettings())
+                    is Action.FetchPlaylist -> action.copy(preferences = action.preferences.withCurrentCookieSettings())
+                    else -> action
+                })
+            }) { Text(stringResource(R.string.retry)) }
             Spacer(Modifier.width(8.dp))
             Button(
                 onClick = {
