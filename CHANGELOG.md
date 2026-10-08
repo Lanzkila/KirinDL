@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix: open completed media locally with explicit type and read access (`3f3c67f7`)
 - fix: restore original About and reconnect YouTube session settings (`8d6b703c`)
 - fix(ci): enable release unit-test tasks under AGP 9 (`270144f8`)
 - fix(release): skip missing tags before syncing descriptions [skip ci] (`a833407e`)
