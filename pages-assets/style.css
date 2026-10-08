@@ -110,3 +110,12 @@ footer div{display:flex;gap:20px}
   .stat-meta strong{font-size:20px}
   .stat-meta span{font-size:11px}
 }
+
+/* Hard limits for counter icons, independent of the rest of the site. */
+.stats-strip .stat-icon svg {
+  display:block;width:18px;height:18px;max-width:18px;max-height:18px;
+  flex:0 0 18px
+}
+@media(max-width:560px){
+  .stats-strip .stat-icon svg{width:17px;height:17px;max-width:17px;max-height:17px;flex-basis:17px}
+}

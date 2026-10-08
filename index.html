@@ -6,7 +6,18 @@
   <meta name="description" content="KirinDL — open-source Android downloader for video, audio, and gallery media.">
   <meta name="theme-color" content="#0a1020">
   <title>KirinDL</title>
-  <link rel="stylesheet" href="pages-assets/style.css">
+  <link rel="stylesheet" href="pages-assets/style.css?v=20261008-statfix-v2">
+  <!-- Counter fallback: prevents oversized icons even with an outdated cached stylesheet. -->
+  <style>
+    .stats-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:520px;margin:2px 0 16px}
+    .stats-strip .stat-card{display:flex;align-items:center;gap:10px;min-width:0;padding:14px 12px;border:1px solid #22304a;border-radius:16px;background:#111b2d;text-decoration:none;color:#f5f7fb;box-sizing:border-box}
+    .stats-strip .stat-icon{width:30px;height:30px;min-width:30px;flex:0 0 30px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:#79c7ff;background:rgba(121,199,255,.09)}
+    .stats-strip .stat-icon svg{display:block;width:18px!important;height:18px!important;min-width:18px;min-height:18px;max-width:18px;max-height:18px;flex:none}
+    .stats-strip .stat-meta{display:flex;flex-direction:column;min-width:0;gap:2px}
+    .stats-strip .stat-meta strong{display:block;font-size:21px;line-height:1.15;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+    .stats-strip .stat-meta span{display:block;color:#9aa8bd;font-size:12px}
+    @media(max-width:560px){.stats-strip{gap:7px}.stats-strip .stat-card{padding:11px 8px;gap:7px;flex-direction:column;align-items:flex-start}.stats-strip .stat-icon{width:27px;height:27px;min-width:27px;flex-basis:27px}.stats-strip .stat-meta strong{font-size:20px}.stats-strip .stat-meta span{font-size:11px}}
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -35,15 +46,15 @@
         <section class="stats-strip" aria-label="KirinDL GitHub statistics">
           <a class="stat-card" href="https://github.com/Lanzkila/KirinDL/releases" title="Total APK downloads across all published GitHub Releases">
             <span class="stat-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 3v12m-5-5 5 5 5-5M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>
               </svg>
             </span>
-            <span class="stat-meta"><strong id="github-downloads" aria-live="polite">…</strong><span>Downloads</span></span>
+            <span class="stat-meta"><strong id="github-downloads" aria-live="polite">…</strong><span>APK Downloads</span></span>
           </a>
           <a class="stat-card" href="https://github.com/Lanzkila/KirinDL/forks" title="GitHub repository forks">
             <span class="stat-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="6" cy="3" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="6" r="2"/>
                 <path d="M6 5v12m12-9a6 6 0 0 1-6 6H6"/>
               </svg>
@@ -52,7 +63,7 @@
           </a>
           <a class="stat-card" href="https://github.com/Lanzkila/KirinDL/stargazers" title="GitHub repository stars">
             <span class="stat-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m12 2 3.1 6.3 7 1-5.1 5 .9 7-5.9-3.2-5.9 3.2.9-7-5.1-5 7-1L12 2Z"/>
               </svg>
             </span>
@@ -108,6 +119,6 @@
     <span>© <span id="year"></span> KirinDL</span>
     <div><a href="contact.html">Contact</a><a href="privacy.html">Privacy</a><a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a></div>
   </footer>
-  <script src="pages-assets/main.js"></script>
+  <script src="pages-assets/main.js?v=20261008-statfix-v2"></script>
 </body>
 </html>
