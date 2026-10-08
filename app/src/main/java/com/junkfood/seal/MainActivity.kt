@@ -27,6 +27,7 @@ import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.updateBoolean
 import com.junkfood.seal.util.UpdateUtil
+import com.junkfood.seal.util.StartupCrashLog
 import com.junkfood.seal.util.matchUrlFromSharedText
 import com.junkfood.seal.util.setLanguage
 import androidx.lifecycle.lifecycleScope
@@ -79,6 +80,7 @@ class MainActivity : AppCompatActivity() {
                                     SplashScreen(
                                         onSplashFinished = {
                                             showSplash = false
+                                            StartupCrashLog.markStartupReady(this@MainActivity)
                                         }
                                     )
                                 }

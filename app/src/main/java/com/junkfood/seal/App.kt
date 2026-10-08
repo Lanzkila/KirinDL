@@ -49,6 +49,7 @@ import com.junkfood.seal.util.PreferenceUtil.updateString
 import com.junkfood.seal.util.makeToast
 import com.junkfood.seal.util.SDCARD_URI
 import com.junkfood.seal.util.UpdateUtil
+import com.junkfood.seal.util.StartupCrashLog
 import com.junkfood.seal.util.VIDEO_DIRECTORY
 import com.junkfood.seal.util.YT_DLP_VERSION
 import com.tencent.mmkv.MMKV
@@ -109,9 +110,14 @@ class App : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
-        MMKV.initialize(this)
+        context = applicationContext
+        // The old handler ran after MMKV/Koin/updater setup; an early failure skipped it.
+        installEarlyCrashHandler()
+        StartupCrashLog.markStartupStage(this, "MMKV initialization")
+        initializeMmkvWithRetry()
 
-        startKoin {
+        StartupCrashLog.markStartupStage(this, "Koin initialization")
+        if (GlobalContext.getOrNull() == null) startKoin {
             androidLogger()
             androidContext(this@App)
             modules(
@@ -130,21 +136,32 @@ class App : Application(), SingletonImageLoader.Factory {
             )
         }
 
-        context = applicationContext
+        StartupCrashLog.markStartupStage(this, "App package information")
         packageInfo =
             packageManager.run {
                 if (Build.VERSION.SDK_INT >= 33)
                     getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
                 else getPackageInfo(packageName, 0)
             }
-        // A package update keeps SharedPreferences. Reset the updater cooldown as soon as the
-        // installed KirinDL version changes so the new APK becomes the update baseline immediately.
-        UpdateUtil.syncInstalledVersionState(this)
         applicationScope = CoroutineScope(SupervisorJob())
-        DynamicColors.applyToActivitiesIfAvailable(this)
 
-        clipboard = getSystemService()!!
-        connectivityManager = getSystemService()!!
+        // Updater migration and dynamic colour are optional startup work.
+        StartupCrashLog.markStartupStage(this, "Update state migration")
+        runStartupStep("updater version-state sync") {
+            UpdateUtil.syncInstalledVersionState(this)
+        }
+        StartupCrashLog.markStartupStage(this, "Dynamic colors")
+        runStartupStep("dynamic color setup") {
+            DynamicColors.applyToActivitiesIfAvailable(this)
+        }
+
+        StartupCrashLog.markStartupStage(this, "Android system services")
+        clipboard = requireNotNull(getSystemService<ClipboardManager>()) {
+            "Clipboard service unavailable"
+        }
+        connectivityManager = requireNotNull(getSystemService<ConnectivityManager>()) {
+            "Connectivity service unavailable"
+        }
 
         applicationScope.launch(Dispatchers.IO) {
             initializeBundledEngine("yt-dlp") {
@@ -157,8 +174,6 @@ class App : Application(), SingletonImageLoader.Factory {
             initializeBundledEngine("FFmpeg") { FFmpeg.init(this@App) }
             initializeBundledEngine("Aria2c") { Aria2c.init(this@App) }
 
-            // Cookie preparation and updater-state cleanup are helpful startup work, but neither
-            // is allowed to take down the whole app if storage/OEM timing is temporarily bad.
             runCatching {
                 DownloadUtil.getCookiesContentFromDatabase().getOrNull()?.let {
                     FileUtil.writeContentToFile(it, getCookiesFile())
@@ -169,24 +184,58 @@ class App : Application(), SingletonImageLoader.Factory {
                 .onFailure { Log.e(STARTUP_TAG, "Updater startup sync failed", it) }
         }
 
+        StartupCrashLog.markStartupStage(this, "Download directory preferences")
         videoDownloadDir = VIDEO_DIRECTORY.getString(getExternalDownloadDirectory().absolutePath)
-
         audioDownloadDir = AUDIO_DIRECTORY.getString(File(videoDownloadDir, "Audio").absolutePath)
         if (!PreferenceUtil.containsKey(COMMAND_DIRECTORY)) {
             COMMAND_DIRECTORY.updateString(videoDownloadDir)
         }
-        if (Build.VERSION.SDK_INT >= 26) NotificationUtil.createNotificationChannel()
 
-        Thread.setDefaultUncaughtExceptionHandler { _, e ->
-            try {
-                GlobalContext.getOrNull()?.get<DownloaderV2>()?.cleanup()
-                startCrashReportActivity(e)
-            } catch (secondary: Throwable) {
-                secondary.printStackTrace()
-            } finally {
-                android.os.Process.killProcess(android.os.Process.myPid())
+        if (Build.VERSION.SDK_INT >= 26) {
+            runStartupStep("notification channel setup") {
+                NotificationUtil.createNotificationChannel()
             }
         }
+        StartupCrashLog.markStartupStage(this, "Opening main activity")
+    }
+
+    private fun initializeMmkvWithRetry() {
+        var lastError: Throwable? = null
+        repeat(3) { attempt ->
+            try {
+                MMKV.initialize(this)
+                return
+            } catch (error: Throwable) {
+                lastError = error
+                Log.e(STARTUP_TAG, "MMKV attempt ${attempt + 1} failed", error)
+                if (attempt < 2) Thread.sleep(200L * (attempt + 1))
+            }
+        }
+        throw IllegalStateException("MMKV initialization failed", lastError)
+    }
+
+    private fun installEarlyCrashHandler() {
+        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            // No MMKV/Koin dependency here: their initialization may be what failed.
+            val version = runCatching { getVersionReport() }
+                .getOrElse {
+                    "KirinDL startup crash on Android ${Build.VERSION.RELEASE} " +
+                        "(API ${Build.VERSION.SDK_INT})\\n"
+                }
+            val report = version + "\\nThread: ${thread.name}\\n" + error.stackTraceToString()
+            StartupCrashLog.save(this, report)
+            Log.e(STARTUP_TAG, "Uncaught crash in ${thread.name}", error)
+            runCatching { GlobalContext.getOrNull()?.get<DownloaderV2>()?.cleanup() }
+                .onFailure { Log.e(STARTUP_TAG, "Crash cleanup failed", it) }
+            runCatching { startCrashReportActivity(report) }
+                .onFailure { Log.e(STARTUP_TAG, "Crash report screen could not open", it) }
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
+    }
+
+    private inline fun runStartupStep(name: String, block: () -> Unit) {
+        runCatching(block)
+            .onFailure { Log.e(STARTUP_TAG, "$name failed; continuing startup", it) }
     }
 
     private suspend fun initializeBundledEngine(
@@ -216,14 +265,13 @@ class App : Application(), SingletonImageLoader.Factory {
         GlobalContext.getOrNull()?.get<DownloaderV2>()?.cleanup()
     }
 
-    private fun startCrashReportActivity(th: Throwable) {
-        th.printStackTrace()
+    private fun startCrashReportActivity(report: String) {
         startActivity(
             Intent(this, CrashReportActivity::class.java)
                 .setAction("$packageName.error_report")
                 .apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    putExtra("error_report", getVersionReport() + "\n" + th.stackTraceToString())
+                    putExtra("error_report", report)
                 }
         )
     }

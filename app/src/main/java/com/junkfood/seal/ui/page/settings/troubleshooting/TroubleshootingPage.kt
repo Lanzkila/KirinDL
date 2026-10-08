@@ -6,6 +6,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import com.junkfood.seal.util.StartupCrashLog
+import com.junkfood.seal.util.makeToast
 import androidx.compose.material.icons.outlined.Cookie
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Spellcheck
@@ -36,6 +42,8 @@ fun TroubleShootingPage(
     onBack: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
 
     BasePreferencePage(
         modifier = modifier,
@@ -69,6 +77,23 @@ fun TroubleShootingPage(
                 }
             }
 
+            item { PreferenceSubtitle(text = "Crash diagnostics") }
+            item {
+                PreferenceItem(
+                    title = "Copy Last Crash Report",
+                    description = "Copy the last captured startup/crash report without deleting app data",
+                    icon = Icons.Outlined.BugReport,
+                    onClick = {
+                        val report = StartupCrashLog.read(context)
+                        if (report.isNullOrBlank()) {
+                            context.makeToast("No saved crash report yet")
+                        } else {
+                            clipboard.setText(AnnotatedString(report))
+                            context.makeToast("Crash report copied")
+                        }
+                    },
+                )
+            }
             item { PreferenceSubtitle(text = "Engine diagnostics") }
             item {
                 PreferenceItem(
