@@ -5,3 +5,4 @@ Current prepared source: v3.2.0.7
 Publish requested: 2026-10-08
 Channel: Pre-release only — do not promote to Stable.
 Purpose: YouTube bot-verification recovery and HttpOnly/canonical-profile cookie fixes.
+Validation retry: Enable release unit-test tasks under AGP 9 before compiling the APK.
