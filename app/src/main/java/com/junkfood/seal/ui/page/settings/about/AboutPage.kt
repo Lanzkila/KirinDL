@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Public
@@ -87,14 +88,12 @@ private const val websiteUrl = ""
 private const val githubSponsor = "https://github.com/sponsors/JunkFood02"
 private const val TAG = "AboutPage"
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutPage(
     onNavigateBack: () -> Unit,
-    onNavigateToCreditsPage: () -> Unit,
-    onNavigateToUpdatePage: () -> Unit,
-    onNavigateToDonatePage: () -> Unit,
-    onNavigateToOnboarding: () -> Unit = {},
+    onNavigateToTools: () -> Unit,
 ) {
     val scrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
@@ -103,274 +102,101 @@ fun AboutPage(
         )
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var isAutoUpdateEnabled by remember { mutableStateOf(PreferenceUtil.isAutoUpdateEnabled()) }
     var availableRelease by remember { mutableStateOf<UpdateUtil.Release?>(null) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     var isLoadingStableNotes by remember { mutableStateOf(false) }
     var isLoadingPreReleaseNotes by remember { mutableStateOf(false) }
 
-    val uriHandler = LocalUriHandler.current
-    fun openUrl(url: String) {
-        uriHandler.openUri(url)
-    }
-
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text(modifier = Modifier, text = stringResource(id = R.string.about)) },
+                title = { Text(stringResource(id = R.string.about)) },
                 navigationIcon = { BackButton { onNavigateBack() } },
                 scrollBehavior = scrollBehavior,
             )
         },
-        content = {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(it),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        ReleaseNotesCard(
-                            title = "Stable Release Notes",
-                            description =
-                                if (isLoadingStableNotes) "Loading Stable notes…"
-                                else "Latest Stable changelog",
-                            icon = Icons.Outlined.NewReleases,
-                            loading = isLoadingStableNotes,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                if (!isLoadingStableNotes) {
-                                    isLoadingStableNotes = true
-                                    scope.launch {
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                ReleaseNotesCard(
+                    title = stringResource(id = R.string.more_tools),
+                    description = stringResource(id = R.string.more_tools_desc),
+                    icon = Icons.Outlined.Build,
+                    loading = false,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onNavigateToTools,
+                )
+            }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    ReleaseNotesCard(
+                        title = "Stable",
+                        description =
+                            if (isLoadingStableNotes) "Loading…"
+                            else "Latest Stable release notes",
+                        icon = Icons.Outlined.NewReleases,
+                        loading = isLoadingStableNotes,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (!isLoadingStableNotes) {
+                                isLoadingStableNotes = true
+                                scope.launch {
+                                    try {
                                         UpdateUtil.getLatestStableReleaseResult()
-                                            .onSuccess {
-                                                availableRelease = it
+                                            .onSuccess { release ->
+                                                availableRelease = release
                                                 showUpdateDialog = true
                                             }
                                             .onFailure {
                                                 context.makeToast("Could not load Stable release notes")
                                             }
+                                    } finally {
                                         isLoadingStableNotes = false
                                     }
                                 }
-                            },
-                        )
-                        ReleaseNotesCard(
-                            title = "Pre-release Notes",
-                            description =
-                                if (isLoadingPreReleaseNotes) "Loading Pre-release notes…"
-                                else "Latest testing changelog",
-                            icon = Icons.Outlined.AutoAwesome,
-                            loading = isLoadingPreReleaseNotes,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                if (!isLoadingPreReleaseNotes) {
-                                    isLoadingPreReleaseNotes = true
-                                    scope.launch {
+                            }
+                        },
+                    )
+                    ReleaseNotesCard(
+                        title = "Pre-release",
+                        description =
+                            if (isLoadingPreReleaseNotes) "Loading…"
+                            else "Latest testing release notes",
+                        icon = Icons.Outlined.AutoAwesome,
+                        loading = isLoadingPreReleaseNotes,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (!isLoadingPreReleaseNotes) {
+                                isLoadingPreReleaseNotes = true
+                                scope.launch {
+                                    try {
                                         UpdateUtil.getLatestPreReleaseResult()
-                                            .onSuccess {
-                                                availableRelease = it
+                                            .onSuccess { release ->
+                                                availableRelease = release
                                                 showUpdateDialog = true
                                             }
                                             .onFailure {
                                                 context.makeToast("No Pre-release notes are available")
                                             }
+                                    } finally {
                                         isLoadingPreReleaseNotes = false
                                     }
                                 }
-                            },
-                        )
-                    }
-                }
-
-                item {
-                    Card(
-                        onClick = onNavigateToUpdatePage,
-                        shape = RoundedCornerShape(12.dp),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            ),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stringResource(R.string.auto_update),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = stringResource(R.string.check_for_updates_desc),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color =
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.8f
-                                        ),
-                                )
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Switch(
-                                checked = isAutoUpdateEnabled,
-                                onCheckedChange = {
-                                    isAutoUpdateEnabled = !isAutoUpdateEnabled
-                                    PreferenceUtil.updateValue(AUTO_UPDATE, isAutoUpdateEnabled)
-                                },
-                                enabled = !App.isFDroidBuild(),
-                            )
-                        }
-                    }
-                }
-
-                item {
-                    Card(
-                        onClick = onNavigateToOnboarding,
-                        shape = RoundedCornerShape(12.dp),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            ),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "View Onboarding",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "See the introduction screens again",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color =
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.8f
-                                        ),
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            CommunityCard(
-                                title = stringResource(R.string.readme),
-                                description = stringResource(R.string.readme_desc),
-                                icon = Icons.Outlined.Description,
-                                onClick = { openUrl(repoUrl) },
-                                modifier = Modifier.weight(1f),
-                            )
-                            CommunityCard(
-                                title = stringResource(R.string.release),
-                                description = stringResource(R.string.release_desc),
-                                icon = Icons.Outlined.NewReleases,
-                                onClick = { openUrl(releaseURL) },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            CommunityCard(
-                                title = stringResource(R.string.sponsor),
-                                description = stringResource(R.string.sponsor_desc),
-                                icon = Icons.Outlined.VolunteerActivism,
-                                onClick = onNavigateToDonatePage,
-                                modifier = Modifier.weight(1f),
-                            )
-                            CommunityCard(
-                                title = stringResource(R.string.credits),
-                                description = stringResource(R.string.credits_desc),
-                                icon = Icons.Outlined.AutoAwesome,
-                                onClick = onNavigateToCreditsPage,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-
-                        // Any future optional/community cards start below Sponsor + Credits.
-                        if (telegramChannelUrl.isNotBlank()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                CommunityCard(
-                                    title = stringResource(R.string.telegram_channel),
-                                    description = telegramChannelUrl,
-                                    icon = painterResource(id = R.drawable.icons8_telegram_app),
-                                    onClick = { openUrl(telegramChannelUrl) },
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                        if (youtubeChannelUrl.isNotBlank() || websiteUrl.isNotBlank()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                if (youtubeChannelUrl.isNotBlank()) {
-                                    CommunityCard(
-                                        title = stringResource(R.string.youtube_channel),
-                                        description = youtubeChannelUrl,
-                                        icon = painterResource(id = R.drawable.icons8_youtube),
-                                        onClick = { openUrl(youtubeChannelUrl) },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                } else {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-
-                                if (websiteUrl.isNotBlank()) {
-                                    CommunityCard(
-                                        title = stringResource(R.string.website),
-                                        description = websiteUrl,
-                                        icon = Icons.Outlined.Public,
-                                        onClick = { openUrl(websiteUrl) },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                } else {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    Text(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                        text = "Version ${packageInfo.versionName ?: ""}  •  ${context.packageName}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Center,
+                        },
                     )
                 }
             }
-        },
-    )
+        }
+    }
 
     if (showUpdateDialog) {
         availableRelease?.let { release ->
@@ -425,61 +251,6 @@ private fun ReleaseNotesCard(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CommunityCard(
-    title: String,
-    description: String,
-    icon: Any?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 168.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-        ) {
-            when (icon) {
-                is ImageVector -> {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                is Painter -> {
-                    Icon(
-                        painter = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
             )
         }
     }
@@ -547,3 +318,4 @@ fun AutoUpdateUnavailableDialog(onDismissRequest: () -> Unit = {}) {
         },
     )
 }
+

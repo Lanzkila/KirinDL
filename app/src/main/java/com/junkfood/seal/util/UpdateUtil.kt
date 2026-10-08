@@ -11,7 +11,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.junkfood.seal.App
 import com.junkfood.seal.App.Companion.context
@@ -36,7 +35,6 @@ import okhttp3.Request
 
 object UpdateUtil {
 
-    private const val TAG = "KirinDL.Update"
     private const val OWNER = "Lanzkila"
     private const val REPO = "KirinDL"
 
@@ -166,52 +164,23 @@ object UpdateUtil {
      * immediately, so the newly installed KirinDL build becomes the new update baseline.
      */
     fun syncInstalledVersionState(context: Context = App.context): Boolean {
-        val installed =
-            runCatching { context.getCurrentVersionName() }
-                .getOrElse {
-                    Log.e(TAG, "Unable to resolve installed version during startup", it)
-                    return false
-                }
-
-        val prefs =
-            runCatching { context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE) }
-                .getOrElse {
-                    Log.e(TAG, "Unable to open updater state during startup", it)
-                    return false
-                }
-        val previous =
-            runCatching { prefs.getString(KEY_LAST_INSTALLED_VERSION, null) }
-                .getOrElse {
-                    Log.e(TAG, "Unable to read updater state during startup", it)
-                    null
-                }
+        val installed = context.getCurrentVersionName()
+        val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+        val previous = prefs.getString(KEY_LAST_INSTALLED_VERSION, null)
         if (previous == installed) return false
 
-        // Persist the new installed-version marker first. This path is unique to the first launch
-        // after installing/replacing an APK; no non-critical cleanup below is allowed to make that
-        // first launch crash while the second launch appears normal.
-        runCatching {
-            prefs.edit()
-                .putString(KEY_LAST_INSTALLED_VERSION, installed)
-                .remove(KEY_LAST_CHECKED_VERSION)
-                .remove(KEY_LAST_CHECKED_CHANNEL)
-                .remove(KEY_PENDING_DOWNLOAD_ID)
-                .remove(KEY_PENDING_VERSION)
-                .remove(KEY_AVAILABLE_RELEASE_JSON)
-                .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
-                .commit()
-        }.onFailure {
-            Log.e(TAG, "Unable to persist updater version-state reset", it)
-        }
-
-        runCatching { APP_UPDATE_CHECK_TIME.updateLong(0L) }
-            .onFailure { Log.e(TAG, "Unable to reset updater cooldown", it) }
-
+        prefs.edit()
+            .putString(KEY_LAST_INSTALLED_VERSION, installed)
+            .remove(KEY_LAST_CHECKED_VERSION)
+            .remove(KEY_LAST_CHECKED_CHANNEL)
+            .remove(KEY_PENDING_DOWNLOAD_ID)
+            .remove(KEY_PENDING_VERSION)
+            .remove(KEY_AVAILABLE_RELEASE_JSON)
+            .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
+            .apply()
+        APP_UPDATE_CHECK_TIME.updateLong(0L)
         _availableAppUpdate.value = null
-
-        runCatching { NotificationUtil.cancelAppUpdateAvailableNotification(context) }
-            .onFailure { Log.e(TAG, "Unable to clear stale update notification", it) }
-
+        NotificationUtil.cancelAppUpdateAvailableNotification(context)
         return previous != null
     }
 

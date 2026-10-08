@@ -217,12 +217,6 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                             "Profiles are preference macros only. They do not change queue lifecycle, Aria2 protocol routing, or Gallery DL."
                     )
                 }
-                item {
-                    PreferenceInfo(
-                        text =
-                            "Audio and Video preferences remain editable in any download mode. Custom commands or yt-dlp format sorting may take priority during downloads."
-                    )
-                }
                 item { PreferenceSubtitle(text = stringResource(id = R.string.audio)) }
                 item {
                     PreferenceSwitch(
@@ -230,6 +224,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         description = stringResource(id = R.string.extract_audio_summary),
                         icon = Icons.Outlined.MusicNote,
                         isChecked = audioSwitch,
+                        enabled = !isCustomCommandEnabled,
                         onClick = {
                             audioSwitch = !audioSwitch
                             PreferenceUtil.updateValue(EXTRACT_AUDIO, audioSwitch)
@@ -241,6 +236,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = stringResource(id = R.string.audio_format_preference),
                         description = PreferenceStrings.getAudioFormatDesc(audioFormat),
                         icon = Icons.Outlined.MusicNote,
+                        enabled = !isCustomCommandEnabled && !isFormatSortingEnabled,
                         onClick = { showAudioFormatDialog = true },
                     )
                 }
@@ -249,6 +245,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Audio bitrate",
                         description = PreferenceStrings.getAudioQualityDesc(audioQuality),
                         icon = Icons.Outlined.HighQuality,
+                        enabled = !isCustomCommandEnabled && !isFormatSortingEnabled,
                         onClick = { showAudioQualityDialog = true },
                     )
                 }
@@ -257,6 +254,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Audio codec",
                         description = PreferenceStrings.getAudioCodecDesc(audioCodec),
                         icon = Icons.Outlined.Tune,
+                        enabled = !isCustomCommandEnabled && !isFormatSortingEnabled,
                         onClick = { showAudioCodecDialog = true },
                     )
                 }
@@ -265,6 +263,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Thumbnail / cover artwork",
                         description = PreferenceStrings.getAudioCoverModeDesc(audioCoverMode),
                         icon = Icons.Outlined.ArtTrack,
+                        enabled = !isCustomCommandEnabled,
                         onClick = { showAudioCoverDialog = true },
                     )
                 }
@@ -273,7 +272,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Cover image format",
                         description = PreferenceStrings.getAudioCoverFormatDesc(audioCoverFormat),
                         icon = Icons.Outlined.ArtTrack,
-                        enabled = audioCoverMode != AUDIO_COVER_NONE,
+                        enabled = !isCustomCommandEnabled && audioCoverMode != AUDIO_COVER_NONE,
                         onClick = { showAudioCoverFormatDialog = true },
                     )
                 }
@@ -282,6 +281,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = stringResource(R.string.convert_audio_format),
                         description = PreferenceStrings.getAudioConvertDesc(convertFormat),
                         icon = Icons.Outlined.Sync,
+                        enabled = !isCustomCommandEnabled,
                         onClick = { showAudioConvertDialog = true },
                         isChecked = convertAudio,
                         onChecked = {
@@ -294,6 +294,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                     PreferenceSwitch(
                         title = stringResource(id = R.string.embed_metadata),
                         description = stringResource(id = R.string.embed_metadata_desc),
+                        enabled = !isCustomCommandEnabled,
                         isChecked = embedMetadata,
                         icon = Icons.Outlined.ArtTrack,
                         onClick = {
@@ -307,7 +308,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = stringResource(R.string.crop_artwork),
                         description = stringResource(R.string.crop_artwork_desc),
                         icon = Icons.Outlined.Crop,
-                        enabled = embedMetadata,
+                        enabled = embedMetadata && !isCustomCommandEnabled,
                         isChecked = isArtworkCroppingEnabled,
                     ) {
                         isArtworkCroppingEnabled = !isArtworkCroppingEnabled
@@ -320,6 +321,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = stringResource(R.string.video_format_preference),
                         description = PreferenceStrings.getVideoFormatLabel(videoFormat),
                         icon = Icons.Outlined.VideoFile,
+                        enabled = !audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
                     ) {
                         showVideoFormatDialog = true
                     }
@@ -329,6 +331,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = stringResource(id = R.string.video_quality),
                         description = PreferenceStrings.getVideoResolutionDesc(videoQuality),
                         icon = Icons.Outlined.HighQuality,
+                        enabled = !audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
                     ) {
                         showVideoQualityDialog = true
                     }
@@ -338,6 +341,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Video codec",
                         description = PreferenceStrings.getVideoCodecDesc(videoCodec),
                         icon = Icons.Outlined.VideoSettings,
+                        enabled = !audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
                         onClick = { showVideoCodecDialog = true },
                     )
                 }
@@ -346,6 +350,7 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         title = "Video output format",
                         description = PreferenceStrings.getVideoContainerDesc(videoContainer),
                         icon = Icons.Outlined.Movie,
+                        enabled = !audioSwitch && !isCustomCommandEnabled && !isFormatSortingEnabled,
                         onClick = { showVideoContainerDialog = true },
                     )
                 } /*                item {
@@ -371,6 +376,8 @@ fun DownloadFormatPreferences(onNavigateBack: () -> Unit, navigateToSubtitlePage
                         icon = Icons.Outlined.Movie,
                         enabled =
                             !(downloadSubtitle && embedSubtitle) &&
+                                !isCustomCommandEnabled &&
+                                !audioSwitch &&
                                 videoContainer == VIDEO_CONTAINER_AUTO,
                         onClick = {
                             remuxToMkv = !remuxToMkv

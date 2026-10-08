@@ -61,6 +61,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
@@ -108,10 +109,27 @@ class App : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        MMKV.initialize(this)
 
-        // Establish the minimum crash-report context before any native/runtime initialization.
-        // The previous ordering installed the uncaught handler only at the very end of onCreate(),
-        // so a first-launch failure in MMKV/Koin/updater migration simply killed the process.
+        startKoin {
+            androidLogger()
+            androidContext(this@App)
+            modules(
+                module {
+                    single<DownloaderV2> { DownloaderV2Impl(androidContext()) }
+                    viewModel { DownloadDialogViewModel(downloader = get()) }
+                    viewModel { HomePageViewModel() }
+                    viewModel { CookiesViewModel() }
+                    viewModel { VideoListViewModel() }
+                    viewModel { HiddenContentViewModel() }
+                    viewModel { VideoInfoDownloadViewModel() }
+                    viewModel { ThumbnailDownloadViewModel() }
+                    viewModel { CommentDownloadViewModel() }
+                    viewModel { GalleryDlViewModel() }
+                }
+            )
+        }
+
         context = applicationContext
         packageInfo =
             packageManager.run {
@@ -119,42 +137,11 @@ class App : Application(), SingletonImageLoader.Factory {
                     getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
                 else getPackageInfo(packageName, 0)
             }
+        // A package update keeps SharedPreferences. Reset the updater cooldown as soon as the
+        // installed KirinDL version changes so the new APK becomes the update baseline immediately.
+        UpdateUtil.syncInstalledVersionState(this)
         applicationScope = CoroutineScope(SupervisorJob())
-        installCrashHandler()
-
-        initializeMmkvWithRetry()
-
-        // Koin should normally be empty here. Guarding it avoids a duplicate-start exception in
-        // unusual process recreation / instrumentation paths.
-        if (GlobalContext.getOrNull() == null) {
-            startKoin {
-                androidLogger()
-                androidContext(this@App)
-                modules(
-                    module {
-                        single<DownloaderV2> { DownloaderV2Impl(androidContext()) }
-                        viewModel { DownloadDialogViewModel(downloader = get()) }
-                        viewModel { HomePageViewModel() }
-                        viewModel { CookiesViewModel() }
-                        viewModel { VideoListViewModel() }
-                        viewModel { HiddenContentViewModel() }
-                        viewModel { VideoInfoDownloadViewModel() }
-                        viewModel { ThumbnailDownloadViewModel() }
-                        viewModel { CommentDownloadViewModel() }
-                        viewModel { GalleryDlViewModel() }
-                    }
-                )
-            }
-        }
-
-        // A package update keeps SharedPreferences. This path only runs fully on the first launch
-        // after a version change, so every side effect here must be non-fatal.
-        runStartupStep("updater version-state sync") {
-            UpdateUtil.syncInstalledVersionState(this)
-        }
-        runStartupStep("dynamic color setup") {
-            DynamicColors.applyToActivitiesIfAvailable(this)
-        }
+        DynamicColors.applyToActivitiesIfAvailable(this)
 
         clipboard = getSystemService()!!
         connectivityManager = getSystemService()!!
@@ -188,61 +175,18 @@ class App : Application(), SingletonImageLoader.Factory {
         if (!PreferenceUtil.containsKey(COMMAND_DIRECTORY)) {
             COMMAND_DIRECTORY.updateString(videoDownloadDir)
         }
-        if (Build.VERSION.SDK_INT >= 26) {
-            runStartupStep("notification channel setup") {
-                NotificationUtil.createNotificationChannel()
-            }
-        }
-    }
+        if (Build.VERSION.SDK_INT >= 26) NotificationUtil.createNotificationChannel()
 
-    private fun initializeMmkvWithRetry() {
-        var lastError: Throwable? = null
-        repeat(3) { attempt ->
-            try {
-                MMKV.initialize(this)
-                return
-            } catch (error: Throwable) {
-                lastError = error
-                Log.e(
-                    STARTUP_TAG,
-                    "MMKV initialization attempt ${attempt + 1} failed",
-                    error,
-                )
-                if (attempt < 2) {
-                    // Some OEMs briefly race native-library extraction immediately after replacing
-                    // the APK. Retry inside the same launch instead of requiring a second app open.
-                    Thread.sleep(200L * (attempt + 1))
-                }
-            }
-        }
-        throw IllegalStateException("MMKV initialization failed after retry", lastError)
-    }
-
-    private fun installCrashHandler() {
-        Thread.setDefaultUncaughtExceptionHandler { _, error ->
+        Thread.setDefaultUncaughtExceptionHandler { _, e ->
             try {
                 GlobalContext.getOrNull()?.get<DownloaderV2>()?.cleanup()
-            } catch (cleanupError: Throwable) {
-                Log.e(STARTUP_TAG, "Crash cleanup failed", cleanupError)
-            }
-
-            try {
-                startCrashReportActivity(error)
-            } catch (reportError: Throwable) {
-                Log.e(STARTUP_TAG, "Unable to open crash report", reportError)
-                error.printStackTrace()
+                startCrashReportActivity(e)
+            } catch (secondary: Throwable) {
+                secondary.printStackTrace()
             } finally {
                 android.os.Process.killProcess(android.os.Process.myPid())
             }
         }
-    }
-
-    private inline fun runStartupStep(
-        name: String,
-        block: () -> Unit,
-    ) {
-        runCatching(block)
-            .onFailure { Log.e(STARTUP_TAG, "$name failed; continuing startup", it) }
     }
 
     private suspend fun initializeBundledEngine(
