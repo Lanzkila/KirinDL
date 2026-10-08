@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(about): restore v3.2.0.4 release notes cards for v3.2.0.10 (`06c3eca1`)
 - fix: use canonical media container types and retain custom title directories (`006925fc`)
 - fix: normalize media MIME aliases and isolate Android file-provider tests (`e9de5825`)
 - fix: open completed media locally with explicit type and read access (`3f3c67f7`)
