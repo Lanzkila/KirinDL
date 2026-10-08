@@ -1,14 +1,9 @@
 KirinDL Pre-release trigger.
 Update this file only when explicitly publishing the prepared pre-release.
-Current prepared source: v3.2.0.9
+Current prepared source: v3.2.0.10
 Publish requested: 2026-10-08
 Channel: Pre-release only — do not promote Stable.
-Purpose: Fix the local-file handoff from Play and exclude manifests,
-metadata, thumbnails, and incomplete files from completed media targets.
-Validation: Android 11 file-intent tests, media selection, YouTube recovery,
-cookie regression tests, and signed APK verification.
-Playback and YouTube verification on the reported phone remain unconfirmed.
-Validation follow-up: Canonicalize Android 11 M4A MIME aliases and attach
-fresh test providers with valid authorities; tests must pass before APK assembly.
-Container check: A named M4A file must use audio/mp4 even if a MIME table
-returns audio/mpeg. Preserve title directories in custom output templates.
+Purpose: Remove More Tools from About and restore the v3.2.0.4 layout
+with separate Stable/Latest and Pre-release release-notes cards.
+Validation: Preserve the 35 existing playback, media selection, YouTube,
+cookie, and extractor-argument tests before signed APK assembly and verification.

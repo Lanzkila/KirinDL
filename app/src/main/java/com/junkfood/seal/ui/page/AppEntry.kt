@@ -434,7 +434,6 @@ fun NavGraphBuilder.settingsGraph(
         animatedComposable(Route.ABOUT) {
             AboutPage(
                 onNavigateBack = onNavigateBack,
-                onNavigateToTools = { onNavigateTo(Route.MORE_TOOLS) },
                 onNavigateToCreditsPage = { onNavigateTo(Route.CREDITS) },
                 onNavigateToUpdatePage = { onNavigateTo(Route.AUTO_UPDATE) },
                 onNavigateToDonatePage = { onNavigateTo(Route.DONATE) },
