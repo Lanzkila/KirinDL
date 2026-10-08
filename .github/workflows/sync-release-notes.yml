@@ -59,11 +59,14 @@ jobs:
               echo "::error::Release notes heading does not match $tag"
               exit 1
             }
-            release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq '.id' 2>/dev/null || true)"
-            if [[ -z "$release_id" ]]; then
+            if ! release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq '.id' 2>/dev/null)"; then
               echo "::notice::Release $tag is not yet published; skipping description sync."
               continue
             fi
+            [[ "$release_id" =~ ^[0-9]+$ ]] || {
+              echo "::error::Invalid release id returned for $tag"
+              exit 1
+            }
             gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" \
               -f body="$(cat "$file")" >/dev/null
             echo "Updated $tag release description from $file (APK assets unchanged)."
