@@ -423,6 +423,19 @@ jobs:
               if changed_paths and set(changed_paths).issubset(ignored_only_paths):
                   continue
 
+              # App release notes must never include website, Pages, README, or CI-only
+              # commits. Include Android source, app resources, build tooling, and translations.
+              app_prefixes = (
+                  "app/", "buildSrc/", "gradle/", "fastlane/",
+                  "translations/", "color/", "splashlogo/",
+              )
+              app_files = {"build.gradle.kts", "settings.gradle.kts", "gradle.properties"}
+              if not any(
+                  path.startswith(app_prefixes) or path in app_files
+                  for path in changed_paths
+              ):
+                  continue
+
               changes.append((day, short_sha, subject))
 
           previous_label = previous_tag or "repository start"
@@ -441,7 +454,17 @@ jobs:
               lines.append("- No additional user-facing source changes were detected.")
 
           notes_path = Path(os.environ["RUNNER_TEMP"]) / "kirindl-prerelease-notes.md"
-          notes_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          # Use a curated app-only release note when it exists. Fallback to the
+          # filtered app-only git changes for versions without a prepared note.
+          curated = Path("release-notes") / f"v{version}.md"
+          if curated.is_file():
+              notes = curated.read_text(encoding="utf-8")
+              if f"# KirinDL v{version}" not in notes or not notes.strip():
+                  raise SystemExit(f"Invalid curated release note: {curated}")
+              print(f"Using app-only release notes from {curated}")
+          else:
+              notes = "\n".join(lines) + "\n"
+          notes_path.write_text(notes, encoding="utf-8")
 
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"path={notes_path}\n")

@@ -1,0 +1,70 @@
+name: Sync KirinDL Release Notes
+
+# Editing release-notes/vX.Y.Z.N.md updates the existing published release
+# description without rebuilding, resigning, or replacing any APKs.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'release-notes/v*.md'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag (for example v3.2.0.6)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync curated notes to existing published releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PREVIOUS_SHA: ${{ github.event.before }}
+          INPUT_TAG: ${{ inputs.release_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=()
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            [[ "$INPUT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || {
+              echo "::error::Invalid version tag: $INPUT_TAG"
+              exit 1
+            }
+            files+=("release-notes/$INPUT_TAG.md")
+          else
+            while IFS= read -r file; do
+              [[ -n "$file" ]] && files+=("$file")
+            done < <(git diff --name-only "$PREVIOUS_SHA" "$GITHUB_SHA" -- 'release-notes/v*.md')
+          fi
+
+          for file in "${files[@]}"; do
+            [[ -f "$file" ]] || {
+              echo "::notice::File not found in current commit: $file"
+              continue
+            }
+            tag="$(basename "$file" .md)"
+            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || continue
+            grep -Fq "# KirinDL $tag" "$file" || {
+              echo "::error::Release notes heading does not match $tag"
+              exit 1
+            }
+            release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq '.id' 2>/dev/null || true)"
+            if [[ -z "$release_id" ]]; then
+              echo "::notice::Release $tag is not yet published; skipping description sync."
+              continue
+            fi
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" \
+              -f body="$(cat "$file")" >/dev/null
+            echo "Updated $tag release description from $file (APK assets unchanged)."
+          done
