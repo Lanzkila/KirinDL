@@ -20,7 +20,6 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import org.robolectric.shadows.ShadowContentResolver
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30], application = Application::class)
@@ -31,6 +30,9 @@ class LocalFileIntentsTest {
     @Before
     fun setUp() {
         context = RuntimeEnvironment.getApplication()
+        // Each test has a new cache directory. Attach a fresh provider so its static
+        // path cache cannot point to the preceding test's Application directory.
+        Robolectric.buildContentProvider(FileProvider::class.java).create()
     }
 
     private fun video(name: String = "Video #1 ü.mp4") =
@@ -68,9 +70,9 @@ class LocalFileIntentsTest {
 
     @Test
     fun sdcardDocumentWithGenericMimeTypeUsesMediaNameWithoutChangingItsUri() {
-        val provider = Robolectric.buildContentProvider(LocalDocumentProvider::class.java).create().get()
+        val provider = Robolectric.buildContentProvider(LocalDocumentProvider::class.java)
+            .create("test.documents").get()
         provider.file = video("Video.mkv")
-        ShadowContentResolver.registerProviderInternal("test.documents", provider)
         val uri = Uri.parse("content://test.documents/document/video")
         val intent = LocalFileIntents.open(context, uri.toString())!!
         assertEquals(uri, intent.data)

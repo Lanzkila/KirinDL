@@ -65,6 +65,11 @@ internal object LocalFileIntents {
         val concreteProviderType = providerType?.lowercase(Locale.ROOT)?.takeUnless {
             it == "application/octet-stream" || it == "*/*" || it == "media/*"
         }
-        return concreteProviderType ?: fromName ?: "application/octet-stream"
+        val canonicalProviderType = when (concreteProviderType) {
+            "audio/x-m4a", "audio/m4a", "audio/x-m4b" -> "audio/mp4"
+            "video/mkv" -> "video/x-matroska"
+            else -> concreteProviderType
+        }
+        return canonicalProviderType ?: fromName ?: "application/octet-stream"
     }
 }

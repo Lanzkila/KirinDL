@@ -8,3 +8,5 @@ metadata, thumbnails, and incomplete files from completed media targets.
 Validation: Android 11 file-intent tests, media selection, YouTube recovery,
 cookie regression tests, and signed APK verification.
 Playback and YouTube verification on the reported phone remain unconfirmed.
+Validation follow-up: Canonicalize Android 11 M4A MIME aliases and attach
+fresh test providers with valid authorities; tests must pass before APK assembly.

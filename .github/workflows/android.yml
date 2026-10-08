@@ -540,15 +540,16 @@ jobs:
 
       - name: Test playback and YouTube recovery, then build signed Release APKs
         if: ${{ steps.version.outputs.metadata_only != 'true' }}
-        run: >-
-          ./gradlew -Pandroid.onlyEnableUnitTestForTheTestedBuildType=false
-          :app:testGenericReleaseUnitTest
-          --tests com.junkfood.seal.util.YouTubeRequestRecoveryTest
-          --tests com.junkfood.seal.util.NetscapeCookieParserTest
-          --tests com.junkfood.seal.util.ExtractorArgumentsTest
-          --tests com.junkfood.seal.util.CompletedMediaFilesTest
-          --tests com.junkfood.seal.util.LocalFileIntentsTest
-          assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
+        run: |
+          ./gradlew -Pandroid.onlyEnableUnitTestForTheTestedBuildType=false \
+            :app:testGenericReleaseUnitTest \
+            --tests com.junkfood.seal.util.YouTubeRequestRecoveryTest \
+            --tests com.junkfood.seal.util.NetscapeCookieParserTest \
+            --tests com.junkfood.seal.util.ExtractorArgumentsTest \
+            --tests com.junkfood.seal.util.CompletedMediaFilesTest \
+            --tests com.junkfood.seal.util.LocalFileIntentsTest \
+            --stacktrace --no-daemon --no-configuration-cache
+          ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
       - name: Verify all Release APKs and create checksums
         if: ${{ steps.version.outputs.metadata_only != 'true' }}
