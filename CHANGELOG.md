@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): keep v3.2.0.6 notes focused on Android app changes (`6420eed7`)
+- fix(release): use app-only notes and sync edited release descriptions [skip ci] (`8bccb1a6`)
 - Release KirinDL v3.2.0.6 Pre-release: startup crash diagnostics and About cleanup (`d49b493d`)
 - fix(startup): preserve interrupted-launch breadcrumbs for native crashes [skip ci] (`7ca2e661`)
 - fix(startup): guard early initialization and retain copyable crash diagnostics [skip ci] (`70987423`)
