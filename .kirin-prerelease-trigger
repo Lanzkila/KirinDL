@@ -10,3 +10,5 @@ cookie regression tests, and signed APK verification.
 Playback and YouTube verification on the reported phone remain unconfirmed.
 Validation follow-up: Canonicalize Android 11 M4A MIME aliases and attach
 fresh test providers with valid authorities; tests must pass before APK assembly.
+Container check: A named M4A file must use audio/mp4 even if a MIME table
+returns audio/mpeg. Preserve title directories in custom output templates.

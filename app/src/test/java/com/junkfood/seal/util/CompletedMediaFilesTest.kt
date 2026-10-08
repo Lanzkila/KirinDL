@@ -67,4 +67,11 @@ class CompletedMediaFilesTest {
         val current = output("Video.mp3").apply { assertTrue(setLastModified(2_000L)) }
         assertEquals(listOf(current, old), CompletedMediaFiles.collect(directory.root, "Video"))
     }
+
+    @Test
+    fun titleDirectoriesSupportCustomTemplatesWithAnIdAsTheFileName() {
+        val media = output("Video/N5V8HEoo_10.mp4")
+        output("Video/N5V8HEoo_10.info.json")
+        assertEquals(listOf(media), CompletedMediaFiles.collect(directory.root, "Video", true))
+    }
 }

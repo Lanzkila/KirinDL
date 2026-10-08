@@ -85,9 +85,9 @@ object FileUtil {
     fun scanFileToMediaLibraryPostDownload(
         title: String,
         downloadDir: String,
-        splitByChapter: Boolean = false,
+        includeTitleDirectory: Boolean = false,
     ): List<String> =
-        CompletedMediaFiles.collect(File(downloadDir), title, splitByChapter)
+        CompletedMediaFiles.collect(File(downloadDir), title, includeTitleDirectory)
             .map { it.absolutePath }
             .apply {
                 MediaScannerConnection.scanFile(context, this.toList().toTypedArray(), null, null)

@@ -1474,7 +1474,7 @@ object DownloadUtil {
                 FileUtil.scanFileToMediaLibraryPostDownload(
                         title = fileName,
                         downloadDir = downloadPath,
-                        splitByChapter = splitByChapter,
+                        includeTitleDirectory = splitByChapter || outputTemplate.contains('/'),
                     )
                     .run {
                         if (privateMode) Result.success(emptyList())

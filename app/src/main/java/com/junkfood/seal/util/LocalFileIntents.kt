@@ -70,6 +70,9 @@ internal object LocalFileIntents {
             "video/mkv" -> "video/x-matroska"
             else -> concreteProviderType
         }
-        return canonicalProviderType ?: fromName ?: "application/octet-stream"
+        // Known container extensions take precedence over inconsistent provider MIME types.
+        return if (extension in setOf("m4a", "m4b", "mkv", "mka", "opus")) {
+            fromName!!
+        } else canonicalProviderType ?: fromName ?: "application/octet-stream"
     }
 }

@@ -16,7 +16,7 @@ internal object CompletedMediaFiles {
     fun isMediaFileName(name: String): Boolean =
         name.substringAfterLast('.', "").lowercase(Locale.ROOT) in extensions
 
-    fun collect(directory: File, title: String? = null, splitByChapter: Boolean = false): List<File> {
+    fun collect(directory: File, title: String? = null, includeTitleDirectory: Boolean = false): List<File> {
         val expectedName = title?.let { File(it).name }
         val expectedBase = expectedName?.let {
             if (isMediaFileName(it)) File(it).nameWithoutExtension else it
@@ -26,7 +26,7 @@ internal object CompletedMediaFiles {
             .filter { it.isFile && it.length() > 0L && isMediaFileName(it.name) }
             .filter { file ->
                 expectedBase == null || matches(file.nameWithoutExtension, expectedBase) ||
-                    (splitByChapter && file.relativeTo(directory).parentFile?.let { parent ->
+                    (includeTitleDirectory && file.relativeTo(directory).parentFile?.let { parent ->
                         generateSequence(parent) { it.parentFile }.any { it.name == expectedBase }
                     } == true)
             }
