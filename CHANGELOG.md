@@ -7,6 +7,15 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Release KirinDL v3.2.0.6 Pre-release: startup crash diagnostics and About cleanup (`d49b493d`)
+- fix(startup): preserve interrupted-launch breadcrumbs for native crashes [skip ci] (`7ca2e661`)
+- fix(startup): guard early initialization and retain copyable crash diagnostics [skip ci] (`70987423`)
+- Restore app source v3.2.0.3 and limit About to Tools, Stable, Pre-release [skip ci] (`18d87f11`)
+- fix(format): keep Audio and Video preferences editable [skip ci] (`6409e30c`)
+- feat(pages): add KirinDL browser favicon on all pages [skip ci] (`dd545350`)
+- fix(pages): constrain counter SVGs and bypass stale CSS/JS caches [skip ci] (`b6ea1af3`)
+- feat(pages): show live download, fork and star counters [skip ci] (`0c8f0d1a`)
+- Create KirinDL Pages and archive SealPlus site data [skip ci] (`6462aa0c`)
 - Set KirinDL v3.2.0.5 version code [skip ci] (`cdeb4990`)
 - Bump KirinDL source to v3.2.0.5 [skip ci] (`7a2ce61f`)
 - Make first-launch updater migration non-fatal [skip ci] (`07451b7e`)
