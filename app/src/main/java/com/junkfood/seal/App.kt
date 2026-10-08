@@ -113,6 +113,8 @@ class App : Application(), SingletonImageLoader.Factory {
         context = applicationContext
         // The old handler ran after MMKV/Koin/updater setup; an early failure skipped it.
         installEarlyCrashHandler()
+        // Retain breadcrumbs from a prior launch that died before Java could report it.
+        StartupCrashLog.recoverInterruptedStartup(this)
         StartupCrashLog.markStartupStage(this, "MMKV initialization")
         initializeMmkvWithRetry()
 
@@ -220,9 +222,9 @@ class App : Application(), SingletonImageLoader.Factory {
             val version = runCatching { getVersionReport() }
                 .getOrElse {
                     "KirinDL startup crash on Android ${Build.VERSION.RELEASE} " +
-                        "(API ${Build.VERSION.SDK_INT})\\n"
+                        "(API ${Build.VERSION.SDK_INT})\n"
                 }
-            val report = version + "\\nThread: ${thread.name}\\n" + error.stackTraceToString()
+            val report = version + "\nThread: ${thread.name}\n" + error.stackTraceToString()
             StartupCrashLog.save(this, report)
             Log.e(STARTUP_TAG, "Uncaught crash in ${thread.name}", error)
             runCatching { GlobalContext.getOrNull()?.get<DownloaderV2>()?.cleanup() }

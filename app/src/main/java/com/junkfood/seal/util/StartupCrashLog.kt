@@ -13,6 +13,31 @@ object StartupCrashLog {
     private const val REPORT_FILE = "kirindl_last_crash.txt"
     private const val STAGE_FILE = "kirindl_startup_stage.txt"
 
+    /**
+     * Native process termination may bypass Java's uncaught-exception handler.
+     * A leftover stage marker is only a diagnostic hint, not proof of a crash.
+     */
+    fun recoverInterruptedStartup(context: Context) {
+        runCatching {
+            val stageFile = File(context.filesDir, STAGE_FILE)
+            val previousStage = stageFile.takeIf { it.isFile }?.readText()
+                ?.takeIf { it.isNotBlank() } ?: return@runCatching
+            val reportFile = File(context.filesDir, REPORT_FILE)
+            val previousReport = reportFile.takeIf { it.isFile }?.readText().orEmpty()
+            reportFile.writeText(
+                buildString {
+                    append("Previous launch did not finish startup.\n")
+                    append("Last recorded stage: $previousStage\n")
+                    append("This is a diagnostic hint; a native crash may not provide a Java stack trace.\n")
+                    if (previousReport.isNotBlank()) {
+                        append("\nPrevious saved crash report:\n")
+                        append(previousReport.take(20_000))
+                    }
+                }
+            )
+        }.onFailure { Log.w(TAG, "Unable to recover startup breadcrumb", it) }
+    }
+
     fun markStartupStage(context: Context, stage: String) {
         runCatching { File(context.filesDir, STAGE_FILE).writeText(stage) }
             .onFailure { Log.w(TAG, "Unable to record startup stage", it) }
