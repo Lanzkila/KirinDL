@@ -60,7 +60,7 @@ android {
         applicationId = "com.kirin.downloader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 302_000_480
+        versionCode = 302_000_490
         check(versionCode == currentVersionCode)
 
         versionName = baseVersionName
@@ -181,6 +181,23 @@ android {
     androidResources { generateLocaleConfig = true }
 
     namespace = "com.junkfood.seal"
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            it.jvmArgs(
+                "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                "--add-opens=java.base/java.util=ALL-UNNAMED",
+                "--add-opens=java.base/java.io=ALL-UNNAMED",
+                "--add-opens=java.base/java.net=ALL-UNNAMED",
+                "--add-opens=java.base/java.security=ALL-UNNAMED",
+                "--add-opens=java.base/java.text=ALL-UNNAMED",
+                "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+            )
+        }
+    }
 }
 
 chaquopy {
@@ -222,6 +239,7 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation("androidx.webkit:webkit:1.16.0")
     testImplementation(libs.junit4)
+    testImplementation("org.robolectric:robolectric:4.17")
     androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.androidx.test.espresso.core)
     implementation(libs.androidx.compose.ui.tooling)

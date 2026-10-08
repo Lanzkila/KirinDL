@@ -1,9 +1,10 @@
 KirinDL Pre-release trigger.
 Update this file only when explicitly publishing the prepared pre-release.
-Current prepared source: v3.2.0.8
+Current prepared source: v3.2.0.9
 Publish requested: 2026-10-08
 Channel: Pre-release only — do not promote Stable.
-Purpose: Restore the v3.1.9.1 About page, apply saved extractor arguments,
-keep login settings on retries, and expose YouTube cookie recovery directly.
-Validation: Recovery and cookie regression tests plus signed APK verification.
-YouTube verification on the reported phone remains unconfirmed.
+Purpose: Fix the local-file handoff from Play and exclude manifests,
+metadata, thumbnails, and incomplete files from completed media targets.
+Validation: Android 11 file-intent tests, media selection, YouTube recovery,
+cookie regression tests, and signed APK verification.
+Playback and YouTube verification on the reported phone remain unconfirmed.

@@ -1,6 +1,5 @@
 package com.junkfood.seal.util
 
-import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.media.MediaScannerConnection
@@ -10,7 +9,6 @@ import android.provider.DocumentsContract
 import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.annotation.CheckResult
-import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import com.junkfood.seal.App
 import com.junkfood.seal.App.Companion.context
@@ -56,48 +54,11 @@ object FileUtil {
             }
             .onFailure { onFailureCallback(it) }
 
-    private fun createIntentForFile(path: String?): Intent? {
-        if (path == null) return null
-
-        val uri =
-            path
-                .runCatching {
-                    DocumentFile.fromSingleUri(context, Uri.parse(path)).run {
-                        if (this?.exists() == true) {
-                            this.uri
-                        } else if (File(this@runCatching).exists()) {
-                            FileProvider.getUriForFile(
-                                context,
-                                context.getFileProvider(),
-                                File(this@runCatching),
-                            )
-                        } else null
-                    }
-                }
-                .getOrNull() ?: return null
-
-        return Intent().apply {
-            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            data = uri
-        }
-    }
-
     fun createIntentForOpeningFile(path: String?): Intent? =
-        createIntentForFile(path)?.let {
-            it.apply {
-                action = (Intent.ACTION_VIEW)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-        }
+        LocalFileIntents.open(context, path)
 
     fun createIntentForSharingFile(path: String?): Intent? =
-        createIntentForFile(path)?.apply {
-            action = Intent.ACTION_SEND
-            putExtra(Intent.EXTRA_STREAM, data)
-            val mimeType = data?.let { context.contentResolver.getType(it) } ?: "media/*"
-            setDataAndType(this.data, mimeType)
-            clipData = ClipData(null, arrayOf(mimeType), ClipData.Item(data))
-        }
+        LocalFileIntents.share(context, path)
 
     fun Context.getFileProvider() = "$packageName.provider"
 
@@ -121,17 +82,15 @@ object FileUtil {
         }
 
     @CheckResult
-    fun scanFileToMediaLibraryPostDownload(title: String, downloadDir: String): List<String> =
-        File(downloadDir)
-            .walkTopDown()
-            .filter { it.isFile && it.absolutePath.contains(title) }
+    fun scanFileToMediaLibraryPostDownload(
+        title: String,
+        downloadDir: String,
+        splitByChapter: Boolean = false,
+    ): List<String> =
+        CompletedMediaFiles.collect(File(downloadDir), title, splitByChapter)
             .map { it.absolutePath }
-            .toMutableList()
             .apply {
                 MediaScannerConnection.scanFile(context, this.toList().toTypedArray(), null, null)
-                removeAll {
-                    it.contains(Regex(THUMBNAIL_REGEX)) || it.contains(Regex(SUBTITLE_REGEX))
-                }
             }
 
     fun scanDownloadDirectoryToMediaLibrary(downloadDir: String) =
@@ -155,7 +114,7 @@ object FileUtil {
             }
         val res =
             tempPath.runCatching {
-                walkTopDown().forEach {
+                walkTopDown().sortedBy { it.relativeTo(tempPath).path }.forEach {
                     if (it.isDirectory) return@forEach
                     val mimeType =
                         MimeTypeMap.getSingleton().getMimeTypeFromExtension(it.extension) ?: "*/*"
@@ -174,7 +133,9 @@ object FileUtil {
                     inputStream.copyTo(outputStream)
                     inputStream.closeQuietly()
                     outputStream.closeQuietly()
-                    uriList.add(destUri.toString())
+                    if (CompletedMediaFiles.isMediaFileName(it.name) && it.length() > 0L) {
+                        uriList.add(destUri.toString())
+                    }
                 }
                 uriList
             }
