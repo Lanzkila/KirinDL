@@ -1,6 +1,7 @@
 KirinDL Pre-release trigger.
 
 Update this file only when explicitly publishing a KirinDL Pre-release build.
-Current prepared source: v3.2.0.5
+Current prepared source: v3.2.0.6
 Publish requested: 2026-10-08
 Channel: Pre-release only — do not promote to Stable.
+Purpose: Retest startup crash (first and second launches) and copyable early crash diagnostics.
