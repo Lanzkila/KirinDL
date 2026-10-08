@@ -240,6 +240,7 @@ data class Cookie(
     fun toNetscapeCookieString(): String {
         // Netscape HTTP Cookie File format: exactly 7 tab-delimited fields.
         return buildString {
+            if (isHttpOnly) append("#HttpOnly_")
             append(domain); append('\t')
             append(includeSubdomains.toNetscapeFlag()); append('\t')
             append(path); append('\t')

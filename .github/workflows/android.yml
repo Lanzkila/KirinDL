@@ -538,9 +538,13 @@ jobs:
             -storepass "$KIRIN_KEYSTORE_PASSWORD" \
             -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
-      - name: Build signed Release APKs
+      - name: Test YouTube recovery and build signed Release APKs
         if: ${{ steps.version.outputs.metadata_only != 'true' }}
-        run: ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
+        run: >-
+          ./gradlew :app:testGenericReleaseUnitTest
+          --tests com.junkfood.seal.util.YouTubeRequestRecoveryTest
+          --tests com.junkfood.seal.util.NetscapeCookieParserTest
+          assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 
       - name: Verify all Release APKs and create checksums
         if: ${{ steps.version.outputs.metadata_only != 'true' }}

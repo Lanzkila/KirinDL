@@ -49,11 +49,30 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.Locale
+import java.util.concurrent.CancellationException
 
 object DownloadUtil {
 
     private val jsonFormat = Json { ignoreUnknownKeys = true }
     private val cookiesFileLock = Any()
+
+    private fun executeWithYouTubeRecovery(
+        url: String,
+        request: YoutubeDLRequest,
+        processId: String? = null,
+        callback: ((Float, Long, String) -> Unit)? = null,
+        cancellationCheck: () -> Unit = {},
+    ): YoutubeDLResponse = YouTubeRequestRecovery.execute(
+        url = url,
+        request = request,
+        cancellationCheck = cancellationCheck,
+        onRetry = { message ->
+            Log.i(TAG, message)
+            callback?.invoke(-1f, -1L, message)
+        },
+    ) { retryRequest ->
+        YoutubeDL.getInstance().execute(retryRequest, processId, callback)
+    }
 
     /** Explain Youtube's actual authentication challenge without hiding yt-dlp's error. */
     private fun explainYouTubeVerification(
@@ -61,13 +80,10 @@ object DownloadUtil {
         cookiesEnabled: Boolean,
         cause: Throwable,
     ): Throwable {
-        val host = runCatching { Uri.parse(url).host.orEmpty().lowercase(Locale.ROOT) }
-            .getOrDefault("")
-        val isYoutube = host == "youtu.be" || host == "youtube.com" ||
-            host.endsWith(".youtube.com") || host == "youtube-nocookie.com" ||
-            host.endsWith(".youtube-nocookie.com")
+        if (cause is YoutubeDL.CanceledException || cause is CancellationException ||
+            cause is InterruptedException) return cause
         val originalError = cause.message.orEmpty()
-        if (!isYoutube || !originalError.contains("sign in to confirm", ignoreCase = true) ||
+        if (!isYouTubeUrl(url) || !originalError.contains("sign in to confirm", ignoreCase = true) ||
             !originalError.contains("bot", ignoreCase = true)) return cause
 
         val cookieAdvice = if (cookiesEnabled) {
@@ -78,7 +94,7 @@ object DownloadUtil {
                 "sign in or import your own cookies, and enable Use Cookies."
         }
         return IllegalStateException(
-            "YouTube requested account/bot verification (not a KirinDL app crash). " +
+            "YouTube still requested account/bot verification after automatic recovery. " +
                 cookieAdvice + " Update yt-dlp from Engine Updates if needed. " +
                 "YouTube may still limit this session, so access is not guaranteed.\n\n" +
                 "Original yt-dlp error: " + originalError,
@@ -135,8 +151,7 @@ object DownloadUtil {
 
                 // Netscape: has at least one line that contains a tab character
                 // (comment lines start with # and are fine to skip)
-                trimmed.lines().any { it.isNotBlank() && !it.startsWith('#') && '\t' in it } ->
-                    parseNetscapeCookies(trimmed)
+                NetscapeCookieParser.accepts(content) -> NetscapeCookieParser.parse(content)
 
                 // Fallback: treat as Cookie header value  "name=val; name=val"
                 else -> parseHeaderCookies(profileUrl, trimmed)
@@ -153,8 +168,7 @@ object DownloadUtil {
         val items = jsonFormat.decodeFromString<List<CookieJson>>(normalised)
         val now = System.currentTimeMillis() / 1000L
         val fallbackDomain = profileUrl.let {
-            val url = if (it.startsWith("http://") || it.startsWith("https://")) it else "https://$it"
-            val host = Uri.parse(url).host?.removePrefix("www.")
+            val host = Uri.parse(cookieProfileUrl(it)).host?.removePrefix("www.")
             if (host.isNullOrBlank()) "" else ".$host"
         }
         return items.mapNotNull { c ->
@@ -186,62 +200,8 @@ object DownloadUtil {
         }
     }
 
-    private fun parseNetscapeCookies(text: String): List<Cookie> {
-        val now = System.currentTimeMillis() / 1000L
-        val cookies = mutableListOf<Cookie>()
-        text.lines().forEach { line ->
-            val trimmed = line.trim()
-            if (trimmed.isEmpty() || trimmed.startsWith('#')) return@forEach
-            val parts = trimmed.split('\t')
-            if (parts.size < 7) return@forEach
-            val rawDomain          = parts[0]
-            val includeSubdomains  = parts[1].uppercase() == "TRUE"
-            val path               = parts[2]
-            val secure             = parts[3].uppercase() == "TRUE"
-            val expiry             = parts[4].toLongOrNull() ?: 0L
-            val name               = parts[5]
-            // Value may itself contain tabs — re-join the remainder
-            val value              = parts.drop(6).joinToString("\t")
-            if (name.isEmpty()) return@forEach
-            if (expiry > 0L && expiry < now) return@forEach // skip expired
-
-            // IMPORTANT: yt-dlp's cookie loader (YoutubeDLCookieJar, a subclass of Python's
-            // http.cookiejar.MozillaCookieJar) enforces `assert domain_specified == initial_dot`
-            // for every single line in the file — i.e. the "include subdomains" flag (this
-            // field) and whether `domain` starts with a dot MUST agree. A host-only cookie
-            // (includeSubdomains = FALSE) legitimately has no leading dot in a real cookies.txt
-            // export. The previous code unconditionally force-added a leading dot to every
-            // domain regardless of this flag, which broke that invariant for any pasted file
-            // containing host-only cookies. Because yt-dlp parses the WHOLE file in one pass,
-            // that single inconsistent line raised a LoadError and rejected the entire cookies
-            // file with "does not look like a Netscape format cookies file" — silently breaking
-            // cookie-based auth for every profile, not just the pasted one.
-            // Fix: derive the dot presence FROM includeSubdomains so the two always agree,
-            // instead of assuming the source domain string's dot state is correct.
-            val domain = if (includeSubdomains) {
-                if (rawDomain.startsWith('.')) rawDomain else ".$rawDomain"
-            } else {
-                rawDomain.removePrefix(".")
-            }
-
-            cookies.add(
-                Cookie(
-                    domain            = domain,
-                    name              = name,
-                    value             = value,
-                    includeSubdomains = includeSubdomains,
-                    path              = path,
-                    secure            = secure,
-                    expiry            = expiry,
-                    isHttpOnly        = false,
-                )
-            )
-        }
-        return cookies
-    }
-
     private fun parseHeaderCookies(profileUrl: String, header: String): List<Cookie> {
-        val rawUrl = if (profileUrl.startsWith("http")) profileUrl else "https://$profileUrl"
+        val rawUrl = cookieProfileUrl(profileUrl)
         val host   = Uri.parse(rawUrl).host ?: ""
         val domain = "." + if (host.startsWith("www.")) host.removePrefix("www.") else host
         val cookies = mutableListOf<Cookie>()
@@ -335,7 +295,7 @@ object DownloadUtil {
                     }
                 }
             }
-            execute(request, playlistURL).out.run {
+            executeWithYouTubeRecovery(playlistURL, request, playlistURL).out.run {
                 val playlistInfo = jsonFormat.decodeFromString<PlaylistResult>(this)
                 if (playlistInfo.type != "playlist") {
                     jsonFormat.decodeFromString<VideoInfo>(this)
@@ -347,12 +307,14 @@ object DownloadUtil {
 
     @CheckResult
     private fun getVideoInfo(
+        url: String,
         request: YoutubeDLRequest,
         taskKey: String? = null,
+        cancellationCheck: () -> Unit = {},
     ): Result<VideoInfo> =
         request.runCatching {
             val response: YoutubeDLResponse =
-                YoutubeDL.getInstance().execute(request, taskKey, null)
+                executeWithYouTubeRecovery(url, request, taskKey, cancellationCheck = cancellationCheck)
             jsonFormat.decodeFromString(response.out)
         }
 
@@ -362,6 +324,7 @@ object DownloadUtil {
         playlistIndex: Int? = null,
         taskKey: String? = null,
         preferences: DownloadPreferences = DownloadPreferences.createFromPreferences(),
+        cancellationCheck: () -> Unit = {},
     ): Result<VideoInfo> {
         with(preferences) {
             val request =
@@ -412,7 +375,7 @@ object DownloadUtil {
                     addOption("-R", "3")
                     addOption("--socket-timeout", "15")
                 }
-            return getVideoInfo(request, taskKey).recoverCatching { error ->
+            return getVideoInfo(url, request, taskKey, cancellationCheck).recoverCatching { error ->
                 throw explainYouTubeVerification(url, preferences.cookies, error)
             }
         }
@@ -451,7 +414,7 @@ object DownloadUtil {
             addOption("-R", "3")
             addOption("--socket-timeout", "20")
         }
-        return getVideoInfo(request).recoverCatching { error ->
+        return getVideoInfo(url, request).recoverCatching { error ->
             throw explainYouTubeVerification(url, COOKIES.getBoolean(), error)
         }
     }
@@ -759,11 +722,7 @@ object DownloadUtil {
             // Instagram session cookies (sessionid, csrftoken), and virtually every other
             // social-media auth cookie carry the Secure flag, so an http:// query returns
             // an empty or incomplete cookie string — causing silent auth failures.
-            val rawUrl = when {
-                profile.url.startsWith("https://") -> profile.url
-                profile.url.startsWith("http://")  -> profile.url.replaceFirst("http://", "https://")
-                else                               -> "https://${profile.url}"
-            }
+            val rawUrl = cookieProfileUrl(profile.url)
             val host = Uri.parse(rawUrl).host ?: continue
 
             // Query both the plain and www-prefixed variants because some sites set their
@@ -1281,6 +1240,7 @@ object DownloadUtil {
         playlistItem: Int = 0,
         taskId: String,
         downloadPreferences: DownloadPreferences,
+        cancellationCheck: () -> Unit = {},
         progressCallback: ((Float, Long, String) -> Unit)?,
     ): Result<List<String>> {
         if (videoInfo == null)
@@ -1429,8 +1389,13 @@ object DownloadUtil {
                 }
                 .runCatching {
                     val dlStartTime = System.currentTimeMillis()
-                    YoutubeDL.getInstance()
-                        .execute(request = this, processId = taskId, callback = progressCallback)
+                    executeWithYouTubeRecovery(
+                        url = url,
+                        request = this,
+                        processId = taskId,
+                        callback = progressCallback,
+                        cancellationCheck = cancellationCheck,
+                    )
                         .also { downloadTiming[0] = dlStartTime; downloadTiming[1] = System.currentTimeMillis() }
                 }
                 .onFailure { th ->

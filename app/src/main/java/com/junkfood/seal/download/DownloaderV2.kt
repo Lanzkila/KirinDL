@@ -35,7 +35,9 @@ import com.junkfood.seal.util.VideoInfo
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlin.collections.set
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -606,6 +608,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         playlistIndex = playlistIndex,
                         preferences = preferences,
                         taskKey = id,
+                        cancellationCheck = { ensureActive() },
                     )
                     .onSuccess {
                         info = it
@@ -613,7 +616,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         viewState = Task.ViewState.fromVideoInfo(it)
                     }
                     .onFailure { throwable ->
-                        if (throwable is YoutubeDL.CanceledException) {
+                        if (throwable is YoutubeDL.CanceledException || throwable is CancellationException) {
                             return@onFailure
                         }
                         val networkUnavailable = !PreferenceUtil.isNetworkAvailableForDownload()
@@ -672,6 +675,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         videoInfo = info,
                         taskId = id,
                         downloadPreferences = preferences,
+                        cancellationCheck = { ensureActive() },
                         progressCallback = { progressPercentage, _, text ->
                             val guarded = progressGuard.update(progressPercentage, text)
                             val progress = guarded.progress
@@ -748,7 +752,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         }
                     }
                     .onFailure { throwable ->
-                        if (throwable is YoutubeDL.CanceledException) {
+                        if (throwable is YoutubeDL.CanceledException || throwable is CancellationException) {
                             return@onFailure
                         }
                         val retries = retryCountMap.getOrDefault(id, 0)
