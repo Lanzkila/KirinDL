@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(ci): enable release unit-test tasks under AGP 9 (`270144f8`)
+- fix(release): skip missing tags before syncing descriptions [skip ci] (`a833407e`)
 - fix(youtube): add bounded playback recovery and preserve HttpOnly login cookies (`dfa22ff9`)
 - fix(youtube): handle stale cookies safely and explain account verification errors [skip ci] (`087d80ef`)
 - docs(release): keep v3.2.0.6 notes focused on Android app changes (`6420eed7`)
