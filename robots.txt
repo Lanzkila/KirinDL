@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://lanzkila.github.io/KirinDL/sitemap.xml

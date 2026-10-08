@@ -3,17 +3,84 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="KirinDL — open-source Android downloader for video, audio, and gallery media.">
+  <meta name="theme-color" content="#0a1020">
   <title>KirinDL</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 0; background: #0b1020; color: #eef2ff; }
-    main { max-width: 760px; margin: 0 auto; padding: 48px 20px; line-height: 1.6; }
-    a { color: #7dd3fc; }
-    .card { background: #111827; border: 1px solid #263044; border-radius: 18px; padding: 20px; margin: 18px 0; }
-    nav a { margin-right: 14px; }
-  </style>
+  <link rel="stylesheet" href="pages-assets/style.css">
 </head>
-<body><main>
-<nav><a href="index.html">Home</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="contact.html">Contact</a></nav>
-<h1>KirinDL</h1>
-<p>Open-source Android video, audio, and gallery downloader built from the Seal / SealPlus codebase.</p><div class="card"><p><a href="https://github.com/Lanzkila/KirinDL/releases">Releases</a></p><p><a href="https://github.com/Lanzkila/KirinDL">Source code</a></p><p><a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a></p></div><p>Only save content you have permission or rights to download.</p>
-</main></body></html>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="KirinDL home">
+      <img src="https://raw.githubusercontent.com/Lanzkila/KirinDL/main/fastlane/metadata/android/en-US/images/icon.png" alt="KirinDL">
+      <span>KirinDL</span>
+    </a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="support.html">Support</a>
+      <a href="privacy.html">Privacy</a>
+      <a class="nav-github" href="https://github.com/Lanzkila/KirinDL">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">OPEN SOURCE · ANDROID</div>
+        <h1>Download media.<br><span>Keep control.</span></h1>
+        <p class="lead">KirinDL is an Android downloader focused on video, audio, gallery downloads, clear progress, and a cleaner update flow.</p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/Lanzkila/KirinDL/releases">Download latest</a>
+          <a class="button secondary" href="https://github.com/Lanzkila/KirinDL">View source</a>
+        </div>
+        <div class="release-card">
+          <span class="dot"></span>
+          <div>
+            <small>Latest GitHub release</small>
+            <strong id="latest-version">Checking…</strong>
+          </div>
+          <a id="latest-link" href="https://github.com/Lanzkila/KirinDL/releases">Releases →</a>
+        </div>
+      </div>
+      <div class="hero-art">
+        <div class="phone-glow"></div>
+        <div class="app-card">
+          <img src="https://raw.githubusercontent.com/Lanzkila/KirinDL/main/fastlane/metadata/android/en-US/images/icon.png" alt="">
+          <h2>KirinDL</h2>
+          <p>Video · Audio · Gallery</p>
+          <div class="fake-progress"><span></span></div>
+          <div class="mini-grid">
+            <span>yt-dlp</span><span>gallery-dl</span><span>Queue</span><span>History</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="section-heading">
+        <div class="eyebrow">WHAT IT DOES</div>
+        <h2>Built around the download workflow.</h2>
+      </div>
+      <div class="grid">
+        <article><b>01</b><h3>Video & audio</h3><p>Choose formats and keep transfer progress visible while downloads are running.</p></article>
+        <article><b>02</b><h3>Gallery downloads</h3><p>Gallery-oriented downloads are integrated alongside the main media workflow.</p></article>
+        <article><b>03</b><h3>Engine updates</h3><p>Keep yt-dlp and gallery-dl current from the app's Engine Update Center.</p></article>
+        <article><b>04</b><h3>Open source</h3><p>Source, releases, changes, and issue tracking remain visible on GitHub.</p></article>
+      </div>
+    </section>
+
+    <section class="notice">
+      <div>
+        <div class="eyebrow">PROJECT NOTE</div>
+        <h2>Independent KirinDL project.</h2>
+      </div>
+      <p>KirinDL is maintained separately. Upstream projects and their original work remain credited to their respective authors; this site does not claim their domain, sponsor data, or website assets.</p>
+    </section>
+  </main>
+
+  <footer>
+    <span>© <span id="year"></span> KirinDL</span>
+    <div><a href="contact.html">Contact</a><a href="privacy.html">Privacy</a><a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a></div>
+  </footer>
+  <script src="pages-assets/main.js"></script>
+</body>
+</html>

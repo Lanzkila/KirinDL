@@ -1,0 +1,23 @@
+title: KirinDL
+url: "https://lanzkila.github.io"
+baseurl: "/KirinDL"
+exclude:
+  - _sealplus-pages-disabled
+  - app
+  - buildSrc
+  - gradle
+  - splashlogo
+  - .github
+  - .idea
+  - .vscode
+  - CHANGELOG.md
+  - CODE_OF_CONDUCT.md
+  - CONTRIBUTING.md
+  - LICENSE
+  - README.md
+  - gradlew
+  - gradlew.bat
+  - build.gradle.kts
+  - settings.gradle.kts
+  - gradle.properties
+  - release.json
