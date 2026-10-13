@@ -3,6 +3,12 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
+## 2026-10-13
+
+### ✦ Recent changes
+
+- fix(bilibili): recover interrupted streams through API-provided mirrors (`793e21e0`)
+
 ## 2026-10-08
 
 ### ✦ Recent changes
