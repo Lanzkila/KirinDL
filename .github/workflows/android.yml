@@ -538,7 +538,15 @@ jobs:
             -storepass "$KIRIN_KEYSTORE_PASSWORD" \
             -alias "$KIRIN_KEY_ALIAS" >/dev/null
 
-      - name: Test playback and YouTube recovery, then build signed Release APKs
+      - name: Test Bilibili plugin and interrupted transfer recovery
+        if: ${{ steps.version.outputs.metadata_only != 'true' }}
+        run: |
+          python -m pip install yt-dlp==2026.8.19
+          ffmpeg -version
+          ffprobe -version
+          PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -p 'test_bilibili_recovery.py' -v
+
+      - name: Test download recovery and playback, then build signed Release APKs
         if: ${{ steps.version.outputs.metadata_only != 'true' }}
         run: |
           ./gradlew -Pandroid.onlyEnableUnitTestForTheTestedBuildType=false \
@@ -548,6 +556,9 @@ jobs:
             --tests com.junkfood.seal.util.ExtractorArgumentsTest \
             --tests com.junkfood.seal.util.CompletedMediaFilesTest \
             --tests com.junkfood.seal.util.LocalFileIntentsTest \
+            --tests com.junkfood.seal.util.BilibiliRequestRecoveryTest \
+            --tests com.junkfood.seal.download.TransferProgressTest \
+            --tests com.junkfood.seal.util.DownloadLogStoreTest \
             --stacktrace --no-daemon --no-configuration-cache
           ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 

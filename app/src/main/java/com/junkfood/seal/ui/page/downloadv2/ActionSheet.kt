@@ -274,6 +274,9 @@ fun SheetContent(
     onActionPost: (Task, UiAction) -> Unit,
 ) {
 
+    var showLog by remember { mutableStateOf(false) }
+    if (showLog) DownloadLogDialog(task.id) { showLog = false }
+
     LazyColumn {
         item {
             Title(
@@ -298,6 +301,8 @@ fun SheetContent(
                 )
             }
         }
+
+        item { DownloadLogButton { showLog = true } }
 
         item { ActionSheetInfo(task = task, viewState = viewState) }
     }

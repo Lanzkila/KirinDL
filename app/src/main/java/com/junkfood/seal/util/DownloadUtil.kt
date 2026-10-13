@@ -75,6 +75,28 @@ object DownloadUtil {
         YoutubeDL.getInstance().execute(retryRequest, processId, callback)
     }
 
+    private fun executeDownloadWithRecovery(
+        url: String,
+        request: YoutubeDLRequest,
+        processId: String,
+        callback: ((Float, Long, String) -> Unit)?,
+        cancellationCheck: () -> Unit,
+    ): YoutubeDLResponse {
+        if (!BilibiliRequestRecovery.handles(url)) {
+            return executeWithYouTubeRecovery(url, request, processId, callback, cancellationCheck)
+        }
+        ExtractorArguments.merge(request, EXTRACTOR_ARGS.getString())
+        return BilibiliRequestRecovery.execute(
+            url, request, BilibiliPlugin.install(context), cancellationCheck,
+            onRetry = { callback?.invoke(-1f, -1L, it) },
+        ) { retryRequest, observe ->
+            YoutubeDL.getInstance().execute(retryRequest, processId) { progress, eta, text ->
+                observe(text)
+                callback?.invoke(progress, eta, text)
+            }
+        }
+    }
+
     /** Explain Youtube's actual authentication challenge without hiding yt-dlp's error. */
     private fun explainYouTubeVerification(
         url: String,
@@ -1394,7 +1416,7 @@ object DownloadUtil {
                 }
                 .runCatching {
                     val dlStartTime = System.currentTimeMillis()
-                    executeWithYouTubeRecovery(
+                    executeDownloadWithRecovery(
                         url = url,
                         request = this,
                         processId = taskId,

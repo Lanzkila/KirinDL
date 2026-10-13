@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.junkfood.seal.R
 import com.junkfood.seal.download.Task
+import com.junkfood.seal.download.TransferProgress
 import com.junkfood.seal.download.Task.DownloadState.Canceled
 import com.junkfood.seal.download.Task.DownloadState.Completed
 import com.junkfood.seal.download.Task.DownloadState.Error
@@ -445,38 +446,7 @@ private fun MediaCardTempPath(
 }
 
 private fun mediaTransferStage(progressText: String, isAudioTask: Boolean): String {
-    val markerPrefix = "__kirin_stage__"
-    if (progressText.startsWith(markerPrefix)) {
-        val stage =
-            progressText
-                .removePrefix(markerPrefix)
-                .substringBefore("|")
-                .lowercase()
-        return when (stage) {
-            "audio" -> "Audio"
-            "fragment" -> "Fragment"
-            "merge" -> "Merge"
-            "processing" -> "Processing"
-            "moving" -> "Moving"
-            "video" -> "Video"
-            else -> if (isAudioTask) "Audio" else "Video"
-        }
-    }
-
-    val text = progressText.lowercase()
-    return when {
-        "merger" in text || "merging format" in text || "merge" in text -> "Merge"
-        "fragment" in text || "frag " in text || "frag:" in text -> "Fragment"
-        "postprocess" in text ||
-            "post-process" in text ||
-            "remux" in text ||
-            "convert" in text ||
-            "extractaudio" in text ||
-            "ffmpeg" in text -> "Processing"
-        "moving" in text || "move file" in text -> "Moving"
-        isAudioTask -> "Audio"
-        else -> "Video"
-    }
+    return TransferProgress.stageLabel(progressText, isAudioTask)
 }
 
 @Composable

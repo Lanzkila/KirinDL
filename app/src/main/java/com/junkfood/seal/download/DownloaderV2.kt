@@ -26,6 +26,8 @@ import com.junkfood.seal.download.Task.RestartableAction.FetchInfo
 import com.junkfood.seal.download.Task.TypeInfo
 import com.junkfood.seal.download.Task.PauseReason
 import com.junkfood.seal.util.DownloadUtil
+import com.junkfood.seal.util.BilibiliRecoveryException
+import com.junkfood.seal.util.DownloadLogStore
 import com.junkfood.seal.util.isYouTubeVerificationError
 import com.junkfood.seal.util.DownloadUtil.withCurrentCookieSettings
 import com.junkfood.seal.util.FileUtil
@@ -169,7 +171,8 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
         private val NETWORK_ERROR_KEYWORDS = listOf(
             "Unable to connect", "Connection reset", "timed out", "connect timed out",
             "HTTP Error 5", "Network is unreachable", "nodename nor servname",
-            "Failed to establish", "RemoteDisconnected", "SSLError"
+            "Failed to establish", "RemoteDisconnected", "SSLError",
+            "Remote end closed connection", "Got EOF from the server", "IncompleteRead", "more expected"
         )
 
         // yt-dlp emits a progress line on essentially every stdout flush, which on a fast
@@ -184,102 +187,6 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
         // the main thread to service input in between updates.
         private const val PROGRESS_UI_UPDATE_THROTTLE_MS = 100L
         private const val PROGRESS_NOTIFICATION_THROTTLE_MS = 750L
-        private const val PROGRESS_STAGE_PREFIX = "__kirin_stage__"
-
-        /**
-         * yt-dlp may emit slightly out-of-order percentage callbacks while fragmented/DASH
-         * downloads are active. It can also legitimately reset to a low percentage when a
-         * second destination (usually the audio stream) starts. This guard keeps progress
-         * monotonic inside one transfer stream while still allowing an explicit stream reset.
-         */
-        private class ProgressGuard(private val audioOnly: Boolean) {
-            private var destinationCount = 0
-            private var lastProgress = -1f
-            private var stage = if (audioOnly) "audio" else "video"
-
-            data class Value(
-                val progress: Float,
-                val cleanText: String,
-                val stateText: String,
-            )
-
-            fun update(rawPercentage: Float, rawText: String): Value {
-                val cleanText =
-                    rawText
-                        .removePrefix("[download] ")
-                        .removePrefix("[download]")
-                        .trim()
-                val lower = rawText.lowercase()
-                val isDestination =
-                    lower.contains("[download] destination:") ||
-                        cleanText.startsWith("Destination:", ignoreCase = true)
-
-                if (isDestination) {
-                    destinationCount += 1
-                    stage =
-                        if (audioOnly) "audio"
-                        else if (destinationCount <= 1) "video"
-                        else "audio"
-                    lastProgress = -1f
-                } else {
-                    stage =
-                        when {
-                            lower.contains("[merger]") ||
-                                lower.contains("merging format") ||
-                                lower.contains(" merge") -> "merge"
-                            lower.contains("[extractaudio]") ||
-                                lower.contains("[videoconvertor]") ||
-                                lower.contains("[videoremuxer]") ||
-                                lower.contains("[metadata]") ||
-                                lower.contains("[embedsubtitle]") ||
-                                lower.contains("[embedthumbnail]") ||
-                                lower.contains("[fixup") ||
-                                lower.contains("ffmpeg") -> "processing"
-                            lower.contains("[hlsnative]") ||
-                                lower.contains("[dashsegments]") ||
-                                lower.contains("(frag ") ||
-                                lower.contains("fragment") -> "fragment"
-                            lower.contains("moving") || lower.contains("move file") -> "moving"
-                            else -> stage
-                        }
-                }
-
-                val rawProgress =
-                    if (rawPercentage.isFinite() && rawPercentage >= 0f) {
-                        (rawPercentage / 100f).coerceIn(0f, 1f)
-                    } else {
-                        -1f
-                    }
-
-                val progress =
-                    when {
-                        stage == "merge" || stage == "processing" || stage == "moving" -> -1f
-                        isDestination -> 0f
-                        rawProgress < 0f -> lastProgress
-                        lastProgress < 0f -> rawProgress
-                        // A completed first stream may be followed by a new stream without a
-                        // Destination line on some extractors. Permit only a clear hard reset.
-                        lastProgress >= 0.90f && rawProgress <= 0.15f -> {
-                            if (!audioOnly && destinationCount < 2) {
-                                destinationCount = 2
-                                stage = "audio"
-                            }
-                            rawProgress
-                        }
-                        else -> maxOf(lastProgress, rawProgress)
-                    }
-
-                if (progress >= 0f) {
-                    lastProgress = progress
-                }
-
-                return Value(
-                    progress = progress,
-                    cleanText = cleanText,
-                    stateText = "$PROGRESS_STAGE_PREFIX$stage|$cleanText",
-                )
-            }
-        }
     }
     private val snapshotFlow = snapshotFlow { taskStateMap.toMap() }
 
@@ -515,6 +422,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
     }
 
     private fun isNetworkError(throwable: Throwable): Boolean {
+        if (throwable is BilibiliRecoveryException) return false
         return throwable.message?.let { msg ->
             NETWORK_ERROR_KEYWORDS.any { msg.contains(it, ignoreCase = true) }
         } ?: false
@@ -618,6 +526,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         viewState = Task.ViewState.fromVideoInfo(it)
                     }
                     .onFailure { throwable ->
+                        DownloadLogStore.append(id, throwable.message ?: "Unknown transfer error")
                         if (throwable is YoutubeDL.CanceledException || throwable is CancellationException) {
                             return@onFailure
                         }
@@ -672,13 +581,18 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                 var lastUiUpdateAtMs = 0L
                 var lastNotifiedAtMs = 0L
                 var lastNotifiedProgress = -1
-                val progressGuard = ProgressGuard(preferences.extractAudio)
+                val progressGuard = TransferProgress(
+                    preferences.extractAudio,
+                    info?.formats.orEmpty().filter { it.isAudioOnly() }.mapNotNull { it.formatId }.toSet(),
+                )
+                DownloadLogStore.append(id, "Starting transfer: $url")
                 DownloadUtil.downloadVideo(
                         videoInfo = info,
                         taskId = id,
                         downloadPreferences = preferences,
                         cancellationCheck = { ensureActive() },
                         progressCallback = { progressPercentage, _, text ->
+                            DownloadLogStore.append(id, text)
                             val guarded = progressGuard.update(progressPercentage, text)
                             val progress = guarded.progress
                             val progressInt =
@@ -724,6 +638,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         },
                     )
                     .onSuccess { pathList ->
+                        DownloadLogStore.append(id, "Completed: media processing succeeded")
                         retryCountMap.remove(id)  // clear retry counter on success
                         downloadState = Completed(pathList.firstOrNull())
 
@@ -754,6 +669,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         }
                     }
                     .onFailure { throwable ->
+                        DownloadLogStore.append(id, throwable.message ?: "Unknown transfer error")
                         if (throwable is YoutubeDL.CanceledException || throwable is CancellationException) {
                             return@onFailure
                         }
@@ -957,11 +873,15 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                 var lastUiUpdateAtMs = 0L
                 var lastNotifiedAtMs = 0L
                 var lastNotifiedProgress = -1
-                val progressGuard = ProgressGuard(preferences.extractAudio)
+                val progressGuard = TransferProgress(
+                    preferences.extractAudio,
+                    info?.formats.orEmpty().filter { it.isAudioOnly() }.mapNotNull { it.formatId }.toSet(),
+                )
                 DownloadUtil.executeCustomCommandTask(url, id, template, preferences) {
                         progressPercentage,
                         _,
                         text ->
+                        DownloadLogStore.append(id, text)
                         val guarded = progressGuard.update(progressPercentage, text)
                         val progress = guarded.progress
                         val progressInt =
@@ -994,6 +914,7 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         }
                     }
                     .onFailure { throwable ->
+                        DownloadLogStore.append(id, throwable.message ?: "Unknown transfer error")
                         if (throwable is YoutubeDL.CanceledException) {
                             return@onFailure
                         }

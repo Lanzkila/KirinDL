@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import com.junkfood.seal.database.objects.DownloadedVideoInfo
 import com.junkfood.seal.download.DownloaderV2
 import com.junkfood.seal.download.Task
+import com.junkfood.seal.download.TransferProgress
 import com.junkfood.seal.ui.component.BackButton
 import com.junkfood.seal.util.DatabaseUtil
 import com.junkfood.seal.util.FileUtil
@@ -628,6 +629,10 @@ private fun CenterRecordCard(
     onMediaAction: (String) -> Unit,
     onOpenMediaFile: () -> Unit,
 ) {
+    var showLog by remember { mutableStateOf(false) }
+    if (showLog && record.task != null) {
+        DownloadLogDialog(record.task.id) { showLog = false }
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -714,8 +719,8 @@ private fun CenterRecordCard(
                         }
                         if (downloadState.progressText.isNotBlank()) {
                             Text(
-                                downloadState.progressText,
-                                maxLines = 1,
+                                TransferProgress.cleanText(downloadState.progressText),
+                                maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -747,6 +752,7 @@ private fun CenterRecordCard(
                             }
                         else -> Unit
                     }
+                    TextButton(onClick = { showLog = true }) { Text("Log") }
                     TextButton(onClick = onOpenMediaQueue) { Text("Open Queue") }
                 }
             }
@@ -782,26 +788,7 @@ private fun ytDlpExperimentStage(
     task: Task?,
     state: Task.DownloadState.Running,
 ): String {
-    val text = state.progressText.lowercase()
-    return when {
-        "merger" in text ||
-            "merging format" in text ||
-            "merge" in text -> "Merge"
-
-        "fragment" in text ||
-            "frag " in text ||
-            "frag:" in text -> "Fragment"
-
-        "postprocess" in text ||
-            "post-process" in text ||
-            "remux" in text ||
-            "convert" in text ||
-            "extractaudio" in text ||
-            "ffmpeg" in text -> "Processing"
-
-        task?.preferences?.extractAudio == true -> "Audio"
-        else -> "Video"
-    }
+    return TransferProgress.stageLabel(state.progressText, task?.preferences?.extractAudio == true)
 }
 
 private fun centerStatus(state: Task.DownloadState): CenterStatus =

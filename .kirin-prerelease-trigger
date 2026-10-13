@@ -1,9 +1,9 @@
 KirinDL Pre-release trigger.
 Update this file only when explicitly publishing the prepared pre-release.
-Current prepared source: v3.2.0.10
-Publish requested: 2026-10-08
+Current prepared source: v3.2.0.11
+Publish requested: 2026-10-13
 Channel: Pre-release only — do not promote Stable.
-Purpose: Remove More Tools from About and restore the v3.2.0.4 layout
-with separate Stable/Latest and Pre-release release-notes cards.
-Validation: Preserve the 35 existing playback, media selection, YouTube,
-cookie, and extractor-argument tests before signed APK assembly and verification.
+Purpose: Recover interrupted Bilibili streams using API-provided backup URLs,
+show the correct transfer stage, and expose recent task logs while active.
+Validation: Run interrupted-transfer and merge regressions plus Android tests
+before signed APK assembly and verification. Real-device CDN testing pending.

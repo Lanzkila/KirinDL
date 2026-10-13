@@ -18,3 +18,5 @@ local.properties
 /keystore.properties
 .kotlin
 .kilo/kilo.jsonc
+__pycache__/
+*.pyc
