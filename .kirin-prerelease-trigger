@@ -7,3 +7,4 @@ Purpose: Recover interrupted Bilibili streams using API-provided backup URLs,
 show the correct transfer stage, and expose recent task logs while active.
 Validation: Run interrupted-transfer and merge regressions plus Android tests
 before signed APK assembly and verification. Real-device CDN testing pending.
+Build attempt: 2 — install FFmpeg on the test runner when absent.

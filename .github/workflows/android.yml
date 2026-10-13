@@ -542,6 +542,10 @@ jobs:
         if: ${{ steps.version.outputs.metadata_only != 'true' }}
         run: |
           python -m pip install yt-dlp==2026.8.19
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
           ffmpeg -version
           ffprobe -version
           PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -p 'test_bilibili_recovery.py' -v
