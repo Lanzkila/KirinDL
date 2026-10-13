@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(ci): install FFmpeg for Bilibili transfer regression tests (`59732610`)
 - fix(bilibili): recover interrupted streams through API-provided mirrors (`793e21e0`)
 
 ## 2026-10-08
