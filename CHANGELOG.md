@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(custom): pair video with audio and preserve container preferences (`7448b2fc`)
 - docs(release): align v3.2.0.11 notes with Latest and verified tests (`4a4e0116`)
 
 ## 2026-10-13
