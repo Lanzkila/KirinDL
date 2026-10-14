@@ -4,6 +4,7 @@ import androidx.annotation.CheckResult
 import com.junkfood.seal.download.Task.DownloadState.Idle
 import com.junkfood.seal.download.Task.DownloadState.ReadyWithInfo
 import com.junkfood.seal.util.DownloadUtil.DownloadPreferences
+import com.junkfood.seal.util.CustomFormatSelection
 import com.junkfood.seal.util.Format
 import com.junkfood.seal.util.PlaylistResult
 import com.junkfood.seal.util.VideoClip
@@ -25,9 +26,15 @@ object TaskFactory {
         selectedSubtitles: List<String>,
         selectedAutoCaptions: List<String>,
         overridePreferences: DownloadPreferences? = null,
+        includeAudio: Boolean = true,
     ): TaskWithState {
+        val selection = CustomFormatSelection.resolve(formatList, videoInfo, includeAudio = includeAudio)
+        require(!selection.missingAudio) {
+            "No audio track is available. Choose Without audio to download a silent video."
+        }
+        val selectedFormats = selection.formats
         val fileSize =
-            formatList.fold(.0) { acc, format ->
+            selectedFormats.fold(.0) { acc, format ->
                 acc + (format.fileSize ?: format.fileSizeApprox ?: .0)
             }
 
@@ -36,23 +43,18 @@ object TaskFactory {
                 .run { if (fileSize != .0) copy(fileSize = fileSize) else this }
                 .run { if (newTitle.isNotEmpty()) copy(title = newTitle) else this }
 
-        val audioOnlyFormats = formatList.filter { it.isAudioOnly() }
-        val videoFormats = formatList.filter { it.containsVideo() }
+        val audioOnlyFormats = selectedFormats.filter { it.isAudioOnly() }
+        val videoFormats = selectedFormats.filter { it.containsVideo() }
         val audioOnly = audioOnlyFormats.isNotEmpty() && videoFormats.isEmpty()
         val mergeAudioStream = audioOnlyFormats.size > 1
-        val formatId = formatList.joinToString(separator = "+") { it.formatId.toString() }
+        val formatId = selectedFormats.joinToString(separator = "+") { it.formatId.toString() }
         
-        // Check if we're merging video and audio (common for high-quality downloads)
-        val isMergingVideoAudio = videoFormats.isNotEmpty() && audioOnlyFormats.isNotEmpty()
-
         val subtitleLanguage =
             (selectedSubtitles + selectedAutoCaptions).joinToString(separator = ",")
 
         val preferences =
             (overridePreferences ?: DownloadPreferences.createFromPreferences())
                 .run {
-                    val shouldUseMp4 = if (isMergingVideoAudio) false else this.mergeToMkv
-                    
                     copy(
                         formatIdString = formatId,
                         videoClips = videoClips,
@@ -60,7 +62,6 @@ object TaskFactory {
                         newTitle = newTitle,
                         mergeAudioStream = mergeAudioStream,
                         extractAudio = extractAudio || audioOnly,
-                        mergeToMkv = shouldUseMp4,
                     )
                 }
                 .run {

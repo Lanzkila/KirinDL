@@ -563,6 +563,8 @@ jobs:
             --tests com.junkfood.seal.util.BilibiliRequestRecoveryTest \
             --tests com.junkfood.seal.download.TransferProgressTest \
             --tests com.junkfood.seal.util.DownloadLogStoreTest \
+            --tests com.junkfood.seal.util.CustomFormatSelectionTest \
+            --tests com.junkfood.seal.download.CustomDownloadTaskTest \
             --stacktrace --no-daemon --no-configuration-cache
           ./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
 

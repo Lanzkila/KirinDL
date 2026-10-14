@@ -120,6 +120,7 @@ import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FORMAT_MP4_ONLY
 import com.junkfood.seal.util.Format
 import com.junkfood.seal.util.FormatValidator
+import com.junkfood.seal.util.CustomFormatSelection
 import com.junkfood.seal.util.MERGE_MULTI_AUDIO_STREAM
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getString
@@ -270,6 +271,7 @@ private data class FormatConfig(
     val selectedSubtitles: List<String>,
     val selectedAutoCaptions: List<String>,
     val downloadDocs: Boolean = false,
+    val includeAudio: Boolean = true,
 )
 
 @Composable
@@ -331,6 +333,7 @@ fun FormatPage(
                     selectedSubtitles = selectedSubtitles,
                     selectedAutoCaptions = selectedAutoCaptions,
                     overridePreferences = null,
+                    includeAudio = includeAudio,
                 )
                 downloader.enqueue(taskWithState)
 
@@ -543,7 +546,9 @@ private fun FormatPageImpl(
     val videoAudioFormats = validatedVideoAudioFormats
     
     // Get the best audio format to auto-merge with video-only formats
-    val bestAudioFormat = remember(audioOnlyFormats) { audioOnlyFormats.firstOrNull() }
+    val bestAudioFormat = remember(audioOnlyFormats, videoInfo) {
+        CustomFormatSelection.preferredAudio(videoInfo, audioOnlyFormats)
+    }
     
     // Create merged video formats: video-only + best audio
     // This allows high-quality videos (720p, 1080p, 4K) to appear in Video section.
@@ -617,6 +622,7 @@ private fun FormatPageImpl(
     var selectedVideoAudioFormat by remember { mutableIntStateOf(NOT_SELECTED) }
     var selectedVideoOnlyFormat by remember { mutableIntStateOf(NOT_SELECTED) }
     val selectedAudioOnlyFormats = remember { mutableStateListOf<Int>() }
+    var includeAudio by remember(videoInfo.id, videoInfo.originalUrl) { mutableStateOf(true) }
     
     // Clear invalid selections when validated lists change
     LaunchedEffect(allVideoFormats.size, audioOnlyFormats.size, videoOnlyFormats.size) {
@@ -683,7 +689,7 @@ private fun FormatPageImpl(
     // after LaunchedEffect finishes validation. Without keys, the lambda captured the
     // initial empty lists and formatList remained empty forever — causing yt-dlp to
     // ignore the user's selection and fall back to its own default quality.
-    val formatList: List<Format> by remember(
+    val selectedFormats: List<Format> by remember(
         allVideoFormats,
         mergedVideoFormats,
         videoOnlyFormats,
@@ -776,6 +782,13 @@ private fun FormatPageImpl(
         }
     }
 
+    val resolvedSelection = remember(selectedFormats, videoInfo, audioOnlyFormats, includeAudio) {
+        CustomFormatSelection.resolve(selectedFormats, videoInfo, audioOnlyFormats, includeAudio)
+    }
+    val formatList = resolvedSelection.formats
+    val hasVideo = formatList.any { it.containsVideo() }
+    val isMergingSelection = hasVideo && formatList.any { it.isAudioOnly() && it.containsAudio() }
+
     val isFabExpanded by remember { derivedStateOf { lazyGridState.firstVisibleItemIndex > 0 } }
 
     val selectedSubtitles = remember {
@@ -817,7 +830,8 @@ private fun FormatPageImpl(
                 selectedVideoOnlyFormat != NOT_SELECTED || 
                 selectedAudioOnlyFormats.isNotEmpty()
             val isNetworkAvailable = FormatValidator.isNetworkAvailable()
-            val canDownload = isFormatSelected && isNetworkAvailable && !isValidatingFormats
+            val canDownload = isFormatSelected && formatList.isNotEmpty() &&
+                !resolvedSelection.missingAudio && isNetworkAvailable && !isValidatingFormats
 
             AnimatedVisibility(
                 visible = isFormatSelected,
@@ -840,6 +854,7 @@ private fun FormatPageImpl(
                                     newTitle = videoTitle,
                                     selectedSubtitles = selectedSubtitles,
                                     selectedAutoCaptions = selectedAutoCaptions,
+                                    includeAudio = includeAudio,
                                 )
                             )
                         }
@@ -859,7 +874,7 @@ private fun FormatPageImpl(
                         Text(
                             if (!isNetworkAvailable) "No Network"
                             else if (isValidatingFormats) "Validating..."
-                            else if (selectedVideoOnlyFormat != NOT_SELECTED && selectedAudioOnlyFormats.isNotEmpty())
+                            else if (isMergingSelection)
                                 stringResource(R.string.download_and_merge)
                             else stringResource(R.string.start_download)
                         )
@@ -937,7 +952,6 @@ private fun FormatPageImpl(
                         selectedVideoAudioFormat != NOT_SELECTED ||
                         selectedVideoOnlyFormat != NOT_SELECTED ||
                         selectedAudioOnlyFormats.isNotEmpty()
-                val isMerging = selectedVideoOnlyFormat != NOT_SELECTED && selectedAudioOnlyFormats.isNotEmpty()
 
                 AnimatedVisibility(
                     visible = hasAnySelection,
@@ -968,9 +982,29 @@ private fun FormatPageImpl(
                         resolutionOrLabel = resolutionText ?: if (audioOnly) stringResource(R.string.audio) else stringResource(R.string.video),
                         formatExt = extText,
                         sizeText = totalSizeText,
-                        isMerging = isMerging,
-                        audioTrackCount = selectedAudioOnlyFormats.size,
+                        isMerging = isMergingSelection,
+                        audioTrackCount = formatList.count { it.containsAudio() },
                     )
+                }
+            }
+
+            if (!audioOnly && selectedFormats.any { it.containsVideo() && it.isVideoOnly() }) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+                        VideoFilterChip(
+                            selected = includeAudio,
+                            label = stringResource(R.string.custom_include_audio),
+                            onClick = {
+                                includeAudio = !includeAudio
+                                if (!includeAudio) selectedAudioOnlyFormats.clear()
+                            },
+                        )
+                        if (resolvedSelection.missingAudio) {
+                            Text(stringResource(R.string.custom_audio_unavailable),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
             }
 
@@ -1137,6 +1171,7 @@ private fun FormatPageImpl(
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     val onClick = {
+                        includeAudio = true
                         isSuggestedFormatSelected = true
                         selectedAudioOnlyFormats.clear()
                         selectedVideoAudioFormat = NOT_SELECTED
@@ -1261,6 +1296,7 @@ private fun FormatPageImpl(
                         selectedVideoAudioFormat =
                             if (selectedVideoAudioFormat == index) NOT_SELECTED
                             else {
+                                includeAudio = true
                                 selectedAudioOnlyFormats.clear()
                                 selectedVideoOnlyFormat = NOT_SELECTED
                                 isSuggestedFormatSelected = false
@@ -1314,6 +1350,13 @@ private fun FormatPageImpl(
                         if (selectedAudioOnlyFormats.contains(index)) {
                             selectedAudioOnlyFormats.remove(index)
                         } else {
+                            // Replacing the auto-selected audio must keep the chosen
+                            // video, including a video picked in Suggested/Video.
+                            formatList.firstOrNull { it.containsVideo() && it.isVideoOnly() }?.let { video ->
+                                videoOnlyFormats.indexOfFirst { it.formatId == video.formatId }
+                                    .takeIf { it >= 0 }?.let { selectedVideoOnlyFormat = it }
+                            }
+                            includeAudio = true
                             // Force single audio when merging with a video-only format;
                             // otherwise respect the multi-audio-stream preference.
                             if (!mergeAudioStream || selectedVideoOnlyFormat != NOT_SELECTED) {
@@ -1388,8 +1431,7 @@ private fun FormatPageImpl(
 
             if (!audioOnly && audioOnlyFormats.isNotEmpty() && videoOnlyFormats.isNotEmpty())
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    val isMergeActive = selectedVideoOnlyFormat != NOT_SELECTED &&
-                        selectedAudioOnlyFormats.isNotEmpty()
+                    val isMergeActive = isMergingSelection
                     PreferenceInfo(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
                         text = if (isMergeActive)
@@ -1751,10 +1793,13 @@ private fun SelectionSummaryCard(
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                val audioLabel = stringResource(
+                    if (audioTrackCount > 0) R.string.audio else R.string.custom_without_audio)
                 val details =
                     buildList {
                             formatExt?.takeIf { it.isNotBlank() }?.let { add(it) }
                             add(sizeText)
+                            add(audioLabel)
                             if (isMerging) add("merged" + if (audioTrackCount > 1) " ×$audioTrackCount" else "")
                         }
                         .joinToString(separator = " · ")
