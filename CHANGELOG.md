@@ -3,6 +3,12 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
+## 2026-10-18
+
+### ✦ Recent changes
+
+- docs(i18n): refresh KirinDL translated READMEs and add Malay/index (`cbb14b6b`)
+
 ## 2026-10-14
 
 ### ✦ Recent changes
