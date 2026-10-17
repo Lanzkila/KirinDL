@@ -1,118 +1,72 @@
 <div align="center">
 
-<img width="" src="fastlane/metadata/android/en-US/images/icon.png"  width=160 height=160  align="center">
+[<img src="../app/src/main/res/drawable/splash_logo.png" width="142" alt="KirinDL logo">](../README.md)
 
 # KirinDL
 
+### Завантажувач відео, аудіо та галерей для Android
 
-### Завантажувач відео та аудіо для Android
+[![Release](https://img.shields.io/github/v/release/Lanzkila/KirinDL?style=flat-square&label=KirinDL)](https://github.com/Lanzkila/KirinDL/releases)
+[![Downloads](https://img.shields.io/github/downloads/Lanzkila/KirinDL/total?style=flat-square&label=Downloads)](https://github.com/Lanzkila/KirinDL/releases)
+[![License](https://img.shields.io/github/license/Lanzkila/KirinDL?style=flat-square)](../LICENSE)
 
-
-
-
-<p align="center">
-<a href="https://github.com/JunkFood02/Seal/blob/main/README.md">English</a>
-&nbsp;&nbsp;| &nbsp;&nbsp;
-Українська
-</p>
-
-
-[![F-Droid](https://img.shields.io/f-droid/v/com.junkfood.seal?color=b4eb12&label=F-Droid&logo=fdroid&logoColor=1f78d2)](https://f-droid.org/en/packages/com.junkfood.seal)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/JunkFood02/Seal?color=black&label=Stable&logo=github)](https://github.com/JunkFood02/Seal/releases/latest/)
-[![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/JunkFood02/Seal?include_prereleases&label=Preview&logo=Github)](https://github.com/JunkFood02/Seal/releases/)
-[![Keep a Changelog](https://img.shields.io/badge/Changelog-lightgray?style=flat&color=gray&logo=keep-a-changelog)](https://github.com/JunkFood02/Seal/blob/main/CHANGELOG.md)
-[![GitHub all releases](https://img.shields.io/github/downloads/JunkFood02/Seal/total?label=Downloads&logo=github)](https://github.com/JunkFood02/Seal/releases/)
-[![GitHub Repo stars](https://img.shields.io/github/stars/JunkFood02/Seal?color=informational&label=Stars)](https://github.com/JunkFood02/Seal/stargazers)
-[![Supported Sites](https://img.shields.io/badge/Supported-Sites-9cf.svg?style=flat)](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
-[![Telegram Channel](https://img.shields.io/badge/Telegram-Seal-blue?style=flat&logo=telegram)](https://t.me/seal_app)
-[![Matrix Space](https://img.shields.io/badge/Matrix-Seal-Black?style=flat&color=black&logo=matrix)](https://matrix.to/#/#seal-space:matrix.org)
-
-
+[English](../README.md) · [All languages](README.md) · **Українська**
 
 </div>
 
-## 📱 Скріншоти
+---
 
-<div>
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/5.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/6.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/7.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/8.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/9.jpg" width="30%" />
-</div>
+## Можливості
 
-<br>
+- Завантаження відео й аудіо із сайтів, які підтримує [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+- Завантаження зображень і галерей за допомогою [gallery-dl](https://github.com/mikf/gallery-dl).
+- Плейлисти, пакетні завантаження, черга та історія.
+- Підтримка субтитрів, метаданих, мініатюр і SponsorBlock.
+- Обробка через FFmpeg, aria2 та власні команди yt-dlp.
+- Попередній перегляд і перевірка екстракторів gallery-dl, cookie та налаштування JSON.
+- Інтеграція Gallery DL з Global Feed і Kirin Search.
+- Фонове завантаження з індикацією етапів відео, аудіо, фрагментів, об’єднання та обробки.
 
-## 📖 Особливості
+## Оновлення рушіїв
 
-- Завантажуйте відео та аудіо файли з сайтів, які підтримуються yt-dlp (тобто youtube-dl)
+**yt-dlp** (Stable і Nightly) та **gallery-dl** з Codeberg можна оновлювати незалежно від випусків APK.
 
-- Додавайте метадані і прев'ю у завантажені аудіо файли завдяки mutagen
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases)
+- [gallery-dl](https://codeberg.org/mikf/gallery-dl/releases)
 
-- Завантажуйте усі відео з плейлиста в один клік
+## Завантаження застосунку
 
-- Використовуйте вбудований aria2c як завантажувач для всіх своїх завантажень
+Офіційний APK доступний у [випусках KirinDL](https://github.com/Lanzkila/KirinDL/releases). Є збірки Universal, arm64-v8a, armeabi-v7a, x86 та x86_64 і контрольні суми SHA-256. Пакет: `com.kirin.downloader`.
 
-- Додавайте субтитри у завантажені відео
+## Збирання з вихідного коду
 
-- Використовуйте власні команди yt-dlp завдяки шаблонам
+Щоб зібрати Debug або Release з вихідного коду:
 
-- Переглядайте та керуйте завантаженнями у застосунку
+```bash
+./gradlew assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache
+./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
+```
 
-- Простий та приємний у використанні
+## Примітки
 
-- Стилізований під Material Design 3 інтерфейс з динамічною колірною схемою
+Підтримка сайтів залежить від рушіїв завантаження. Деякі сайти потребують входу, cookie чи новішого рушія. Завантажуйте лише вміст, який маєте право зберігати.
 
-- Круте: Інтерфейс та логіка написані на Kotlin. Один актівіті, без фрагментів, лише composable destinations.
+## Походження та подяки
 
+KirinDL походить від **Seal → SealPlus → KirinDL** і використовує yt-dlp, gallery-dl, youtubedl-android, aria2 та FFmpeg. Авторські права, ліцензії й атрибуції початкових проєктів збережено.
 
+- [Seal](https://github.com/JunkFood02/Seal)
+- [SealPlus](https://github.com/MaheshTechnicals/Sealplus)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [gallery-dl](https://codeberg.org/mikf/gallery-dl)
+- [youtubedl-android](https://github.com/yausername/youtubedl-android)
+- [aria2](https://github.com/aria2/aria2)
+- [FFmpeg](https://ffmpeg.org/)
 
+## Ліцензія
 
-## ⬇️ Завантажити
+KirinDL поширюється за ліцензією [GNU GPL-3.0](../LICENSE).
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-     alt="Завантажте з F-Droid"
-     height="70">](https://f-droid.org/packages/com.junkfood.seal/)
+---
 
-Або завантажте останні APK на сторінці [з релізами.](https://github.com/JunkFood02/Seal/releases/)
-
-
-
-## 🤝 Допомога
-
-Співпраця вітається!
-
-Допоможіть перекласти Seal на [Hosted Weblate](https://hosted.weblate.org/projects/seal/).
-
-[![Translate status](https://hosted.weblate.org/widgets/seal/-/multi-auto.svg)](https://hosted.weblate.org/engage/seal/)
-
->**Нотатка**  
-> Щоб надіслати звіти про помилки, запити на додавання нових функцій, запитання чи будь-які інші ідеї щодо покращення, спершу прочитайте [CONTRIBUTING.md](https://github.com/JunkFood02/Seal/blob/main/CONTRIBUTING.md) за інструкціями та вказівками.
-
-## ⭐️ Історія зірочок
-
-[![Star History Chart](https://api.star-history.com/svg?repos=JunkFood02/Seal&type=Timeline)](https://star-history.com/#JunkFood02/Seal&Timeline)
-
-## 🧱 Подяки
-
-Seal - це простий інтерфейс для [yt-dlp](https://github.com/yt-dlp/yt-dlp), який був створений на базі [youtubedl-android](https://github.com/yausername/youtubedl-android)
-
-Деякий код та елементи інтерфейсу взяті з [Read You](https://github.com/Ashinch/ReadYou) та [Music You](https://github.com/Kyant0/MusicYou)
-
-[dvd](https://github.com/yausername/dvd)
-
-[Material color utilities](https://github.com/material-foundation/material-color-utilities)
-
-## 📃 Ліцензія
-
-[![GitHub](https://img.shields.io/github/license/JunkFood02/Seal?style=for-the-badge)](https://github.com/JunkFood02/Seal/blob/main/LICENSE)
-
-<div align="right">
-<table><td>
-<a href="#start-of-content">👆 Прокрутити вгору</a>
-</td></table>
-</div>
+[← KirinDL](../README.md) · [Translations](README.md) · [Releases](https://github.com/Lanzkila/KirinDL/releases)

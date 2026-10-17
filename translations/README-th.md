@@ -1,126 +1,72 @@
 <div align="center">
-<p align="center"> 
-	<img src="fastlane/metadata/android/en-US/images/icon.png" width=160 height=160 >
-</p>
-<h1 align="center">
-KirinDL
-</h1>
-</div>
 
+[<img src="../app/src/main/res/drawable/splash_logo.png" width="142" alt="KirinDL logo">](../README.md)
 
-[![F-Droid](https://img.shields.io/f-droid/v/com.junkfood.seal.svg?logo=F-Droid&color=green&style=flat-square)](https://f-droid.org/en/packages/com.junkfood.seal)
-[![Releases](https://img.shields.io/github/release/JunkFood02/Seal.svg?logo=github&color=171515&label=stable&style=flat-square)](https://github.com/JunkFood02/Seal/releases/latest)
-[![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/JunkFood02/Seal?include_prereleases&label=preview&logo=github)](https://github.com/JunkFood02/Seal/releases)
-[![GitHub all releases](https://img.shields.io/github/downloads/JunkFood02/Seal/total?style=flat-square)](https://github.com/JunkFood02/Seal/releases)
-[![GitHub Repo stars](https://img.shields.io/github/stars/JunkFood02/Seal?style=flat-square)](https://github.com/JunkFood02/Seal/stargazers)
-[![Supported Sites](https://img.shields.io/badge/Supported-Sites-9cf.svg?style=flat-square)](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
-[![Telegram Channel](https://img.shields.io/badge/Telegram-Seal-blue?style=flat-square&logo=telegram)](https://t.me/seal_app)
-[![Matrix Space](https://img.shields.io/badge/Matrix-Seal-Black?style=flat-square&color=black&logo=matrix)](https://matrix.to/#/#seal-space:matrix.org)
+# KirinDL
 
+### แอปดาวน์โหลดวิดีโอ เสียง และแกลเลอรีสำหรับ Android
 
-<p align="center">
-แอพดาวน์โหลดวิดิโอสำหรับ Android
-</p>
-<p align="center">
-<a href="https://github.com/JunkFood02/Seal/blob/main/README.md">English</a>
-&nbsp;&nbsp;| &nbsp;&nbsp;
-ภาษาไทย
-</p>
+[![Release](https://img.shields.io/github/v/release/Lanzkila/KirinDL?style=flat-square&label=KirinDL)](https://github.com/Lanzkila/KirinDL/releases)
+[![Downloads](https://img.shields.io/github/downloads/Lanzkila/KirinDL/total?style=flat-square&label=Downloads)](https://github.com/Lanzkila/KirinDL/releases)
+[![License](https://img.shields.io/github/license/Lanzkila/KirinDL?style=flat-square)](../LICENSE)
+
+[English](../README.md) · [All languages](README.md) · **ภาษาไทย**
 
 </div>
 
-## 📱 Screenshots
+---
 
-<div>
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/5.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/6.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/7.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/8.jpg" width="30%" />
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/9.jpg" width="30%" />
-</div>
+## คุณสมบัติ
 
+- ดาวน์โหลดวิดีโอและเสียงจากเว็บไซต์ที่ [yt-dlp](https://github.com/yt-dlp/yt-dlp) รองรับ
+- ดาวน์โหลดรูปภาพและแกลเลอรีด้วย [gallery-dl](https://github.com/mikf/gallery-dl)
+- รองรับเพลย์ลิสต์ การดาวน์โหลดหลายรายการ คิว และประวัติ
+- รองรับคำบรรยาย ข้อมูลเมตา ภาพปก และ SponsorBlock
+- ประมวลผลด้วย FFmpeg ใช้ aria2 และคำสั่ง yt-dlp แบบกำหนดเอง
+- ดูตัวอย่างและตรวจสอบตัวแยกข้อมูล gallery-dl รองรับคุกกี้และการตั้งค่า JSON
+- เชื่อมต่อ Gallery DL กับ Global Feed และ Kirin Search
+- ดาวน์โหลดเบื้องหลังพร้อมแสดงความคืบหน้าของวิดีโอ เสียง ชิ้นส่วน การรวมไฟล์ และการประมวลผล
 
+## การอัปเดตเอนจิน
 
-<br>
+สามารถอัปเดต **yt-dlp** (Stable และ Nightly) และ **gallery-dl** จาก Codeberg แยกจากการอัปเดต APK ได้
 
-## 📖 คุณสมบัติ
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases)
+- [gallery-dl](https://codeberg.org/mikf/gallery-dl/releases)
 
- - ดาวน์โหลดวิดีโอและไฟล์เสียงจากแพลตฟอร์มวิดีโอที่รองรับโดย [yt-dlp](https://github.com/yt-dlp/yt-dlp) (เดิมคือ youtube-dl)
+## ดาวน์โหลดแอป
 
- - ฝังข้อมูลเมตาและภาพขนาดย่อของวิดีโอลงในไฟล์เสียงที่แยกออกมาซึ่งรองรับโดย [mutagen](https://github.com/quodlibet/mutagen)
+ดาวน์โหลด APK อย่างเป็นทางการจาก [KirinDL Releases](https://github.com/Lanzkila/KirinDL/releases) มีรุ่น Universal, arm64-v8a, armeabi-v7a, x86 และ x86_64 พร้อมค่า SHA-256 ชื่อแพ็กเกจ: `com.kirin.downloader`
 
- - ดาวน์โหลดวิดีโอทั้งหมดในเพลย์ลิสต์ได้ด้วยคลิกเดียว
+## สร้างจากซอร์สโค้ด
 
- - ใช้ [aria2c](https://github.com/aria2/aria2) แบบฝังเป็นตัวดาวน์โหลดภายนอกสำหรับการดาวน์โหลดทั้งหมดของคุณ
+สำหรับสร้าง Debug หรือ Release จากซอร์สโค้ด:
 
- - ฝังคำบรรยายลงในวิดีโอที่ดาวน์โหลด
+```bash
+./gradlew assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache
+./gradlew assembleGenericRelease --stacktrace --no-daemon --no-configuration-cache
+```
 
- - ดำเนินการคำสั่ง yt-dlp ที่กำหนดเองด้วยเทมเพลต
+## หมายเหตุ
 
- - จัดการการดาวน์โหลดในแอปและเทมเพลตคำสั่งที่กำหนดเอง
+การรองรับเว็บไซต์ขึ้นอยู่กับเอนจินดาวน์โหลด บางเว็บไซต์ต้องเข้าสู่ระบบ ใช้คุกกี้ หรืออัปเดตเอนจิน ดาวน์โหลดเฉพาะเนื้อหาที่คุณมีสิทธิ์บันทึกเท่านั้น
 
- - ใช้งานง่ายและเป็นมิตรกับผู้ใช้
+## ที่มาและเครดิต
 
- - [Material Design 3](https://m3.material.io/) UI สไตล์พร้อมธีมสีแบบไดนามิก
+KirinDL สืบทอดจาก **Seal → SealPlus → KirinDL** และใช้ yt-dlp, gallery-dl, youtubedl-android, aria2 และ FFmpeg โดยยังคงประกาศลิขสิทธิ์และสัญญาอนุญาตต้นฉบับ
 
- - MAD: UI และตรรกะที่เขียนด้วย Kotlin ล้วนๆ  กิจกรรมเดียว ไม่มีแฟรกเมนต์ มีเพียงปลายทางที่รวบรวมได้
+- [Seal](https://github.com/JunkFood02/Seal)
+- [SealPlus](https://github.com/MaheshTechnicals/Sealplus)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [gallery-dl](https://codeberg.org/mikf/gallery-dl)
+- [youtubedl-android](https://github.com/yausername/youtubedl-android)
+- [aria2](https://github.com/aria2/aria2)
+- [FFmpeg](https://ffmpeg.org/)
 
+## สัญญาอนุญาต
 
-## ⬇️ ดาวน์โหลด
+KirinDL เผยแพร่ภายใต้ [GNU GPL-3.0](../LICENSE)
 
- สำหรับอุปกรณ์ส่วนใหญ่ ขอแนะนำให้ติดตั้ง APK เวอร์ชัน **arm64-v8a**
+---
 
- - ดาวน์โหลดเวอร์ชันเสถียรล่าสุดจาก [GitHub releases](https://github.com/JunkFood02/Seal/releases/latest)
-   - ติดตั้งเวอร์ชัน [ก่อนเผยแพร่](https://github.com/JunkFood02/Seal/releases/) เพื่อช่วยเราทดสอบฟีเจอร์และการเปลี่ยนแปลงใหม่ๆ
-
- - เวอร์ชั้นเสถียรก็มีอยู่ใน F-Droid เช่นกัน
-
- [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-      alt="ดาวน์โหลดบน F-Droid"
-      height="70">](https://f-droid.org/packages/com.junkfood.seal/)
-      
-## 💬 ติดต่อ
-
- เข้าร่วม [Telegram Channel](https://t.me/seal_app) หรือ [Matrix Space](https://matrix.to/#/#seal-space:matrix.org) เพื่อพูดคุย, ฟังประกาศ, และเผยแพร่!
-
- ## 🤝 ร่วมสมทบทุน
-
- คุณสามารถสนับสนุน Seal ได้!
-
- คุณสามารถช่วยแปล Seal ได้ที่ [Hosted Weblate](https://hosted.weblate.org/projects/seal/)
-
- [![สถานะการแปล](https://hosted.weblate.org/widgets/seal/-/strings/multi-auto.svg)](https://hosted.weblate.org/engage/seal/)
-
- >**หมายเหตุ**
-
- หากต้องการส่งรายงานข้อบกพร่อง คำขอฟีเจอร์ คำถาม หรือแนวคิดอื่นๆ เพื่อปรับปรุง โปรดอ่านคำแนะนำและหลักเกณฑ์ที่ [CONTRIBUTING.md](https://github.com/JunkFood02/Seal/blob/main/CONTRIBUTING.md)  .
-
- ## ⭐️ประวัติ Star
-
- [![Star History Chart](https://api.star-history.com/svg?repos=JunkFood02/Seal&type=Timeline)](https://star-history.com/#JunkFood02/Seal&Timeline)
-
- ## 🧱 เครดิต
-
- Seal เป็น GUI อย่างง่ายของ [yt-dlp](https://github.com/yt-dlp/yt-dlp) โดยอ้างอิงจาก [youtubedl-android](https://github.com/yausername/youtubedl-android  )
-
- การออกแบบ UI และโค้ดบางส่วนยืมมาจาก [Read You](https://github.com/Ashinch/ReadYou) และ [Music You](https://github.com/Kyant0/MusicYou)
-
- [ดีวีดี](https://github.com/yausername/dvd)
-
- [ยูทิลิตี้สีวัสดุ](https://github.com/material-foundation/material-color-utilities)
-
- [โมเนต์](https://github.com/Kyant0/Monet)
-
- ## 📃ใบอนุญาติ
-
-[![GitHub](https://img.shields.io/github/license/JunkFood02/Seal?style=for-the-badge)](https://github.com/JunkFood02/Seal/blob/main/LICENSE)
-
-<div align="right">
-<table><td>
-<a href="#start-of-content">👆 Scroll to top</a>
-</td></table>
-</div>
+[← KirinDL](../README.md) · [Translations](README.md) · [Releases](https://github.com/Lanzkila/KirinDL/releases)
