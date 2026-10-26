@@ -3,6 +3,12 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
+## 2026-10-26
+
+### ✦ Recent changes
+
+- docs: organize KirinDL README sections into dropdowns (`6ae14c10`)
+
 ## 2026-10-18
 
 ### ✦ Recent changes
