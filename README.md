@@ -22,9 +22,8 @@ Android downloader powered by **yt-dlp** and **gallery-dl**, with batch workflow
 
 </div>
 
----
-
-## ✦ Features
+<details>
+<summary><strong>✦ Features</strong></summary>
 
 ### Media Downloader
 Powered by **yt-dlp**.
@@ -52,9 +51,10 @@ Powered by **gallery-dl**.
 - Gallery DL engine updates from Codeberg
 - Global Feed and Kirin Search integration
 
----
+</details>
 
-## ✦ Engine Updates
+<details>
+<summary><strong>✦ Engine Updates</strong></summary>
 
 KirinDL keeps its engines separate from the APK release cycle.
 
@@ -67,9 +67,10 @@ KirinDL keeps its engines separate from the APK release cycle.
 
 This allows extractor and compatibility fixes to arrive without waiting for a new KirinDL APK.
 
----
+</details>
 
-## ✦ Releases
+<details>
+<summary><strong>✦ Releases</strong></summary>
 
 Official releases:
 
@@ -88,9 +89,10 @@ Stable releases support:
 
 Release APKs are signed and verified in GitHub Actions before publishing.
 
----
+</details>
 
-## ✦ Build
+<details>
+<summary><strong>✦ Build</strong></summary>
 
 ### Debug
 
@@ -113,23 +115,26 @@ x86
 x86_64
 ```
 
----
+</details>
 
-## ✦ Stack
+<details>
+<summary><strong>✦ Stack</strong></summary>
 
 Kotlin • Jetpack Compose • Material 3 • yt-dlp • gallery-dl • Chaquopy • FFmpeg • aria2 • Room • Koin • Coil • OkHttp
 
----
+</details>
 
-## ✦ Notes
+<details>
+<summary><strong>✦ Notes</strong></summary>
 
 Site support follows the upstream extraction engines and can change over time. Some sites may require authentication, cookies, newer engine versions, or additional runtime helpers.
 
 Only download content that you have permission or the rights to save.
 
----
+</details>
 
-## ✦ Open Source Credits
+<details>
+<summary><strong>✦ Open Source Credits</strong></summary>
 
 KirinDL builds on:
 
@@ -143,13 +148,16 @@ KirinDL builds on:
 
 Upstream copyright, license notices and attribution remain with their respective projects and contributors.
 
----
+</details>
 
-## ✦ License
+<details>
+<summary><strong>✦ License</strong></summary>
 
 KirinDL is distributed under the **GNU General Public License v3.0 (GPL-3.0)**.
 
 See [LICENSE](LICENSE).
+
+</details>
 
 ---
 
