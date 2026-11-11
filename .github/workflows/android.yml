@@ -484,6 +484,7 @@ jobs:
         shell: python
         env:
           RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
           RUNNER_TEMP: ${{ runner.temp }}
         run: |
           import os
@@ -493,8 +494,11 @@ jobs:
           if not notes:
               print("No manual release notes supplied; using the workflow default.")
           else:
+              version = os.environ["RELEASE_VERSION"]
+              if f"KirinDL v{version}" not in notes:
+                  notes = f"# KirinDL v{version}\\n\\n" + notes
               path = Path(os.environ["RUNNER_TEMP"]) / "kirindl-manual-release-notes.md"
-              path.write_text(notes + "\n", encoding="utf-8")
+              path.write_text(notes + "\\n", encoding="utf-8")
               with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
                   out.write(f"path={path}\n")
               print(f"Using optional manual release notes: {path}")
