@@ -7,6 +7,12 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(profiles): preserve legacy custom slot audio state (`422f607b`)
+- docs(profiles): clarify custom profile payload compatibility (`6a86bd4b`)
+- docs(release): document expanded audio profiles in v3.2.1 (`e3a112cf`)
+- ui(profiles): group video and audio download profiles (`117e70af`)
+- fix(audio): apply bitrate and conversion presets (`940e3ea8`)
+- feat(profiles): expand and balance audio presets (`2d54636e`)
 - docs(release): remove superseded v3.2.0.13 release notes (`33e32514`)
 - docs(release): add KirinDL v3.2.1 release notes (`7a0f0387`)
 - chore(version): sync Android version code for v3.2.1 (`da64aa3b`)
