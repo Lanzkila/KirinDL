@@ -8,7 +8,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,6 +38,8 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlaylistAdd
@@ -209,6 +213,10 @@ private val tools = listOf(
     ),
 )
 
+private val galleryTools = tools.filter { it.id == TOOL_MANGA_CONVERTER || it.id == 5 }
+private val videoTools = tools.filterNot { it.id == TOOL_MANGA_CONVERTER || it.id == 5 }
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreToolsPage(
@@ -263,11 +271,35 @@ fun MoreToolsPage(
     val isGradientDark = LocalGradientDarkMode.current
     val useGradientColors = isGradientDark && isDarkTheme
     var infoDialogTool by remember { mutableStateOf<ToolItem?>(null) }
+    var videoToolsExpanded by remember { mutableStateOf(false) }
+    var galleryToolsExpanded by remember { mutableStateOf(false) }
 
     val backgroundColor = if (useGradientColors) {
         GradientDarkColors.Background
     } else {
         MaterialTheme.colorScheme.background
+    }
+
+    fun openTool(tool: ToolItem) {
+        when (tool.id) {
+            TOOL_MEDIA_CONVERTER -> activeConverter = TOOL_MEDIA_CONVERTER
+            TOOL_MANGA_CONVERTER -> activeConverter = TOOL_MANGA_CONVERTER
+            TOOL_SUBTITLE_DOWNLOADER -> activeUtility = TOOL_SUBTITLE_DOWNLOADER
+            TOOL_PLAYLIST_EXTRACTOR -> activeUtility = TOOL_PLAYLIST_EXTRACTOR
+            TOOL_MEDIA_INSPECTOR -> activeUtility = TOOL_MEDIA_INSPECTOR
+            TOOL_METADATA_EDITOR -> activeUtility = TOOL_METADATA_EDITOR
+            TOOL_CHAPTER_CLIP_MAKER -> activeUtility = TOOL_CHAPTER_CLIP_MAKER
+            1 -> onNavigateToBatchUrlImport?.invoke()
+            2 -> onNavigateToVideoInfoDownload?.invoke()
+            3 -> onNavigateToCommentDownload?.invoke()
+            4 -> onNavigateToThumbnailDownload?.invoke()
+            5 -> onNavigateToGalleryDl?.invoke()
+            else -> {
+                context.makeToast(
+                    "${context.getString(tool.titleRes)} — ${context.getString(R.string.feature_unavailable)}"
+                )
+            }
+        }
     }
 
     Scaffold(
@@ -307,37 +339,63 @@ fun MoreToolsPage(
                 HeroBanner(useGradientColors = useGradientColors)
             }
 
-            tools.forEachIndexed { index, tool ->
-                item {
-                    ToolCard(
-                        tool = tool,
-                        index = index,
-                        accentStyle = AccentStyle.entries[index % AccentStyle.entries.size],
-                        useGradientColors = useGradientColors,
-                        onClick = {
-                            when (tool.id) {
-                                TOOL_MEDIA_CONVERTER -> activeConverter = TOOL_MEDIA_CONVERTER
-                                TOOL_MANGA_CONVERTER -> activeConverter = TOOL_MANGA_CONVERTER
-                                TOOL_SUBTITLE_DOWNLOADER -> activeUtility = TOOL_SUBTITLE_DOWNLOADER
-                                TOOL_PLAYLIST_EXTRACTOR -> activeUtility = TOOL_PLAYLIST_EXTRACTOR
-                                TOOL_MEDIA_INSPECTOR -> activeUtility = TOOL_MEDIA_INSPECTOR
-                                TOOL_METADATA_EDITOR -> activeUtility = TOOL_METADATA_EDITOR
-                                TOOL_CHAPTER_CLIP_MAKER -> activeUtility = TOOL_CHAPTER_CLIP_MAKER
-                                1 -> onNavigateToBatchUrlImport?.invoke()
-                                2 -> onNavigateToVideoInfoDownload?.invoke()
-                                3 -> onNavigateToCommentDownload?.invoke()
-                                4 -> onNavigateToThumbnailDownload?.invoke()
-                                5 -> onNavigateToGalleryDl?.invoke()
-                                else -> {
-                                    context.makeToast(
-                                        "${context.getString(tool.titleRes)} — ${context.getString(R.string.feature_unavailable)}"
-                                    )
-                                }
-                            }
-                        },
-                        onLongClick = { infoDialogTool = tool },
-                        onInfoClick = { infoDialogTool = tool },
-                    )
+            item(key = "video-tools-dropdown", span = { GridItemSpan(maxLineSpan) }) {
+                ToolCategoryDropdown(
+                    title = "Video Tools",
+                    description = "Downloads, converters and video utilities",
+                    icon = Icons.Outlined.VideoLibrary,
+                    toolCount = videoTools.size,
+                    expanded = videoToolsExpanded,
+                    useGradientColors = useGradientColors,
+                    accentStyle = AccentStyle.PRIMARY,
+                    onClick = { videoToolsExpanded = !videoToolsExpanded },
+                )
+            }
+
+            if (videoToolsExpanded) {
+                videoTools.forEach { tool ->
+                    item(key = "video-tool-${tool.id}") {
+                        val index = tools.indexOf(tool)
+                        ToolCard(
+                            tool = tool,
+                            index = index,
+                            accentStyle = AccentStyle.entries[index % AccentStyle.entries.size],
+                            useGradientColors = useGradientColors,
+                            onClick = { openTool(tool) },
+                            onLongClick = { infoDialogTool = tool },
+                            onInfoClick = { infoDialogTool = tool },
+                        )
+                    }
+                }
+            }
+
+            item(key = "gallery-tools-dropdown", span = { GridItemSpan(maxLineSpan) }) {
+                ToolCategoryDropdown(
+                    title = "Gallery Tools",
+                    description = "GalleryDL and image or manga utilities",
+                    icon = Icons.Outlined.Image,
+                    toolCount = galleryTools.size,
+                    expanded = galleryToolsExpanded,
+                    useGradientColors = useGradientColors,
+                    accentStyle = AccentStyle.TERTIARY,
+                    onClick = { galleryToolsExpanded = !galleryToolsExpanded },
+                )
+            }
+
+            if (galleryToolsExpanded) {
+                galleryTools.forEach { tool ->
+                    item(key = "gallery-tool-${tool.id}") {
+                        val index = tools.indexOf(tool)
+                        ToolCard(
+                            tool = tool,
+                            index = index,
+                            accentStyle = AccentStyle.entries[index % AccentStyle.entries.size],
+                            useGradientColors = useGradientColors,
+                            onClick = { openTool(tool) },
+                            onLongClick = { infoDialogTool = tool },
+                            onInfoClick = { infoDialogTool = tool },
+                        )
+                    }
                 }
             }
         }
@@ -437,6 +495,101 @@ private fun HeroBanner(useGradientColors: Boolean) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ToolCategoryDropdown(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    toolCount: Int,
+    expanded: Boolean,
+    useGradientColors: Boolean,
+    accentStyle: AccentStyle,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    val iconColor = accentColor(accentStyle)
+    val borderColor = if (useGradientColors) {
+        GradientDarkColors.GlassWhiteBorder
+    } else {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+    }
+    val surfaceColor = if (useGradientColors) {
+        GradientDarkColors.GlassSurface.copy(alpha = 0.08f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+    val titleColor = if (useGradientColors) {
+        GradientDarkColors.OnSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val subtleColor = if (useGradientColors) {
+        GradientDarkColors.OnSurface.copy(alpha = 0.68f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .clickable(onClick = onClick),
+        shape = shape,
+        color = surfaceColor,
+        border = BorderStroke(1.dp, borderColor),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(iconColor.copy(alpha = if (useGradientColors) 0.18f else 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = titleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "$description · $toolCount tools",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = subtleColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .size(24.dp),
+            )
         }
     }
 }
