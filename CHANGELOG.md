@@ -12,6 +12,15 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
 
+## [Unreleased]
+
+### ✦ App Update Popup
+
+- Added a standalone startup update popup, separate from **About → App Update**.
+- Checks for a new KirinDL release at app startup when automatic app-update checks are enabled.
+- Remembers the dismissed release so the same update does not repeatedly interrupt app launches.
+- Keeps **About → App Update** as an independent manual update entry point.
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
