@@ -3,6 +3,12 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
+## 2026-11-12
+
+### ✦ Recent changes
+
+- Add custom title for KirinDL workflow runs (`dda49c23`)
+
 ## 2026-11-11
 
 ### ✦ Recent changes
