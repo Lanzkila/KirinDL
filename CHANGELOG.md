@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- feat(update): wire standalone popup into app startup (`b8bf8bb1`)
 - feat(update): add standalone startup update popup (`c8104eae`)
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
