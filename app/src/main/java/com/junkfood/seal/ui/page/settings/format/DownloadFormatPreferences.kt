@@ -704,7 +704,38 @@ private fun SmartDownloadProfileDialog(
                     "Apply a complete media preset, or save your current format choices into one of three custom slots.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                SmartDownloadProfiles.builtIns.forEach { profile ->
+                PreferenceSubtitle(text = "General")
+                SmartDownloadProfiles.builtIns
+                    .filter { it.id == SmartDownloadProfiles.MANUAL }
+                    .forEach { profile ->
+                        DialogSingleChoiceItemVariant(
+                            title = profile.title,
+                            desc = profile.description,
+                            selected = current == profile.id,
+                            onClick = {
+                                if (SmartDownloadProfiles.apply(profile.id)) {
+                                    current = profile.id
+                                    onApplied(profile.id)
+                                }
+                            },
+                        )
+                    }
+                PreferenceSubtitle(text = "Video profiles")
+                SmartDownloadProfiles.videoProfiles.forEach { profile ->
+                    DialogSingleChoiceItemVariant(
+                        title = profile.title,
+                        desc = profile.description,
+                        selected = current == profile.id,
+                        onClick = {
+                            if (SmartDownloadProfiles.apply(profile.id)) {
+                                current = profile.id
+                                onApplied(profile.id)
+                            }
+                        },
+                    )
+                }
+                PreferenceSubtitle(text = "Audio profiles")
+                SmartDownloadProfiles.audioProfiles.forEach { profile ->
                     DialogSingleChoiceItemVariant(
                         title = profile.title,
                         desc = profile.description,
