@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): remove superseded v3.2.0.13 release notes (`33e32514`)
 - docs(release): add KirinDL v3.2.1 release notes (`7a0f0387`)
 - chore(version): sync Android version code for v3.2.1 (`da64aa3b`)
 - chore(version): set KirinDL release to v3.2.1 (`52561c63`)
