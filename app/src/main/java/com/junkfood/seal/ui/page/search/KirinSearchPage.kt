@@ -988,21 +988,21 @@ private fun SearchResultCard(
                             horizontalArrangement = Arrangement.spacedBy(2.dp),
                         ) {
                             Text(
-                                                        modifier = Modifier.weight(1f),
-                                                        text =
-                                                            buildString {
-                                                                append(item.creator.ifBlank { item.extractor.ifBlank { item.source.label } })
-                                                                resultKindLabel(item)?.let { kind -> append(" • $kind") }
-                                                                item.viewCount?.let { count -> append(" • ${formatViewCount(count)}") }
-                                                                item.uploadTimestamp?.let { timestamp ->
-                                                                    append(" • ${formatUploadDate(timestamp)}")
-                                                                }
-                                                            },
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        maxLines = 2,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                    )
+                                modifier = Modifier.weight(1f),
+                                text =
+                                    buildString {
+                                        append(item.creator.ifBlank { item.extractor.ifBlank { item.source.label } })
+                                        resultKindLabel(item)?.let { kind -> append(" • $kind") }
+                                        item.viewCount?.let { count -> append(" • ${formatViewCount(count)}") }
+                                        item.uploadTimestamp?.let { timestamp ->
+                                            append(" • ${formatUploadDate(timestamp)}")
+                                        }
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                             Box {
                                 IconButton(
                                     modifier = Modifier.size(36.dp),
