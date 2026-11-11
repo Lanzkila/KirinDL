@@ -28,7 +28,7 @@ sealed class Version(val major: Int, val minor: Int, val patch: Int, val build: 
     ) : Version(versionMajor, versionMinor, versionPatch, versionBuild) {
         override val name: String
             get() =
-                if (build > 0) "${major}.${minor}.${patch}.$build"
+                if (build > 0) "${major}.${minor}.${patch}.${build}"
                 else "${major}.${minor}.${patch}"
 
         override val code: Long
