@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- ci: default manual releases to published pre-release (`33a29d8a`)
 - ci: make workflow notes input informational only (`312adc7e`)
 - fix(ci): normalize manual release note line breaks (`eee83a2d`)
 - fix(ci): add release heading to custom notes (`9efc5fa3`)
