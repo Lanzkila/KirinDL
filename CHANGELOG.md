@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- ci: make workflow notes input informational only (`312adc7e`)
 - fix(ci): normalize manual release note line breaks (`eee83a2d`)
 - fix(ci): add release heading to custom notes (`9efc5fa3`)
 - fix(ci): write manual release notes with real newlines (`7e613ce6`)
