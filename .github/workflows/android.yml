@@ -16,6 +16,11 @@ on:
         options:
           - stable
           - prerelease
+      release_notes:
+        description: "Optional release notes override; leave empty to use the workflow-generated or prepared notes"
+        required: false
+        default: ""
+        type: string
   push:
     branches:
       - main
@@ -473,11 +478,32 @@ jobs:
           print(f"Included new commits: {len(changes)}")
           print(f"Prepared notes: {notes_path}")
 
+      - name: Prepare optional manual release notes
+        id: manual_notes
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_notes != '' }}
+        shell: python
+        env:
+          RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          import os
+          from pathlib import Path
+
+          notes = os.environ.get("RELEASE_NOTES_INPUT", "").strip()
+          if not notes:
+              print("No manual release notes supplied; using the workflow default.")
+          else:
+              path = Path(os.environ["RUNNER_TEMP"]) / "kirindl-manual-release-notes.md"
+              path.write_text(notes + "\\n", encoding="utf-8")
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+                  out.write(f"path={path}\\n")
+              print(f"Using optional manual release notes: {path}")
+
       - name: Validate Stable release notes
         if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'stable' && steps.version.outputs.demote_only != 'true' }}
         shell: bash
         env:
-          RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
+          RELEASE_NOTES_PATH: ${{ steps.manual_notes.outputs.path || steps.version.outputs.release_notes_path }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
@@ -496,7 +522,7 @@ jobs:
         if: ${{ (github.event_name == 'push' || inputs.publish_release) && steps.channel.outputs.channel == 'prerelease' && steps.version.outputs.metadata_only != 'true' }}
         shell: bash
         env:
-          PRE_RELEASE_NOTES_PATH: ${{ steps.prerelease_notes.outputs.path }}
+          PRE_RELEASE_NOTES_PATH: ${{ steps.manual_notes.outputs.path || steps.prerelease_notes.outputs.path }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
@@ -673,7 +699,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ steps.version.outputs.release_id }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-          RELEASE_NOTES_PATH: ${{ steps.version.outputs.release_notes_path }}
+          RELEASE_NOTES_PATH: ${{ steps.manual_notes.outputs.path || steps.version.outputs.release_notes_path }}
         run: |
           set -euo pipefail
           [[ -n "$RELEASE_ID" ]] || {
@@ -696,7 +722,7 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: KirinDL v${{ steps.version.outputs.version }}
-          body_path: ${{ steps.channel.outputs.channel == 'prerelease' && steps.prerelease_notes.outputs.path || steps.version.outputs.release_notes_path }}
+          body_path: ${{ steps.manual_notes.outputs.path || (steps.channel.outputs.channel == 'prerelease' && steps.prerelease_notes.outputs.path || steps.version.outputs.release_notes_path) }}
           prerelease: ${{ steps.channel.outputs.prerelease }}
           make_latest: ${{ steps.channel.outputs.make_latest }}
           fail_on_unmatched_files: true
