@@ -185,9 +185,9 @@ object SmartDownloadProfiles {
 
     private fun applyEncoded(encoded: String): Boolean {
         val values = encoded.split('|')
-        // Current payload has 14 fields. Older v3.2.0 profiles may have 16 fields because
-        // Bilibili speed mode/fragments occupied indexes 12-13; keep reading those profiles
-        // while ignoring the removed Bilibili values.
+        // Current payload has 15 fields. Previous payloads have 14 fields; older v3.2.0
+        // payloads have 16 fields because removed Bilibili settings occupied indexes 12-13.
+        // Also accept 17-field profiles that include those legacy slots plus the custom-audio flag.
         if (values.size < 14) return false
         return runCatching {
             EXTRACT_AUDIO.updateBoolean(values[0].toBooleanStrict())
