@@ -1,4 +1,5 @@
 name: KirinDL Release
+run-name: ${{ inputs.run_title != '' && format('{0} — {1}', inputs.release_channel == 'prerelease' && 'Pre-release' || 'Stable', inputs.run_title) || (inputs.release_channel == 'prerelease' && 'Publish KirinDL Pre-release' || (inputs.release_channel == 'stable' && 'Publish KirinDL Stable' || github.event.head_commit.message || 'Publish KirinDL Release')) }}
 
 on:
   workflow_dispatch:
@@ -16,8 +17,8 @@ on:
         options:
           - stable
           - prerelease
-      notes:
-        description: "Optional note for this workflow run only; not added to the GitHub Release"
+      run_title:
+        description: "Optional custom title shown in the GitHub Actions run list only"
         required: false
         default: ""
         type: string
