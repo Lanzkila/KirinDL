@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: "Publish the resolved KirinDL release after the signed build succeeds"
+        description: "Publish the signed build as a GitHub Release after all checks pass"
         required: true
-        default: false
+        default: true
         type: boolean
       release_channel:
-        description: "Release channel used for manual workflow runs"
+        description: "Choose Pre-release for testing, then manually mark it as latest when ready"
         required: true
-        default: "stable"
+        default: "prerelease"
         type: choice
         options:
           - stable
