@@ -982,87 +982,109 @@ private fun SearchResultCard(
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Text(
-                            text =
-                                buildString {
-                                    append(item.creator.ifBlank { item.extractor.ifBlank { item.source.label } })
-                                    resultKindLabel(item)?.let { kind -> append(" • $kind") }
-                                    item.viewCount?.let { count -> append(" • ${formatViewCount(count)}") }
-                                    item.uploadTimestamp?.let { timestamp ->
-                                        append(" • ${formatUploadDate(timestamp)}")
-                                    }
-                                },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                                        modifier = Modifier.weight(1f),
+                                                        text =
+                                                            buildString {
+                                                                append(item.creator.ifBlank { item.extractor.ifBlank { item.source.label } })
+                                                                resultKindLabel(item)?.let { kind -> append(" • $kind") }
+                                                                item.viewCount?.let { count -> append(" • ${formatViewCount(count)}") }
+                                                                item.uploadTimestamp?.let { timestamp ->
+                                                                    append(" • ${formatUploadDate(timestamp)}")
+                                                                }
+                                                            },
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                    )
+                            Box {
+                                IconButton(
+                                    modifier = Modifier.size(36.dp),
+                                    onClick = { menuExpanded = true },
+                                ) {
+                                    Icon(Icons.Outlined.MoreVert, contentDescription = "More actions")
+                                }
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Open source") },
+                                        leadingIcon = { Icon(Icons.Outlined.OpenInNew, null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onOpen()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Copy link") },
+                                        leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onCopy()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Details") },
+                                        leadingIcon = { Icon(Icons.Outlined.Info, null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onDetails()
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, bottom = 10.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Button(onClick = onDownload, enabled = configureEnabled) {
+                    Button(
+                        onClick = onDownload,
+                        enabled = configureEnabled,
+                        modifier = Modifier.weight(1.3f),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                    ) {
                         Icon(
                             imageVector = Icons.Outlined.FileDownload,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                         )
-                        Text(" Download")
+                        Text(" Download", maxLines = 1, softWrap = false)
                     }
-                    OutlinedButton(onClick = onQueue) {
+                    OutlinedButton(
+                        onClick = onQueue,
+                        modifier = Modifier.weight(1.05f),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                    ) {
                         Icon(
                             imageVector = Icons.Outlined.PlaylistAdd,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                         )
-                        Text(" Queue")
+                        Text(" Queue", maxLines = 1, softWrap = false)
                     }
-                    TextButton(onClick = onPlay) {
+                    TextButton(
+                        onClick = onPlay,
+                        modifier = Modifier.weight(0.9f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                    ) {
                         Icon(
                             imageVector = Icons.Outlined.PlayArrow,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                         )
-                        Text(" Play")
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Box {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Outlined.MoreVert, contentDescription = "More actions")
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Open source") },
-                                leadingIcon = { Icon(Icons.Outlined.OpenInNew, null) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onOpen()
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Copy link") },
-                                leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onCopy()
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Details") },
-                                leadingIcon = { Icon(Icons.Outlined.Info, null) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onDetails()
-                                },
-                            )
-                        }
+                        Text(" Play", maxLines = 1, softWrap = false)
                     }
                 }
             }
