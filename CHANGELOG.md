@@ -3,6 +3,12 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
+## 2026-11-11
+
+### ✦ Recent changes
+
+- Fix Kirin Search Play button layout (`540dedf1`)
+
 ## 2026-10-26
 
 ### ✦ Recent changes
