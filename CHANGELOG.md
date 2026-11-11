@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- ci: allow optional manual release notes (`b0ead245`)
 - fix(profiles): preserve legacy custom slot audio state (`422f607b`)
 - docs(profiles): clarify custom profile payload compatibility (`6a86bd4b`)
 - docs(release): document expanded audio profiles in v3.2.1 (`e3a112cf`)
