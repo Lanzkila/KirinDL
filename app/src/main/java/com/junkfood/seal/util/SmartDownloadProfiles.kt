@@ -18,6 +18,9 @@ object SmartDownloadProfiles {
     const val VIDEO_SMALL = 3
     const val AUDIO_HQ = 4
     const val AUDIO_DATA_SAVER = 5
+    const val AUDIO_ORIGINAL = 6
+    const val AUDIO_BALANCED = 7
+    const val AUDIO_LOSSLESS = 8
     const val CUSTOM_1 = 101
     const val CUSTOM_2 = 102
     const val CUSTOM_3 = 103
@@ -30,9 +33,17 @@ object SmartDownloadProfiles {
             Definition(VIDEO_BEST, "Video Best", "Best quality sorting with automatic codec/container."),
             Definition(VIDEO_BALANCED, "Video Balanced", "1080p • H.264 • MP4 for quality and compatibility."),
             Definition(VIDEO_SMALL, "Video Small", "720p • H.264 • MP4 for smaller downloads."),
+            Definition(AUDIO_ORIGINAL, "Audio Original", "Best available source audio • no forced re-encode."),
+            Definition(AUDIO_BALANCED, "Audio Balanced", "M4A/AAC • 192 Kbps • balanced quality and size."),
             Definition(AUDIO_HQ, "Audio HQ", "M4A/AAC • 320 Kbps • embedded cover."),
             Definition(AUDIO_DATA_SAVER, "Audio Data Saver", "Opus • 96 Kbps • no cover file."),
+            Definition(AUDIO_LOSSLESS, "Audio Lossless (FLAC)", "FLAC output • does not restore quality from an already-lossy source."),
         )
+
+    val videoProfiles = builtIns.filter { it.id in setOf(VIDEO_BEST, VIDEO_BALANCED, VIDEO_SMALL) }
+    val audioProfiles = builtIns.filter {
+        it.id in setOf(AUDIO_ORIGINAL, AUDIO_BALANCED, AUDIO_HQ, AUDIO_DATA_SAVER, AUDIO_LOSSLESS)
+    }
 
     fun label(id: Int = SMART_DOWNLOAD_PROFILE.getInt()): String =
         builtIns.firstOrNull { it.id == id }?.title
@@ -50,6 +61,8 @@ object SmartDownloadProfiles {
             MANUAL -> Unit
             VIDEO_BEST -> {
                 EXTRACT_AUDIO.updateBoolean(false)
+                USE_CUSTOM_AUDIO_PRESET.updateBoolean(false)
+                AUDIO_CONVERT.updateBoolean(false)
                 FORMAT_SORTING.updateBoolean(true)
                 SORTING_FIELDS.updateString("res,fps,vcodec,channels,acodec,br")
                 VIDEO_QUALITY.updateInt(NOT_SPECIFIED)
@@ -59,9 +72,32 @@ object SmartDownloadProfiles {
             }
             VIDEO_BALANCED -> applyVideoCompatibility(3)
             VIDEO_SMALL -> applyVideoCompatibility(4)
+            AUDIO_ORIGINAL -> {
+                EXTRACT_AUDIO.updateBoolean(true)
+                FORMAT_SORTING.updateBoolean(false)
+                USE_CUSTOM_AUDIO_PRESET.updateBoolean(false)
+                AUDIO_FORMAT.updateInt(NOT_SPECIFIED)
+                AUDIO_QUALITY.updateInt(NOT_SPECIFIED)
+                AUDIO_CODEC.updateInt(AUDIO_CODEC_AUTO)
+                AUDIO_COVER_MODE.updateInt(AUDIO_COVER_LEGACY)
+                AUDIO_COVER_FORMAT.updateInt(AUDIO_COVER_FORMAT_AUTO)
+                AUDIO_CONVERT.updateBoolean(false)
+            }
+            AUDIO_BALANCED -> {
+                EXTRACT_AUDIO.updateBoolean(true)
+                FORMAT_SORTING.updateBoolean(false)
+                USE_CUSTOM_AUDIO_PRESET.updateBoolean(true)
+                AUDIO_FORMAT.updateInt(M4A)
+                AUDIO_QUALITY.updateInt(HIGH)
+                AUDIO_CODEC.updateInt(AUDIO_CODEC_AAC)
+                AUDIO_COVER_MODE.updateInt(AUDIO_COVER_EMBED)
+                AUDIO_COVER_FORMAT.updateInt(AUDIO_COVER_FORMAT_JPG)
+                AUDIO_CONVERT.updateBoolean(false)
+            }
             AUDIO_HQ -> {
                 EXTRACT_AUDIO.updateBoolean(true)
                 FORMAT_SORTING.updateBoolean(false)
+                USE_CUSTOM_AUDIO_PRESET.updateBoolean(true)
                 AUDIO_FORMAT.updateInt(M4A)
                 AUDIO_QUALITY.updateInt(AUDIO_320)
                 AUDIO_CODEC.updateInt(AUDIO_CODEC_AAC)
@@ -72,12 +108,25 @@ object SmartDownloadProfiles {
             AUDIO_DATA_SAVER -> {
                 EXTRACT_AUDIO.updateBoolean(true)
                 FORMAT_SORTING.updateBoolean(false)
+                USE_CUSTOM_AUDIO_PRESET.updateBoolean(true)
                 AUDIO_FORMAT.updateInt(OPUS)
                 AUDIO_QUALITY.updateInt(AUDIO_96)
                 AUDIO_CODEC.updateInt(AUDIO_CODEC_OPUS)
                 AUDIO_COVER_MODE.updateInt(AUDIO_COVER_NONE)
                 AUDIO_COVER_FORMAT.updateInt(AUDIO_COVER_FORMAT_AUTO)
                 AUDIO_CONVERT.updateBoolean(false)
+            }
+            AUDIO_LOSSLESS -> {
+                EXTRACT_AUDIO.updateBoolean(true)
+                FORMAT_SORTING.updateBoolean(false)
+                USE_CUSTOM_AUDIO_PRESET.updateBoolean(false)
+                AUDIO_FORMAT.updateInt(NOT_SPECIFIED)
+                AUDIO_QUALITY.updateInt(NOT_SPECIFIED)
+                AUDIO_CODEC.updateInt(AUDIO_CODEC_FLAC)
+                AUDIO_COVER_MODE.updateInt(AUDIO_COVER_EMBED)
+                AUDIO_COVER_FORMAT.updateInt(AUDIO_COVER_FORMAT_JPG)
+                AUDIO_CONVERT.updateBoolean(true)
+                AUDIO_CONVERSION_FORMAT.updateInt(CONVERT_FLAC)
             }
             CUSTOM_1, CUSTOM_2, CUSTOM_3 -> {
                 val encoded = customKey(id)?.getString().orEmpty()
@@ -98,6 +147,7 @@ object SmartDownloadProfiles {
 
     private fun applyVideoCompatibility(resolution: Int) {
         EXTRACT_AUDIO.updateBoolean(false)
+        USE_CUSTOM_AUDIO_PRESET.updateBoolean(false)
         FORMAT_SORTING.updateBoolean(false)
         VIDEO_FORMAT.updateInt(FORMAT_QUALITY)
         VIDEO_QUALITY.updateInt(resolution)
@@ -130,6 +180,7 @@ object SmartDownloadProfiles {
             SORTING_FIELDS.getString(),
             AUDIO_CONVERT.getBoolean().toString(),
             AUDIO_CONVERSION_FORMAT.getInt().toString(),
+            USE_CUSTOM_AUDIO_PRESET.getBoolean().toString(),
         ).joinToString("|")
 
     private fun applyEncoded(encoded: String): Boolean {
@@ -154,6 +205,19 @@ object SmartDownloadProfiles {
             val tailOffset = if (values.size >= 16) 2 else 0
             AUDIO_CONVERT.updateBoolean(values[12 + tailOffset].toBooleanStrict())
             AUDIO_CONVERSION_FORMAT.updateInt(values[13 + tailOffset].toInt())
+            val customAudioPresetIndex =
+                when {
+                    values.size == 15 -> 14
+                    values.size >= 17 -> 16
+                    else -> -1
+                }
+            USE_CUSTOM_AUDIO_PRESET.updateBoolean(
+                if (customAudioPresetIndex >= 0) {
+                    values[customAudioPresetIndex].toBooleanStrict()
+                } else {
+                    false
+                }
+            )
         }.isSuccess
     }
 }
