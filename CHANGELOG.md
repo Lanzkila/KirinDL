@@ -13,7 +13,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
 
-## [Unreleased]
+## [3.2.2] - Unreleased
 
 ### ✦ App Update Popup
 
