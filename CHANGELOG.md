@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): add KirinDL v3.2.0.13 release notes (`b8dd103f`)
 - Organize More Tools into Video and Gallery dropdowns (`e19ab94c`)
 - Use outlined box style for Kirin Search Play button (`bf842d03`)
 - Format Kirin Search result action layout (`41d1d8ad`)
