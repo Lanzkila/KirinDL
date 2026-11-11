@@ -1074,7 +1074,7 @@ private fun SearchResultCard(
                         )
                         Text(" Queue", maxLines = 1, softWrap = false)
                     }
-                    TextButton(
+                    OutlinedButton(
                         onClick = onPlay,
                         modifier = Modifier.weight(0.9f),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
