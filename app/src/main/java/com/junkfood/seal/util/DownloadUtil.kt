@@ -1014,9 +1014,14 @@ object DownloadUtil {
                 }
             val quality =
                 when (audioQuality) {
+                    AUDIO_320 -> "abr~320"
+                    AUDIO_256 -> "abr~256"
                     HIGH -> "abr~192"
+                    AUDIO_160 -> "abr~160"
                     MEDIUM -> "abr~128"
+                    AUDIO_96 -> "abr~96"
                     LOW -> "abr~64"
+                    ULTRA_LOW -> "abr~32"
                     else -> ""
                 }
             return@run connectWithDelimiter(format, quality, delimiter = ",")
@@ -1097,15 +1102,18 @@ object DownloadUtil {
                 } else {
                     addOption("-f", "ba/b")
                     if (convertAudio) {
-                        when (audioConvertFormat) {
-                            CONVERT_MP3 -> {
-                                addOption("--audio-format", "mp3")
+                        val outputFormat =
+                            when (audioConvertFormat) {
+                                CONVERT_M4A -> "m4a"
+                                CONVERT_OPUS -> "opus"
+                                CONVERT_FLAC -> "flac"
+                                CONVERT_WAV -> "wav"
+                                CONVERT_VORBIS -> "vorbis"
+                                CONVERT_AAC -> "aac"
+                                CONVERT_ALAC -> "alac"
+                                else -> "mp3"
                             }
-
-                            CONVERT_M4A -> {
-                                addOption("--audio-format", "m4a")
-                            }
-                        }
+                        addOption("--audio-format", outputFormat)
                     }
                     applyFormatSorter(preferences, toAudioFormatSorter())
                 }
