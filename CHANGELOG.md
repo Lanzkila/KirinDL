@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Format Kirin Search result action layout (`41d1d8ad`)
 - Fix Kirin Search Play button layout (`540dedf1`)
 
 ## 2026-10-26
