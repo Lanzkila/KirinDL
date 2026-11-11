@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(ci): write manual release notes with real newlines (`7e613ce6`)
 - ci: allow optional manual release notes (`b0ead245`)
 - fix(profiles): preserve legacy custom slot audio state (`422f607b`)
 - docs(profiles): clarify custom profile payload compatibility (`6a86bd4b`)
