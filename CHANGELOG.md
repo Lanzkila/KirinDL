@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- chore(version): bump KirinDL to v3.2.0.13 (`a4d46471`)
 - docs(release): add KirinDL v3.2.0.13 release notes (`b8dd103f`)
 - Organize More Tools into Video and Gallery dropdowns (`e19ab94c`)
 - Use outlined box style for Kirin Search Play button (`bf842d03`)
