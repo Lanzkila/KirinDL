@@ -211,13 +211,11 @@ object SmartDownloadProfiles {
                     values.size >= 17 -> 16
                     else -> -1
                 }
-            USE_CUSTOM_AUDIO_PRESET.updateBoolean(
-                if (customAudioPresetIndex >= 0) {
+            if (customAudioPresetIndex >= 0) {
+                USE_CUSTOM_AUDIO_PRESET.updateBoolean(
                     values[customAudioPresetIndex].toBooleanStrict()
-                } else {
-                    false
-                }
-            )
+                )
+            }
         }.isSuccess
     }
 }
