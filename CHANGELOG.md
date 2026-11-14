@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- ci(build): request v3.2.2 stable test APK (`baeb1136`)
+- ci(test): run download regressions before stable APK build (`077e90dc`)
 - docs(release): place update date below prepared date (`7aa74b6c`)
 - docs(release): add v3.2.2 release notes update date (`1db6cd75`)
 - docs(release): complete v3.2.2 Bilibili release notes (`f55b3bdf`)
