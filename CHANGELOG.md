@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): add v3.2.2 release notes update date (`1db6cd75`)
 - docs(release): complete v3.2.2 Bilibili release notes (`f55b3bdf`)
 - docs: update v3.2.2 release notes for Bilibili completion fix (`3e32aaa8`)
 - docs(release): document Bilibili download reliability fix (`91224e58`)
