@@ -34,7 +34,8 @@ internal class TransferProgress(
                 "retrying" in lower || "waiting for network" in lower -> "retry"
                 "[merger]" in lower || "merging format" in lower -> "merge"
                 listOf("[extractaudio]", "[videoconvertor]", "[videoremuxer]", "[metadata]",
-                    "[embedsubtitle]", "[embedthumbnail]", "[fixup").any(lower::contains) -> "processing"
+                    "[embedsubtitle]", "[embedthumbnail]", "[thumbnailsconvertor]", "[embedchapters]",
+                    "[modifychapters]", "[fixup").any(lower::contains) -> "processing"
                 "[hlsnative]" in lower || "[dashsegments]" in lower || "(frag " in lower -> "fragment"
                 "moving" in lower || "move file" in lower -> "moving"
                 rawPercentage.isFinite() && rawPercentage >= 0f -> stream
@@ -60,6 +61,13 @@ internal class TransferProgress(
 
         fun cleanText(text: String): String =
             if (text.startsWith(PREFIX)) text.substringAfter('|', "") else text
+
+        /** Network loss must not kill yt-dlp while it is finalizing already-downloaded files. */
+        fun isPostProcessing(stateText: String): Boolean {
+            if (!stateText.startsWith(PREFIX)) return false
+            val stage = stateText.removePrefix(PREFIX).substringBefore('|')
+            return stage in setOf("merge", "processing", "moving")
+        }
 
         fun stageLabel(text: String, audioOnly: Boolean): String {
             val stage = if (text.startsWith(PREFIX)) text.removePrefix(PREFIX).substringBefore('|') else ""
