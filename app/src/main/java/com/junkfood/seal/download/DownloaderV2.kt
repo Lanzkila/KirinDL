@@ -472,6 +472,15 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
     private fun pauseRunningTasksForNetwork() {
         taskStateMap.entries.forEach { (task, state) ->
             val downloadState = state.downloadState
+            // The downloaded streams no longer need a network connection once yt-dlp
+            // enters merge/post-processing. Destroying the process here kills FFmpeg and
+            // the task is then started from the beginning when connectivity returns.
+            if (downloadState is Running &&
+                TransferProgress.isPostProcessing(downloadState.progressText)
+            ) {
+                Log.d(TAG, "Keeping ${task.id} running while local post-processing finishes")
+                return@forEach
+            }
             if (downloadState is DownloadState.Cancelable) {
                 task.pauseForReason(downloadState, PauseReason.Network)
             } else {
@@ -600,17 +609,17 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                                 else -1
                             val cleanText = guarded.cleanText
                             val stateText = guarded.stateText
+                            val isPostProcessing = TransferProgress.isPostProcessing(stateText)
                             val now = System.currentTimeMillis()
                             when (val preState = downloadState) {
                                 is Running -> {
-                                    // Throttle Compose state writes so the Home screen's
-                                    // active-download list (which lives behind the nav
-                                    // drawer) doesn't recompose/re-layout on every single
-                                    // yt-dlp progress line — see PROGRESS_UI_UPDATE_THROTTLE_MS
-                                    // comment above for why this matters. The final jump to
-                                    // 100%/Completed is handled separately in onSuccess below,
-                                    // so a throttled last tick here is harmless.
-                                    if (now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS) {
+                                    // Throttle ordinary progress updates, but publish the
+                                    // transition into local post-processing immediately. The
+                                    // network watchdog uses this state to avoid killing FFmpeg
+                                    // after every source stream has already been downloaded.
+                                    if (isPostProcessing ||
+                                        now - lastUiUpdateAtMs >= PROGRESS_UI_UPDATE_THROTTLE_MS
+                                    ) {
                                         lastUiUpdateAtMs = now
                                         downloadState =
                                             preState.copy(progress = progress, progressText = stateText)
