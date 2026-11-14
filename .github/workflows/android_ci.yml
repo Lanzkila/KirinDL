@@ -47,5 +47,8 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
+      - name: Run Generic Debug Unit Tests
+        run: ./gradlew testGenericDebugUnitTest --stacktrace --no-daemon --no-configuration-cache
+
       - name: Compile Generic Debug
         run: ./gradlew assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache
