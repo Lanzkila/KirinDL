@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs: update v3.2.2 release notes for Bilibili completion fix (`3e32aaa8`)
+- docs(release): document Bilibili download reliability fix (`91224e58`)
 - ci(android): run generic debug unit tests on pull requests (`4e16f2da`)
 - fix(download): let local Bilibili merge finish during network loss (`fe04810e`)
 - fix(download): identify local post-processing stages (`f68917f5`)
