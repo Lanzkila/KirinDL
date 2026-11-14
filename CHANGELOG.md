@@ -3,6 +3,15 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
+## 2026-11-15
+
+### ✦ Recent changes
+
+- ci(android): run generic debug unit tests on pull requests (`4e16f2da`)
+- fix(download): let local Bilibili merge finish during network loss (`fe04810e`)
+- fix(download): identify local post-processing stages (`f68917f5`)
+- test(download): cover local post-processing network pause guard (`f54d04c3`)
+
 ## 2026-11-12
 
 ### ✦ Recent changes
