@@ -30,6 +30,35 @@ class TransferProgressTest {
         assertEquals("[Merger] Merging formats", TransferProgress.cleanText(merge.stateText))
     }
 
+    @Test fun mergeAndPostProcessorsAreMarkedAsFinalization() {
+        val progress = TransferProgress(false, setOf("30280"))
+        progress.update(-1f, "[download] Destination: /tmp/title.f100026.mp4")
+        progress.update(100f, "[download] 100%")
+        progress.update(-1f, "[download] Destination: /tmp/title.f30280.webm")
+        val merge = progress.update(-1f, "[Merger] Merging formats into /tmp/title.mp4")
+        assertTrue(TransferProgress.isPostProcessing(merge.stateText))
+        assertEquals("Merge", TransferProgress.stageLabel(merge.stateText, false))
+
+        val thumbnail = progress.update(
+            -1f,
+            "[ThumbnailsConvertor] Converting thumbnail /tmp/title.png to png",
+        )
+        assertTrue(TransferProgress.isPostProcessing(thumbnail.stateText))
+        assertEquals("Processing", TransferProgress.stageLabel(thumbnail.stateText, false))
+    }
+
+    @Test fun activeTransfersAndRetriesRemainEligibleForNetworkPause() {
+        val progress = TransferProgress(false)
+        val active = progress.update(42f, "[download] 42%")
+        assertFalse(TransferProgress.isPostProcessing(active.stateText))
+
+        val retry = progress.update(
+            -1f,
+            "[download] Got error: Remote end closed connection. Retrying (1/2)",
+        )
+        assertFalse(TransferProgress.isPostProcessing(retry.stateText))
+    }
+
     @Test fun secondVideoDestinationStaysVideo() {
         val progress = TransferProgress(false)
         progress.update(-1f, "[download] Destination: /tmp/first.mp4")
