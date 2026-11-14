@@ -31,6 +31,18 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 - Remembers the dismissed release so the same update does not repeatedly interrupt app launches.
 - Keeps **About → App Update** as an independent manual update entry point.
 
+### ✦ Bilibili Download Reliability
+
+- Fixed Bilibili downloads getting stuck or restarting after the video and audio streams had already reached 100%.
+- Prevented network-triggered auto-pause from terminating local FFmpeg merge and other post-processing stages.
+- Kept thumbnail conversion, remuxing, and final file movement running when a temporary network-status interruption occurs.
+- Preserved automatic network pausing during active transfers, along with manual Pause and Cancel controls.
+- Added regression tests covering merge/post-processing detection and confirming that active transfers and retries remain eligible for network pausing.
+
+### ✦ Download CI & Regression Coverage
+
+- Added Generic Debug unit tests to the Android CI workflow before the compile step.
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
