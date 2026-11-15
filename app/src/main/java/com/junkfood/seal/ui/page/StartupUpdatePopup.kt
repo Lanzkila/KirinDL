@@ -85,7 +85,7 @@ fun StartupUpdatePopup() {
     }
 
     val release = releaseToShow
-    val dismissRelease = {
+    val dismissRelease: () -> Unit = {
         showPopup = false
         showDetails = false
         release?.let { target ->
