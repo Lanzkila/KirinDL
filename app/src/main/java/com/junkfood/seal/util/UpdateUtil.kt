@@ -152,30 +152,34 @@ object UpdateUtil {
     }
 
     /**
-     * A prerelease installation follows Stable updates until it has moved to a Stable release.
-     * The APK version name does not encode the GitHub release channel, so identify the installed
-     * build by matching its version against the release list and reading GitHub's prerelease flag.
+     * Mirrors YTDLnis channel behavior:
+     * - Stable selection only considers Stable releases.
+     * - Pre-release selection prefers a newer Stable release when one is available.
+     * - Otherwise Pre-release selection follows the newest release so the pre-release
+     *   workflow can still be tested before it is promoted.
      */
     internal fun selectLatestRelease(
         releases: List<Release>,
         installedVersion: Version,
         selectedChannel: Int,
     ): Release? {
-        val installedFromPreRelease = releases.any { release ->
+        val validReleases = releases.filter { release ->
             release.draft != true &&
-                release.preRelease == true &&
-                (release.tagName ?: release.name)
-                    .toVersionOrNull()
-                    ?.compareTo(installedVersion) == 0
+                (release.tagName ?: release.name).toVersionOrNull() != null
         }
-        val stableChannel = selectedChannel == STABLE || installedFromPreRelease
-
-        return releases
+        val latestStable = validReleases
             .asSequence()
-            .filter { it.draft != true }
-            .filter { release -> !stableChannel || release.preRelease != true }
-            .filter { (it.tagName ?: it.name).toVersionOrNull() != null }
+            .filter { it.preRelease != true }
             .maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
+
+        if (selectedChannel == STABLE) return latestStable
+
+        val stableVersion = (latestStable?.tagName ?: latestStable?.name).toVersionOrNull()
+        if (latestStable != null && stableVersion != null && installedVersion < stableVersion) {
+            return latestStable
+        }
+
+        return validReleases.maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
     }
 
     /**
