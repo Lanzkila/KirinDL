@@ -145,22 +145,37 @@ object UpdateUtil {
             jsonFormat.decodeFromString<List<Release>>(body)
         }
 
-    private fun getLatestRelease(): Release {
-        val stableChannel = UPDATE_CHANNEL.getInt() == STABLE
-        return getReleaseList()
+    private fun getLatestRelease(installedVersion: Version): Release {
+        val releases = getReleaseList()
+        return selectLatestRelease(releases, installedVersion, UPDATE_CHANNEL.getInt())
+            ?: throw IOException("No compatible KirinDL release found")
+    }
+
+    /**
+     * A prerelease installation follows Stable updates until it has moved to a Stable release.
+     * The APK version name does not encode the GitHub release channel, so identify the installed
+     * build by matching its version against the release list and reading GitHub's prerelease flag.
+     */
+    internal fun selectLatestRelease(
+        releases: List<Release>,
+        installedVersion: Version,
+        selectedChannel: Int,
+    ): Release? {
+        val installedFromPreRelease = releases.any { release ->
+            release.draft != true &&
+                release.preRelease == true &&
+                (release.tagName ?: release.name)
+                    .toVersionOrNull()
+                    ?.compareTo(installedVersion) == 0
+        }
+        val stableChannel = selectedChannel == STABLE || installedFromPreRelease
+
+        return releases
             .asSequence()
             .filter { it.draft != true }
-            .filter { release ->
-                // Stable users never receive GitHub pre-releases. Pre-release testers can see
-                // both channels and simply take the highest valid KirinDL version.
-                !stableChannel || release.preRelease != true
-            }
+            .filter { release -> !stableChannel || release.preRelease != true }
             .filter { (it.tagName ?: it.name).toVersionOrNull() != null }
             .maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
-            ?: throw IOException(
-                if (stableChannel) "No stable KirinDL release found"
-                else "No prerelease KirinDL build found"
-            )
     }
 
     /**
@@ -629,7 +644,7 @@ object UpdateUtil {
         withContext(Dispatchers.IO) {
             runCatching {
                     val currentVersion = context.getCurrentVersion()
-                    val latestRelease = getLatestRelease()
+                    val latestRelease = getLatestRelease(currentVersion)
                     val latestVersion = (latestRelease.tagName ?: latestRelease.name).toVersion()
                     if (currentVersion < latestVersion) latestRelease else null
                 }
