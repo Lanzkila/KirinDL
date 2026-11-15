@@ -32,6 +32,8 @@ import com.junkfood.seal.ui.page.UpdateDialog
 import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.makeToast
 
+private const val ENABLE_MORPHE_HOME_UPDATE_ALERT = false
+
 /**
  * Morphe-style update card for the Home screen.
  *
@@ -43,6 +45,8 @@ import com.junkfood.seal.util.makeToast
  */
 @Composable
 fun MorpheHomeUpdateAlert() {
+    // Kad update gaya Morphe dimatikan sementara; kod asal dikekalkan.
+    if (!ENABLE_MORPHE_HOME_UPDATE_ALERT) return
     val context = LocalContext.current
     val availableAppUpdate by UpdateUtil.availableAppUpdate.collectAsStateWithLifecycle()
     var hiddenUpdateTag by remember { mutableStateOf<String?>(null) }
