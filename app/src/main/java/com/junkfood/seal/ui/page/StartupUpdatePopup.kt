@@ -23,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,7 @@ fun StartupUpdatePopup() {
     }
 
     var releaseToShow by remember { mutableStateOf<UpdateUtil.Release?>(null) }
+    val sharedAvailableRelease by UpdateUtil.availableAppUpdate.collectAsState()
     var showPopup by remember { mutableStateOf(false) }
     var showDetails by remember { mutableStateOf(false) }
 
@@ -78,6 +80,20 @@ fun StartupUpdatePopup() {
         val releaseKey = candidate?.let(::releaseKey) ?: return@LaunchedEffect
         val dismissedRelease = popupPreferences.getString(KEY_DISMISSED_RELEASE, null)
         if (releaseKey != dismissedRelease) {
+            releaseToShow = candidate
+            showPopup = true
+        }
+    }
+
+    // AppUpdater and this popup may perform the same startup check. Observe the shared
+    // result as well so a check completed by AppUpdater cannot be lost to the popup's cooldown.
+    LaunchedEffect(sharedAvailableRelease) {
+        val candidate = sharedAvailableRelease ?: return@LaunchedEffect
+        if (!PreferenceUtil.isAutoUpdateEnabled()) return@LaunchedEffect
+
+        val key = releaseKey(candidate) ?: return@LaunchedEffect
+        val dismissedRelease = popupPreferences.getString(KEY_DISMISSED_RELEASE, null)
+        if (key != dismissedRelease) {
             releaseToShow = candidate
             showPopup = true
         }
