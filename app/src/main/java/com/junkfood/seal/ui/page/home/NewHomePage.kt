@@ -835,6 +835,10 @@ fun NewHomePage(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // matikan fungsi nya sementara.
+            // Kod HomeAppUpdateAlert dikekalkan untuk diaktifkan semula kemudian.
+            // About > App Update dan semakan manual tidak terjejas.
+            /*
             val update = availableAppUpdate
             val updateTag = update?.tagName ?: update?.name
             if (update != null && updateTag != hiddenUpdateTag) {
@@ -846,6 +850,7 @@ fun NewHomePage(
                     )
                 }
             }
+            */
 
             // KirinDL branding
             item {
