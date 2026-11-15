@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add direct in-app APK download and installer handoff (`5cb3939e`)
 - Add v3.2.3 release notes for refreshed update popup (`866ff4cf`)
 - Restore published v3.2.2 release notes (`2043d74d`)
 - Fix startup update popup callback typing (`12ce27ea`)
