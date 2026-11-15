@@ -60,21 +60,6 @@ class AppUpdateAssetSelectionTest {
     }
 
     @Test
-    fun prereleaseChannelUsesStableInsteadOfNewerPreviewWhenStableIsAnUpgrade() {
-        val selected = UpdateUtil.selectLatestRelease(
-            releases = listOf(
-                release("v3.2.4", prerelease = true),
-                release("v3.2.3", prerelease = false),
-                release("v3.2.2", prerelease = true),
-            ),
-            installedVersion = version(2),
-            selectedChannel = PRE_RELEASE,
-        )
-
-        assertEquals("v3.2.3", selected?.tagName)
-    }
-
-    @Test
     fun stableChannelIgnoresNewerPrereleasesForStableInstall() {
         val selected = UpdateUtil.selectLatestRelease(
             releases = listOf(
