@@ -19,11 +19,17 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -41,6 +47,12 @@ import androidx.compose.ui.unit.dp
 import com.junkfood.seal.App
 import com.junkfood.seal.R
 import com.junkfood.seal.util.UpdateUtil
+import com.junkfood.seal.util.makeToast
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val KIRIN_RELEASES_URL = "https://github.com/Lanzkila/KirinDL/releases"
 private val releaseLinkPattern =
@@ -56,9 +68,14 @@ fun UpdateDialog(
     onDismissRequest: () -> Unit,
     release: UpdateUtil.Release,
     isUpdateAvailable: Boolean = true,
-    onBackgroundUpdate: (() -> Unit)? = null,
+    onUpdateLaunched: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isDownloading by remember(release.tagName) { mutableStateOf(false) }
+    var downloadProgress by remember(release.tagName) { mutableStateOf<Int?>(null) }
+    var downloadJob by remember(release.tagName) { mutableStateOf<Job?>(null) }
+
     // Keep the complete version name here. Pre-release builds must not be shown as Stable.
     val currentVersion = UpdateUtil.installedVersionName(context).ifBlank { "Unknown" }
     val releaseVersion = release.versionLabel()
@@ -68,9 +85,50 @@ fun UpdateDialog(
             ?: if (isUpdateAvailable) "KirinDL $releaseVersion" else "KirinDL release"
     val channelLabel = if (release.preRelease == true) "Pre-release" else "Stable"
     val availableBuilds = release.availableApkVariants()
+    val canDownloadInApp = isUpdateAvailable && UpdateUtil.hasInAppAppUpdate(release)
+
+    fun cancelDownload() {
+        downloadJob?.cancel()
+        downloadJob = null
+        isDownloading = false
+        downloadProgress = null
+    }
+
+    fun startDownload() {
+        if (isDownloading) return
+        isDownloading = true
+        downloadProgress = null
+        downloadJob =
+            scope.launch {
+                try {
+                    val apkFile =
+                        UpdateUtil.downloadReleaseApk(context, release) { progress ->
+                            withContext(Dispatchers.Main.immediate) {
+                                downloadProgress = progress
+                            }
+                        }
+                    UpdateUtil.installDownloadedAppUpdate(context, apkFile).getOrThrow()
+                    // Keep the release eligible for another prompt if the user cancels Android's
+                    // installer. Closing the details screen here does not add it to the dismissed list.
+                    onUpdateLaunched()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    context.makeToast(error.message ?: "Could not download the KirinDL update")
+                } finally {
+                    isDownloading = false
+                    downloadProgress = null
+                    downloadJob = null
+                }
+            }
+    }
+
+    val dismissOrCancel: () -> Unit = {
+        if (isDownloading) cancelDownload() else onDismissRequest()
+    }
 
     UpdateDialogImpl(
-        onDismissRequest = onDismissRequest,
+        onDismissRequest = dismissOrCancel,
         dialogTitle = if (isUpdateAvailable) "New KirinDL Update" else "What's New",
         releaseTitle = releaseTitle,
         channelLabel = channelLabel,
@@ -79,10 +137,13 @@ fun UpdateDialog(
         releaseVersion = releaseVersion,
         publishedDate = release.publishedAt?.take(10) ?: release.createdAt?.take(10),
         isUpdateAvailable = isUpdateAvailable,
-        backgroundUpdateMode = isUpdateAvailable && onBackgroundUpdate != null,
+        backgroundUpdateMode = canDownloadInApp,
+        isDownloading = isDownloading,
+        downloadProgress = downloadProgress,
+        onCancelDownload = ::cancelDownload,
         onConfirmUpdate = {
-            if (isUpdateAvailable && onBackgroundUpdate != null) {
-                onBackgroundUpdate()
+            if (canDownloadInApp) {
+                startDownload()
             } else {
                 val target =
                     release.htmlUrl?.takeIf { it.startsWith("https://") } ?: KIRIN_RELEASES_URL
@@ -92,9 +153,11 @@ fun UpdateDialog(
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                     )
+                }.onFailure {
+                    context.makeToast("Could not open the KirinDL release page")
                 }
+                onDismissRequest()
             }
-            onDismissRequest()
         },
         releaseNote = release.body.orEmpty(),
     )
@@ -113,6 +176,9 @@ fun UpdateDialogImpl(
     publishedDate: String?,
     isUpdateAvailable: Boolean,
     backgroundUpdateMode: Boolean = false,
+    isDownloading: Boolean = false,
+    downloadProgress: Int? = null,
+    onCancelDownload: (() -> Unit)? = null,
     onConfirmUpdate: () -> Unit,
     releaseNote: String,
 ) {
@@ -141,9 +207,11 @@ fun UpdateDialogImpl(
             )
         },
         confirmButton = {
-            Button(onClick = onConfirmUpdate) {
+            Button(onClick = onConfirmUpdate, enabled = !isDownloading) {
                 Text(
                     when {
+                        isDownloading && downloadProgress != null -> "Downloading ${downloadProgress}%"
+                        isDownloading -> "Downloading…"
                         backgroundUpdateMode -> "Update"
                         isUpdateAvailable -> "Open update"
                         else -> "Open release"
@@ -152,14 +220,19 @@ fun UpdateDialogImpl(
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismissRequest) {
+            OutlinedButton(
+                onClick = if (isDownloading) {
+                    onCancelDownload ?: onDismissRequest
+                } else {
+                    onDismissRequest
+                }
+            ) {
                 Text(
-                    text =
-                        if (isUpdateAvailable) {
-                            "Later"
-                        } else {
-                            stringResource(id = R.string.dismiss)
-                        }
+                    text = when {
+                        isDownloading -> "Cancel"
+                        isUpdateAvailable -> "Later"
+                        else -> stringResource(id = R.string.dismiss)
+                    }
                 )
             }
         },
@@ -195,6 +268,26 @@ fun UpdateDialogImpl(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
+                if (isDownloading) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = downloadProgress?.let { "Downloading APK · $it%" }
+                            ?: "Downloading APK…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    if (downloadProgress == null) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    } else {
+                        LinearProgressIndicator(
+                            progress = { (downloadProgress.coerceIn(0, 100) / 100f) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
                 availableBuilds?.let {
                     Spacer(modifier = Modifier.height(3.dp))
                     Text(
@@ -205,13 +298,12 @@ fun UpdateDialogImpl(
                     )
                 }
 
-                if (backgroundUpdateMode) {
+                if (backgroundUpdateMode && !isDownloading) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text =
-                            "Tap Update to download with Android Download Manager. " +
-                                "When it finishes, KirinDL hands the APK to Android's package installer " +
-                                "for an in-place update. Android still asks you to confirm installation.",
+                            "Tap Update to download the APK directly in KirinDL. " +
+                                "When it finishes, Android's installer opens so you can confirm the update.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
