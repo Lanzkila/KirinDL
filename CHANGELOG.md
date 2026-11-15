@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Route startup update popup through in-app APK installer (`fb15efd2`)
+- Add YTDLnis-style in-app update progress and cancellation (`ee1e18b5`)
 - Add direct in-app APK download and installer handoff (`5cb3939e`)
 - Add v3.2.3 release notes for refreshed update popup (`866ff4cf`)
 - Restore published v3.2.2 release notes (`2043d74d`)
