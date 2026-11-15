@@ -140,6 +140,7 @@ KirinDL builds on:
 
 - **Seal** — https://github.com/JunkFood02/Seal
 - **SealPlus** — https://github.com/MaheshTechnicals/Sealplus
+- **YTDLnis — Denis Çerri** (reference for the update inbox, in-app APK download progress, cancellation and installer handoff) — https://github.com/deniscerri/ytdlnis
 - **yt-dlp** — https://github.com/yt-dlp/yt-dlp
 - **youtubedl-android** — https://github.com/yausername/youtubedl-android
 - **gallery-dl** — https://codeberg.org/mikf/gallery-dl
