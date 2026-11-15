@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- chore(version): sync Android version code for v3.2.3 (`948369f2`)
 - chore(version): bump KirinDL to v3.2.3 (`30257956`)
 - docs(release): complete KirinDL v3.2.3 updater notes (`6868b399`)
 - Clean up updater dialog imports (`6174921f`)
