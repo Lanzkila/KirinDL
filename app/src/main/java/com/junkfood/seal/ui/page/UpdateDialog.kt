@@ -68,6 +68,8 @@ fun UpdateDialog(
     onDismissRequest: () -> Unit,
     release: UpdateUtil.Release,
     isUpdateAvailable: Boolean = true,
+    onBackgroundUpdate: (() -> Unit)? = null,
+    useInAppUpdate: Boolean = false,
     onUpdateLaunched: () -> Unit = onDismissRequest,
 ) {
     val context = LocalContext.current
@@ -85,7 +87,9 @@ fun UpdateDialog(
             ?: if (isUpdateAvailable) "KirinDL $releaseVersion" else "KirinDL release"
     val channelLabel = if (release.preRelease == true) "Pre-release" else "Stable"
     val availableBuilds = release.availableApkVariants()
-    val canDownloadInApp = isUpdateAvailable && UpdateUtil.hasInAppAppUpdate(release)
+    val canDownloadInApp =
+        isUpdateAvailable && useInAppUpdate && UpdateUtil.hasInAppAppUpdate(release)
+    val hasBackgroundDownload = isUpdateAvailable && onBackgroundUpdate != null
 
     fun cancelDownload() {
         // Let the cancelled coroutine finish cleanup before the dialog allows a retry.
@@ -135,26 +139,32 @@ fun UpdateDialog(
         releaseVersion = releaseVersion,
         publishedDate = release.publishedAt?.take(10) ?: release.createdAt?.take(10),
         isUpdateAvailable = isUpdateAvailable,
-        backgroundUpdateMode = canDownloadInApp,
+        backgroundUpdateMode = canDownloadInApp || hasBackgroundDownload,
+        inAppDownloadMode = canDownloadInApp,
         isDownloading = isDownloading,
         downloadProgress = downloadProgress,
         onCancelDownload = ::cancelDownload,
         onConfirmUpdate = {
-            if (canDownloadInApp) {
-                startDownload()
-            } else {
-                val target =
-                    release.htmlUrl?.takeIf { it.startsWith("https://") } ?: KIRIN_RELEASES_URL
-                runCatching {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(target)).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                    )
-                }.onFailure {
-                    context.makeToast("Could not open the KirinDL release page")
+            when {
+                canDownloadInApp -> startDownload()
+                isUpdateAvailable && onBackgroundUpdate != null -> {
+                    onBackgroundUpdate()
+                    onDismissRequest()
                 }
-                onDismissRequest()
+                else -> {
+                    val target =
+                        release.htmlUrl?.takeIf { it.startsWith("https://") } ?: KIRIN_RELEASES_URL
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(target)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                        )
+                    }.onFailure {
+                        context.makeToast("Could not open the KirinDL release page")
+                    }
+                    onDismissRequest()
+                }
             }
         },
         releaseNote = release.body.orEmpty(),
@@ -174,6 +184,7 @@ fun UpdateDialogImpl(
     publishedDate: String?,
     isUpdateAvailable: Boolean,
     backgroundUpdateMode: Boolean = false,
+    inAppDownloadMode: Boolean = false,
     isDownloading: Boolean = false,
     downloadProgress: Int? = null,
     onCancelDownload: (() -> Unit)? = null,
@@ -301,8 +312,13 @@ fun UpdateDialogImpl(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text =
-                            "Tap Update to download the APK directly in KirinDL. " +
-                                "When it finishes, Android's installer opens so you can confirm the update.",
+                            if (inAppDownloadMode) {
+                                "Tap Update to download the APK directly in KirinDL. " +
+                                    "When it finishes, Android's installer opens so you can confirm the update."
+                            } else {
+                                "Tap Update to download with Android Download Manager. " +
+                                    "When it finishes, KirinDL hands the APK to Android's package installer."
+                            },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
