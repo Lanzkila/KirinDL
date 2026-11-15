@@ -392,7 +392,7 @@ fun AppEntry(dialogViewModel: DownloadDialogViewModel) {
                 )
             }
 
-            AppUpdater()
+            // AppUpdater() // disabled sementara: update hanya melalui About > App Update.
             YtdlpUpdater()
             GalleryDlUpdater()
         }
