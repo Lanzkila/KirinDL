@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Keep updater progress state until cancelled transfer cleanup completes (`74fa79d2`)
 - Route startup update popup through in-app APK installer (`fb15efd2`)
 - Add YTDLnis-style in-app update progress and cancellation (`ee1e18b5`)
 - Add direct in-app APK download and installer handoff (`5cb3939e`)
