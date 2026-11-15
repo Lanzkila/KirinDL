@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): remove superseded v3.2.3.1 notes (`eb33d8d8`)
+- chore(version): restore KirinDL v3.2.3 (`03b54a9e`)
 - docs(release): align v3.2.3.1 notes with restored updater (`43e7cbac`)
 - revert(updater): restore README.md from v3.2.3 (`0ceb9c4d`)
 - revert(updater): restore AppUpdateAssetSelectionTest.kt from v3.2.3 (`5b36ffc3`)
