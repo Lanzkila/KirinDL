@@ -39,6 +39,7 @@ import com.junkfood.seal.util.UpdateUtil
 
 private const val UPDATE_POPUP_PREFERENCES = "kirin_update_popup"
 private const val KEY_DISMISSED_RELEASE = "dismissed_release"
+private const val ENABLE_STARTUP_UPDATE_POPUP = false
 
 /**
  * Checks for a KirinDL release when the main app opens and presents an Updates inbox card.
@@ -49,6 +50,8 @@ private const val KEY_DISMISSED_RELEASE = "dismissed_release"
  */
 @Composable
 fun StartupUpdatePopup() {
+    // Popup startup dimatikan sementara; kod asal dikekalkan di bawah.
+    if (!ENABLE_STARTUP_UPDATE_POPUP) return
     val context = LocalContext.current
     val popupPreferences = remember(context) {
         context.getSharedPreferences(UPDATE_POPUP_PREFERENCES, Context.MODE_PRIVATE)
