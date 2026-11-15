@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(updater): close disabled automatic checker block (`bc6b7566`)
 - chore(updater): disable: Morphe home update alert (`a21add91`)
 - chore(updater): disable: startup update popup (`16520bb1`)
 - chore(updater): disable: automatic update checker (`bb4df981`)
