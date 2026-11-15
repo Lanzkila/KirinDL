@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): clarify stable upgrade selection behavior (`e5db8477`)
 - chore(version): sync Android version code for v3.2.3.1 (`0783f1d9`)
 - chore(version): prepare KirinDL v3.2.3.1 (`411ee2f0`)
 - docs(release): prepare KirinDL v3.2.3.1 notes (`2a3d93e7`)
