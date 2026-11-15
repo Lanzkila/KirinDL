@@ -145,12 +145,6 @@ object UpdateUtil {
             jsonFormat.decodeFromString<List<Release>>(body)
         }
 
-    private fun getLatestRelease(installedVersion: Version): Release {
-        val releases = getReleaseList()
-        return selectLatestRelease(releases, installedVersion, UPDATE_CHANNEL.getInt())
-            ?: throw IOException("No compatible KirinDL release found")
-    }
-
     /**
      * GitHub records whether a published tag is Pre-release. The APK version name itself does not
      * include the channel, so match the installed version against the release list.
