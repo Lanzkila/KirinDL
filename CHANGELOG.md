@@ -7,29 +7,9 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
-- fix(update): resolve popup installer compilation errors (`7e449b3e`)
-- chore(version): sync Android version code for v3.2.3 (`948369f2`)
-- chore(version): bump KirinDL to v3.2.3 (`30257956`)
-- docs(release): complete KirinDL v3.2.3 updater notes (`6868b399`)
-- Clean up updater dialog imports (`6174921f`)
-- Cover legacy About updater asset behavior (`2bcd6737`)
-- Enable in-app APK downloads for the automatic update popup (`82b43dbe`)
-- Keep About DownloadManager flow separate from startup in-app updater (`90bb2a00`)
-- Preserve About updater asset selection while enabling ABI-specific popup downloads (`e1dfed54`)
-- Polish update dialog launch callback and progress state (`99c802d8`)
-- Make in-app APK downloads respond immediately to Cancel (`cbc721c3`)
-- Test compatible KirinDL updater APK asset selection (`35fbc4fe`)
-- Document in-app update download flow for v3.2.3 (`fb9980ab`)
-- Credit YTDLnis and Denis Çerri for updater reference (`e679659a`)
-- Keep updater progress state until cancelled transfer cleanup completes (`74fa79d2`)
-- Route startup update popup through in-app APK installer (`fb15efd2`)
-- Add YTDLnis-style in-app update progress and cancellation (`ee1e18b5`)
-- Add direct in-app APK download and installer handoff (`5cb3939e`)
-- Add v3.2.3 release notes for refreshed update popup (`866ff4cf`)
-- Restore published v3.2.2 release notes (`2043d74d`)
-- Fix startup update popup callback typing (`12ce27ea`)
-- Document refreshed startup update popup for v3.2.2 (`68af2f3b`)
-- Refresh startup update popup with YTDLnis-style update card (`fc3ad44f`)
+- fix(update): observe shared startup update result (`cfb3627c`)
+- test(update): cover prerelease to stable channel recovery (`a3d886b5`)
+- fix(update): route prerelease installs back to stable (`c3b42fb5`)
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
 
