@@ -140,7 +140,7 @@ KirinDL builds on:
 
 - **Seal** — https://github.com/JunkFood02/Seal
 - **SealPlus** — https://github.com/MaheshTechnicals/Sealplus
-- **YTDLnis — Denis Çerri** (source for the app-update dialog flow, including release notes, Update / Cancel / Ignore actions, APK download progress and installer handoff; adapted from [`UiUtil.showNewAppUpdateDialog`](https://github.com/deniscerri/ytdlnis/blob/00f3b1b95378adb169314b61f13c1e2a641ef9ee/app/src/main/java/com/deniscerri/ytdl/util/UiUtil.kt#L2901-L2997) under GPL-3.0) — https://github.com/deniscerri/ytdlnis
+- **YTDLnis — Denis Çerri** (reference for the update inbox, in-app APK download progress, cancellation and installer handoff) — https://github.com/deniscerri/ytdlnis
 - **yt-dlp** — https://github.com/yt-dlp/yt-dlp
 - **youtubedl-android** — https://github.com/yausername/youtubedl-android
 - **gallery-dl** — https://codeberg.org/mikf/gallery-dl
