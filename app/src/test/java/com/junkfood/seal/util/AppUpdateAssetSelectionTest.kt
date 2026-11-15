@@ -60,6 +60,55 @@ class AppUpdateAssetSelectionTest {
     }
 
     @Test
+    fun prereleaseInstallIsForcedToOlderStableUntilItIsPromoted() {
+        val releases = listOf(
+            release("v3.2.3", prerelease = true),
+            release("v3.2.2", prerelease = true),
+            release("v3.2.1", prerelease = false),
+        )
+        val installedVersion = version(2)
+        val selected = UpdateUtil.selectLatestRelease(
+            releases = releases,
+            installedVersion = installedVersion,
+            selectedChannel = STABLE,
+        )
+        val installedFromPreRelease =
+            UpdateUtil.isInstalledFromPreRelease(releases, installedVersion)
+        val selectedVersion = selected?.tagName.toVersionOrNull()
+
+        assertEquals("v3.2.1", selected?.tagName)
+        assertTrue(installedFromPreRelease)
+        assertTrue(
+            UpdateUtil.shouldOfferSelectedRelease(
+                installedVersion = installedVersion,
+                selectedReleaseVersion = selectedVersion!!,
+                installedFromPreRelease = installedFromPreRelease,
+            ),
+        )
+    }
+
+    @Test
+    fun stableInstallIsNotForcedBackToAnOlderStableVersion() {
+        val releases = listOf(
+            release("v3.2.3", prerelease = true),
+            release("v3.2.2", prerelease = true),
+            release("v3.2.1", prerelease = false),
+        )
+        val installedVersion = version(1)
+        val installedFromPreRelease =
+            UpdateUtil.isInstalledFromPreRelease(releases, installedVersion)
+
+        assertFalse(installedFromPreRelease)
+        assertFalse(
+            UpdateUtil.shouldOfferSelectedRelease(
+                installedVersion = installedVersion,
+                selectedReleaseVersion = version(1),
+                installedFromPreRelease = installedFromPreRelease,
+            ),
+        )
+    }
+
+    @Test
     fun stableChannelIgnoresNewerPrereleasesForStableInstall() {
         val selected = UpdateUtil.selectLatestRelease(
             releases = listOf(
