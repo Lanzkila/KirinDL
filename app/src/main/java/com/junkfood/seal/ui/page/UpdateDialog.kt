@@ -68,7 +68,7 @@ fun UpdateDialog(
     onDismissRequest: () -> Unit,
     release: UpdateUtil.Release,
     isUpdateAvailable: Boolean = true,
-    onUpdateLaunched: () -> Unit = {},
+    onUpdateLaunched: () -> Unit = onDismissRequest,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -276,11 +276,12 @@ fun UpdateDialogImpl(
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(modifier = Modifier.height(6.dp))
-                    if (downloadProgress == null) {
+                    val progress = downloadProgress
+                    if (progress == null) {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     } else {
                         LinearProgressIndicator(
-                            progress = { (downloadProgress.coerceIn(0, 100) / 100f) },
+                            progress = { progress.coerceIn(0, 100) / 100f },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
