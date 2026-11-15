@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): add KirinDL v3.2.3.1 notes (`6c53a66f`)
+- chore(version): bump KirinDL to v3.2.3.1 (`75d72017`)
 - Comment out startup update popup (`6f612c4a`)
 - Comment out Morphe Home update popup (`99ef262c`)
 - Remove pre-publish test workflow (`7cbf5134`)
