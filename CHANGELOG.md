@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): clarify forced stable update behavior (`91428b22`)
+- test(update): cover forced stable downgrade from prerelease (`01beb777`)
 - fix(update): force stable offer for prerelease installs (`5cd1706e`)
 - docs(release): clarify stable upgrade selection behavior (`e5db8477`)
 - chore(version): sync Android version code for v3.2.3.1 (`0783f1d9`)
