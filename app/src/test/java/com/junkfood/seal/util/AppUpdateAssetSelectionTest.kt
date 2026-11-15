@@ -109,6 +109,28 @@ class AppUpdateAssetSelectionTest {
     }
 
     @Test
+    fun keepsOlderStableReleaseCachedWhileInstalledPreReleaseIsAwaitingPromotion() {
+        assertTrue(
+            UpdateUtil.shouldKeepCachedRelease(
+                installedVersion = version(2),
+                cachedVersion = version(1),
+                forcedStableMigration = true,
+            ),
+        )
+    }
+
+    @Test
+    fun clearsOlderStableReleaseCacheAfterStableVersionIsInstalled() {
+        assertFalse(
+            UpdateUtil.shouldKeepCachedRelease(
+                installedVersion = version(1),
+                cachedVersion = version(1),
+                forcedStableMigration = false,
+            ),
+        )
+    }
+
+    @Test
     fun stableChannelIgnoresNewerPrereleasesForStableInstall() {
         val selected = UpdateUtil.selectLatestRelease(
             releases = listOf(
