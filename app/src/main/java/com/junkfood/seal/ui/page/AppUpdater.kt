@@ -19,9 +19,12 @@ private val AUTO_UPDATE_CHECK_INTERVAL_MS = TimeUnit.DAYS.toMillis(1)
 
 @Composable
 fun AppUpdater() {
-    val context = LocalContext.current
+    // Matikan semakan automatik dan notifikasi update sementara.
+    // About > App Update kekal menggunakan UpdateUtil secara manual.
+    if (ENABLE_AUTOMATIC_APP_UPDATE_CHECK) {
+        val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
+        LaunchedEffect(Unit) {
         UpdateUtil.syncInstalledVersionState(context)
 
         // Restore a previously detected update before honoring the network-check cooldown.
@@ -59,5 +62,7 @@ fun AppUpdater() {
                 // eligible app start can retry without waiting through the normal cooldown.
                 error.printStackTrace()
             }
-    }
+        }
 }
+
+private const val ENABLE_AUTOMATIC_APP_UPDATE_CHECK = false
