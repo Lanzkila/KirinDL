@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- ci: align pre-publish version code in test workspace (`7b941e86`)
 - ci: add pre-publish validation workflow (`93763cb9`)
 - fix(updater): close disabled automatic checker block (`bc6b7566`)
 - chore(updater): disable: Morphe home update alert (`a21add91`)
