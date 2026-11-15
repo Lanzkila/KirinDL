@@ -64,6 +64,51 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
+      - name: Align local versionCode with Version.kt (test workspace only)
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+
+          version_source = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
+          match = re.search(
+              r"Version\\.Stable\\(\\s*versionMajor\\s*=\\s*(\\d+),"
+              r"\\s*versionMinor\\s*=\\s*(\\d+),"
+              r"\\s*versionPatch\\s*=\\s*(\\d+)"
+              r"(?:,\\s*versionBuild\\s*=\\s*(\\d+))?\\s*\\)",
+              version_source,
+              re.S,
+          )
+          if not match:
+              raise SystemExit("Could not read Version.Stable from Version.kt")
+
+          major, minor, patch = map(int, match.groups()[:3])
+          build = int(match.group(4) or 0)
+          version_code = (
+              major * 100_000_000
+              + minor * 1_000_000
+              + patch * 10_000
+              + build * 10
+              + 400
+          )
+
+          gradle_file = Path("app/build.gradle.kts")
+          gradle_source = gradle_file.read_text(encoding="utf-8")
+          gradle_source, count = re.subn(
+              r"versionCode\\s*=\\s*[0-9_]+",
+              f"versionCode = {version_code}",
+              gradle_source,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Could not stage app versionCode for test build")
+
+          gradle_file.write_text(gradle_source, encoding="utf-8")
+          print(
+              f"Test workspace only: Version.kt {major}.{minor}.{patch}.{build} "
+              f"uses versionCode {version_code}"
+          )
+
       - name: Compile Generic Release sources
         run: |
           ./gradlew \
