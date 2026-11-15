@@ -7,6 +7,12 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): align v3.2.3.1 notes with restored updater (`43e7cbac`)
+- revert(updater): restore README.md from v3.2.3 (`0ceb9c4d`)
+- revert(updater): restore AppUpdateAssetSelectionTest.kt from v3.2.3 (`5b36ffc3`)
+- revert(updater): restore UpdateUtil.kt from v3.2.3 (`3014c624`)
+- revert(updater): restore StartupUpdatePopup.kt from v3.2.3 (`53863cf7`)
+- revert(updater): restore UpdateDialog.kt from v3.2.3 (`fd302707`)
 - test(updater): align prerelease migration expectation (`57cb39c5`)
 - test(updater): resolve version parser in migration test (`53e36361`)
 - fix(updater): keep active download dialog non-cancelable (`b9151020`)
