@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- test(update): run app updater regressions in release workflow (`32ac5544`)
 - fix(update): observe shared startup update result (`cfb3627c`)
 - test(update): cover prerelease to stable channel recovery (`a3d886b5`)
 - fix(update): route prerelease installs back to stable (`c3b42fb5`)
