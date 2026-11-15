@@ -7,6 +7,9 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Comment out startup update popup (`6f612c4a`)
+- Comment out Morphe Home update popup (`99ef262c`)
+- Remove pre-publish test workflow (`7cbf5134`)
 - fix(ci): correct test version alignment regex (`8625e8b9`)
 - ci: align pre-publish version code in test workspace (`7b941e86`)
 - ci: add pre-publish validation workflow (`93763cb9`)
