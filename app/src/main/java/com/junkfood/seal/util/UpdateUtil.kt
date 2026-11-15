@@ -25,6 +25,8 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -230,45 +232,55 @@ object UpdateUtil {
                     .header("User-Agent", "KirinDL in-app updater")
                     .build()
 
-            getClient().newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw IOException("KirinDL APK download failed (HTTP ${response.code})")
+            val coroutineContext = currentCoroutineContext()
+            val call = getClient().newCall(request)
+            val cancellationHandle =
+                coroutineContext[Job]?.invokeOnCompletion { cause ->
+                    if (cause is CancellationException) call.cancel()
                 }
-                val body = response.body ?: throw IOException("The KirinDL APK response was empty")
-                val expectedBytes =
-                    body.contentLength().takeIf { it > 0L }
-                        ?: asset.size?.takeIf { it > 0L }
-                var downloadedBytes = 0L
-                var lastProgress: Int? = null
-                val coroutineContext = currentCoroutineContext()
 
-                body.byteStream().use { input ->
-                    apkFile.outputStream().buffered().use { output ->
-                        val buffer = ByteArray(64 * 1024)
-                        while (true) {
-                            coroutineContext.ensureActive()
-                            val count = input.read(buffer)
-                            if (count < 0) break
-                            output.write(buffer, 0, count)
-                            downloadedBytes += count
+            try {
+                call.execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw IOException("KirinDL APK download failed (HTTP ${response.code})")
+                    }
+                    val body = response.body ?: throw IOException("The KirinDL APK response was empty")
+                    val expectedBytes =
+                        body.contentLength().takeIf { it > 0L }
+                            ?: asset.size?.takeIf { it > 0L }
+                    var downloadedBytes = 0L
+                    var lastProgress: Int? = null
 
-                            val progress =
-                                expectedBytes?.let {
-                                    ((downloadedBytes * 100L) / it).toInt().coerceIn(0, 99)
+                    body.byteStream().use { input ->
+                        apkFile.outputStream().buffered().use { output ->
+                            val buffer = ByteArray(64 * 1024)
+                            while (true) {
+                                coroutineContext.ensureActive()
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                output.write(buffer, 0, count)
+                                downloadedBytes += count
+
+                                val progress =
+                                    expectedBytes?.let {
+                                        ((downloadedBytes * 100L) / it).toInt().coerceIn(0, 99)
+                                    }
+                                if (progress != lastProgress) {
+                                    onProgress(progress)
+                                    lastProgress = progress
                                 }
-                            if (progress != lastProgress) {
-                                onProgress(progress)
-                                lastProgress = progress
                             }
                         }
                     }
-                }
 
-                if (expectedBytes != null && downloadedBytes != expectedBytes) {
-                    throw IOException(
-                        "KirinDL APK download was incomplete ($downloadedBytes/$expectedBytes bytes)"
-                    )
+                    if (expectedBytes != null && downloadedBytes != expectedBytes) {
+                        throw IOException(
+                            "KirinDL APK download was incomplete ($downloadedBytes/$expectedBytes bytes)"
+                        )
+                    }
                 }
+            } finally {
+                cancellationHandle?.dispose()
             }
 
             if (apkFile.length() <= 0L) throw IOException("The downloaded KirinDL APK is empty")
