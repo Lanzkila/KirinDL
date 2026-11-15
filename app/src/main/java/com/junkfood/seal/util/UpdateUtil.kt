@@ -53,7 +53,6 @@ object UpdateUtil {
     private const val KEY_LAST_CHECKED_VERSION = "last_checked_version"
     private const val KEY_LAST_CHECKED_CHANNEL = "last_checked_channel"
     private const val KEY_AVAILABLE_RELEASE_JSON = "available_release_json"
-    private const val KEY_FORCED_STABLE_FROM_VERSION = "forced_stable_from_version"
     private const val KEY_WAITING_INSTALL_PERMISSION = "waiting_install_permission"
     private const val NO_DOWNLOAD_ID = -1L
     private const val APK_MIME = "application/vnd.android.package-archive"
@@ -146,78 +145,22 @@ object UpdateUtil {
             jsonFormat.decodeFromString<List<Release>>(body)
         }
 
-    /**
-     * GitHub records whether a published tag is Pre-release. The APK version name itself does not
-     * include the channel, so match the installed version against the release list.
-     */
-    internal fun isInstalledFromPreRelease(
-        releases: List<Release>,
-        installedVersion: Version,
-    ): Boolean =
-        releases.any { release ->
-            release.draft != true &&
-                release.preRelease == true &&
-                (release.tagName ?: release.name)
-                    .toVersionOrNull()
-                    ?.compareTo(installedVersion) == 0
-        }
-
-    /**
-     * Mirrors the YTDLnis Stable/Beta migration behavior:
-     * - An installed Pre-release is always offered the latest Stable, even when Stable has a
-     *   lower version number. It remains on this path until a Stable APK is installed.
-     * - A Stable installation can opt into newer Pre-releases.
-     * - Stable channel selection never offers a Pre-release build.
-     */
-    internal fun selectLatestRelease(
-        releases: List<Release>,
-        installedVersion: Version,
-        selectedChannel: Int,
-    ): Release? {
-        val validReleases = releases.filter { release ->
-            release.draft != true &&
-                (release.tagName ?: release.name).toVersionOrNull() != null
-        }
-        val latestStable = validReleases
+    private fun getLatestRelease(): Release {
+        val stableChannel = UPDATE_CHANNEL.getInt() == STABLE
+        return getReleaseList()
             .asSequence()
-            .filter { it.preRelease != true }
+            .filter { it.draft != true }
+            .filter { release ->
+                // Stable users never receive GitHub pre-releases. Pre-release testers can see
+                // both channels and simply take the highest valid KirinDL version.
+                !stableChannel || release.preRelease != true
+            }
+            .filter { (it.tagName ?: it.name).toVersionOrNull() != null }
             .maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
-
-        if (isInstalledFromPreRelease(validReleases, installedVersion)) {
-            return latestStable
-        }
-
-        if (selectedChannel == STABLE) return latestStable
-
-        val stableVersion = (latestStable?.tagName ?: latestStable?.name).toVersionOrNull()
-        if (latestStable != null && stableVersion != null && installedVersion < stableVersion) {
-            return latestStable
-        }
-
-        return validReleases.maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
-    }
-
-    internal fun shouldOfferSelectedRelease(
-        installedVersion: Version,
-        selectedReleaseVersion: Version,
-        installedFromPreRelease: Boolean,
-    ): Boolean = installedFromPreRelease || installedVersion < selectedReleaseVersion
-
-    internal fun shouldKeepCachedRelease(
-        installedVersion: Version,
-        cachedVersion: Version,
-        forcedStableMigration: Boolean,
-    ): Boolean = forcedStableMigration || installedVersion < cachedVersion
-
-    fun isForcedStableMigration(
-        context: Context,
-        release: Release,
-    ): Boolean {
-        val forcedFromVersion =
-            context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
-                .getString(KEY_FORCED_STABLE_FROM_VERSION, null)
-        return forcedFromVersion == context.getCurrentVersionName() &&
-            release.preRelease != true
+            ?: throw IOException(
+                if (stableChannel) "No stable KirinDL release found"
+                else "No prerelease KirinDL build found"
+            )
     }
 
     /**
@@ -242,7 +185,6 @@ object UpdateUtil {
             .remove(KEY_PENDING_VERSION)
             .remove(KEY_PENDING_APK_PATH)
             .remove(KEY_AVAILABLE_RELEASE_JSON)
-            .remove(KEY_FORCED_STABLE_FROM_VERSION)
             .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
             .apply()
         APP_UPDATE_CHECK_TIME.updateLong(0L)
@@ -670,9 +612,6 @@ object UpdateUtil {
         val now = System.currentTimeMillis()
 
         if (checkedVersion != installed || checkedChannel != channel) return true
-        // Keep checking while a Pre-release installation is being directed to Stable. This also
-        // detects when the same GitHub tag is promoted from Pre-release to Stable.
-        if (prefs.getString(KEY_FORCED_STABLE_FROM_VERSION, null) == installed) return true
         if (lastChecked <= 0L || now < lastChecked) return true
         return now - lastChecked >= intervalMs
     }
@@ -688,53 +627,23 @@ object UpdateUtil {
 
     suspend fun checkForUpdateResult(context: Context = App.context): Result<Release?> =
         withContext(Dispatchers.IO) {
-            var forcedStableMigration = false
             runCatching {
                     val currentVersion = context.getCurrentVersion()
-                    val releases = getReleaseList()
-                    val installedFromPreRelease =
-                        isInstalledFromPreRelease(releases, currentVersion)
-                    val latestRelease = selectLatestRelease(
-                        releases = releases,
-                        installedVersion = currentVersion,
-                        selectedChannel = UPDATE_CHANNEL.getInt(),
-                    ) ?: throw IOException("No compatible KirinDL release found")
+                    val latestRelease = getLatestRelease()
                     val latestVersion = (latestRelease.tagName ?: latestRelease.name).toVersion()
-                    forcedStableMigration =
-                        installedFromPreRelease && latestRelease.preRelease != true
-                    if (
-                        shouldOfferSelectedRelease(
-                            installedVersion = currentVersion,
-                            selectedReleaseVersion = latestVersion,
-                            installedFromPreRelease = installedFromPreRelease,
-                        )
-                    ) {
-                        latestRelease
-                    } else {
-                        forcedStableMigration = false
-                        null
-                    }
+                    if (currentVersion < latestVersion) latestRelease else null
                 }
                 .onSuccess { candidate ->
+                    _availableAppUpdate.value = candidate
                     val prefs = context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
-                    val editor = prefs.edit()
                     if (candidate != null) {
-                        editor.putString(KEY_AVAILABLE_RELEASE_JSON, jsonFormat.encodeToString(candidate))
-                        if (forcedStableMigration) {
-                            editor.putString(
-                                KEY_FORCED_STABLE_FROM_VERSION,
-                                context.getCurrentVersionName(),
-                            )
-                        } else {
-                            editor.remove(KEY_FORCED_STABLE_FROM_VERSION)
-                        }
+                        prefs.edit()
+                            .putString(KEY_AVAILABLE_RELEASE_JSON, jsonFormat.encodeToString(candidate))
+                            .apply()
                     } else {
-                        editor.remove(KEY_AVAILABLE_RELEASE_JSON)
-                            .remove(KEY_FORCED_STABLE_FROM_VERSION)
+                        prefs.edit().remove(KEY_AVAILABLE_RELEASE_JSON).apply()
                         NotificationUtil.cancelAppUpdateAvailableNotification(context)
                     }
-                    editor.apply()
-                    _availableAppUpdate.value = candidate
                     recordSuccessfulAppUpdateCheck(context)
                 }
         }
@@ -748,23 +657,8 @@ object UpdateUtil {
         val raw = prefs.getString(KEY_AVAILABLE_RELEASE_JSON, null) ?: return null
         val cached = runCatching { jsonFormat.decodeFromString<Release>(raw) }.getOrNull()
         val cachedVersion = (cached?.tagName ?: cached?.name).toVersionOrNull()
-        val installedVersion = context.getCurrentVersion()
-        val forcedStableMigration =
-            prefs.getString(KEY_FORCED_STABLE_FROM_VERSION, null) ==
-                context.getCurrentVersionName()
-        if (
-            cached == null ||
-                cachedVersion == null ||
-                !shouldKeepCachedRelease(
-                    installedVersion = installedVersion,
-                    cachedVersion = cachedVersion,
-                    forcedStableMigration = forcedStableMigration,
-                )
-        ) {
-            prefs.edit()
-                .remove(KEY_AVAILABLE_RELEASE_JSON)
-                .remove(KEY_FORCED_STABLE_FROM_VERSION)
-                .apply()
+        if (cached == null || cachedVersion == null || context.getCurrentVersion() >= cachedVersion) {
+            prefs.edit().remove(KEY_AVAILABLE_RELEASE_JSON).apply()
             return null
         }
 
