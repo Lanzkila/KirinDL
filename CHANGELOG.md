@@ -7,6 +7,12 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- chore(version): sync Android version code for v3.2.3.1 (`0783f1d9`)
+- chore(version): prepare KirinDL v3.2.3.1 (`411ee2f0`)
+- docs(release): prepare KirinDL v3.2.3.1 notes (`2a3d93e7`)
+- test(update): remove duplicate channel case (`2544da65`)
+- test(update): cover stable promotion and prerelease testing flow (`5732f96e`)
+- fix(update): match YTDLnis stable and prerelease selection (`9950f3ae`)
 - test(update): run app updater regressions in release workflow (`32ac5544`)
 - fix(update): observe shared startup update result (`cfb3627c`)
 - test(update): cover prerelease to stable channel recovery (`a3d886b5`)
