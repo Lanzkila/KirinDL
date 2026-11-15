@@ -7,6 +7,14 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(updater): keep active download dialog non-cancelable (`b9151020`)
+- docs(release): note YTDLnis-style startup dialog (`f6987bb5`)
+- docs: credit YTDLnis update dialog source (`614c26eb`)
+- refactor(updater): show one-step startup update dialog (`e15353f7`)
+- fix(updater): adapt YTDLnis-style update dialog actions (`3b47fea8`)
+- docs(release): document persistent forced stable prompt (`5b9feb63`)
+- fix(update): keep forced stable popup until migration (`5c726038`)
+- fix(update): expose forced stable migration state to popup (`a87e271b`)
 - docs(release): document persistent stable migration prompt (`8855a162`)
 - test(update): cover forced stable offer persistence (`d40e8138`)
 - fix(update): keep forced stable offer until promotion (`b1e20df0`)
