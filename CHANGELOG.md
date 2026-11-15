@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- chore(update): temporarily disable home update alert (`8c21f3a8`)
 - docs(release): remove superseded v3.2.3.1 notes (`eb33d8d8`)
 - chore(version): restore KirinDL v3.2.3 (`03b54a9e`)
 - docs(release): align v3.2.3.1 notes with restored updater (`43e7cbac`)
