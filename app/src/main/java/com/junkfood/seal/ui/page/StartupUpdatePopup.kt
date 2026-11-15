@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import com.junkfood.seal.util.DEFAULT_INTERVAL
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.UpdateUtil
-import com.junkfood.seal.util.makeToast
 
 private const val UPDATE_POPUP_PREFERENCES = "kirin_update_popup"
 private const val KEY_DISMISSED_RELEASE = "dismissed_release"
@@ -200,21 +199,10 @@ fun StartupUpdatePopup() {
             onDismissRequest = dismissRelease,
             release = release,
             isUpdateAvailable = true,
-            onBackgroundUpdate = if (UpdateUtil.hasBackgroundAppUpdate(release)) {
-                {
-                    UpdateUtil.enqueueBackgroundAppUpdate(context, release)
-                        .onSuccess {
-                            context.makeToast(
-                                "KirinDL update is downloading in Android Download Manager"
-                            )
-                        }
-                        .onFailure { error ->
-                            error.printStackTrace()
-                            context.makeToast("Could not start the app update download")
-                        }
-                }
-            } else {
-                null
+            onUpdateLaunched = {
+                // Hide the dialog while Android's installer is in front. Do not mark the
+                // release dismissed: a cancelled system install can be retried on next launch.
+                showDetails = false
             },
         )
     }
