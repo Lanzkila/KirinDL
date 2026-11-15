@@ -10,59 +10,55 @@ import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.UpdateUtil
 import java.util.concurrent.TimeUnit
 
-// Komikku-style automatic update trigger:
-// - check once when the app UI starts
-// - throttle automatic checks so every app launch does not hit GitHub
-// - Home owns the persistent in-app update alert
-// - Android notification is optional and de-duplicated per release version
+// Komikku-style automatic update trigger.
+// Disabled for now so About > App Update is the only active update entry point.
 private val AUTO_UPDATE_CHECK_INTERVAL_MS = TimeUnit.DAYS.toMillis(1)
 
 @Composable
 fun AppUpdater() {
     // Matikan semakan automatik dan notifikasi update sementara.
-    // About > App Update kekal menggunakan UpdateUtil secara manual.
+    // Kod asal dikekalkan di bawah dan boleh diaktifkan semula melalui suis ini.
     if (ENABLE_AUTOMATIC_APP_UPDATE_CHECK) {
         val context = LocalContext.current
 
         LaunchedEffect(Unit) {
-        UpdateUtil.syncInstalledVersionState(context)
+            UpdateUtil.syncInstalledVersionState(context)
 
-        // Restore a previously detected update before honoring the network-check cooldown.
-        // This keeps the Home alert visible across launches until the newer APK is installed.
-        UpdateUtil.restoreCachedAvailableUpdate(context)?.let { cached ->
-            if (APP_UPDATE_NOTIFICATIONS.getBoolean()) {
-                NotificationUtil.notifyAppUpdateAvailable(cached)
-            }
-        }
-
-        if (
-            !PreferenceUtil.isNetworkAvailableForDownload() ||
-                !PreferenceUtil.isAutoUpdateEnabled()
-        ) {
-            return@LaunchedEffect
-        }
-
-        if (
-            !UpdateUtil.shouldRunAutomaticUpdateCheck(
-                context = context,
-                intervalMs = AUTO_UPDATE_CHECK_INTERVAL_MS,
-            )
-        ) {
-            return@LaunchedEffect
-        }
-
-        UpdateUtil.checkForUpdateResult(context)
-            .onSuccess { candidate ->
-                if (candidate != null && APP_UPDATE_NOTIFICATIONS.getBoolean()) {
-                    NotificationUtil.notifyAppUpdateAvailable(candidate)
+            // Restore a previously detected update before honoring the network-check cooldown.
+            UpdateUtil.restoreCachedAvailableUpdate(context)?.let { cached ->
+                if (APP_UPDATE_NOTIFICATIONS.getBoolean()) {
+                    NotificationUtil.notifyAppUpdateAvailable(cached)
                 }
             }
-            .onFailure { error ->
-                // Failed network/API checks are not recorded as successful checks, so the next
-                // eligible app start can retry without waiting through the normal cooldown.
-                error.printStackTrace()
+
+            if (
+                !PreferenceUtil.isNetworkAvailableForDownload() ||
+                    !PreferenceUtil.isAutoUpdateEnabled()
+            ) {
+                return@LaunchedEffect
             }
+
+            if (
+                !UpdateUtil.shouldRunAutomaticUpdateCheck(
+                    context = context,
+                    intervalMs = AUTO_UPDATE_CHECK_INTERVAL_MS,
+                )
+            ) {
+                return@LaunchedEffect
+            }
+
+            UpdateUtil.checkForUpdateResult(context)
+                .onSuccess { candidate ->
+                    if (candidate != null && APP_UPDATE_NOTIFICATIONS.getBoolean()) {
+                        NotificationUtil.notifyAppUpdateAvailable(candidate)
+                    }
+                }
+                .onFailure { error ->
+                    // Failed checks are not recorded as successful checks.
+                    error.printStackTrace()
+                }
         }
+    }
 }
 
 private const val ENABLE_AUTOMATIC_APP_UPDATE_CHECK = false
