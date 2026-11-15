@@ -74,7 +74,7 @@ class AppUpdateAssetSelectionTest {
         )
         val installedFromPreRelease =
             UpdateUtil.isInstalledFromPreRelease(releases, installedVersion)
-        val selectedVersion = selected?.tagName.toVersionOrNull()
+        val selectedVersion = with(UpdateUtil) { selected?.tagName.toVersionOrNull() }
 
         assertEquals("v3.2.1", selected?.tagName)
         assertTrue(installedFromPreRelease)
