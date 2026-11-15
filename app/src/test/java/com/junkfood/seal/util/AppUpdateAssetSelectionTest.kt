@@ -15,6 +15,65 @@ class AppUpdateAssetSelectionTest {
             size = 1024L,
         )
 
+    private fun release(tag: String, prerelease: Boolean) =
+        UpdateUtil.Release(
+            tagName = tag,
+            draft = false,
+            preRelease = prerelease,
+        )
+
+    private fun version(patch: Int) =
+        UpdateUtil.Version.Stable(
+            versionMajor = 3,
+            versionMinor = 2,
+            versionPatch = patch,
+        )
+
+    @Test
+    fun prereleaseInstallPrefersStableEvenWhenPrereleaseChannelWasSelected() {
+        val selected = UpdateUtil.selectLatestRelease(
+            releases = listOf(
+                release("v3.2.4", prerelease = true),
+                release("v3.2.3", prerelease = false),
+                release("v3.2.2", prerelease = true),
+            ),
+            installedVersion = version(2),
+            selectedChannel = PRE_RELEASE,
+        )
+
+        assertEquals("v3.2.3", selected?.tagName)
+    }
+
+    @Test
+    fun stableInstallCanStillOptIntoNewerPrereleases() {
+        val selected = UpdateUtil.selectLatestRelease(
+            releases = listOf(
+                release("v3.2.4", prerelease = true),
+                release("v3.2.3", prerelease = false),
+                release("v3.2.2", prerelease = false),
+            ),
+            installedVersion = version(2),
+            selectedChannel = PRE_RELEASE,
+        )
+
+        assertEquals("v3.2.4", selected?.tagName)
+    }
+
+    @Test
+    fun stableChannelIgnoresNewerPrereleasesForStableInstall() {
+        val selected = UpdateUtil.selectLatestRelease(
+            releases = listOf(
+                release("v3.2.4", prerelease = true),
+                release("v3.2.3", prerelease = false),
+                release("v3.2.2", prerelease = false),
+            ),
+            installedVersion = version(2),
+            selectedChannel = STABLE,
+        )
+
+        assertEquals("v3.2.3", selected?.tagName)
+    }
+
     @Test
     fun prefersTheFirstSupportedDeviceAbiOverUniversal() {
         val arm64 = asset("KirinDL-3.2.3-arm64-v8a.apk")
