@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Fix startup update popup callback typing (`12ce27ea`)
 - Document refreshed startup update popup for v3.2.2 (`68af2f3b`)
 - Refresh startup update popup with YTDLnis-style update card (`fc3ad44f`)
 
