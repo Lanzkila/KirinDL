@@ -4,6 +4,7 @@ import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,16 +13,20 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
+import androidx.core.content.FileProvider
 import com.junkfood.seal.App
 import com.junkfood.seal.App.Companion.context
 import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.getLong
 import com.junkfood.seal.util.PreferenceUtil.updateLong
 import com.yausername.youtubedl_android.YoutubeDL
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +46,7 @@ object UpdateUtil {
     private const val APP_UPDATE_PREFS = "kirin_app_update_state"
     private const val KEY_PENDING_DOWNLOAD_ID = "pending_download_id"
     private const val KEY_PENDING_VERSION = "pending_version"
+    private const val KEY_PENDING_APK_PATH = "pending_apk_path"
     private const val KEY_LAST_INSTALLED_VERSION = "last_installed_version"
     private const val KEY_LAST_CHECKED_VERSION = "last_checked_version"
     private const val KEY_LAST_CHECKED_CHANNEL = "last_checked_channel"
@@ -175,6 +181,7 @@ object UpdateUtil {
             .remove(KEY_LAST_CHECKED_CHANNEL)
             .remove(KEY_PENDING_DOWNLOAD_ID)
             .remove(KEY_PENDING_VERSION)
+            .remove(KEY_PENDING_APK_PATH)
             .remove(KEY_AVAILABLE_RELEASE_JSON)
             .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
             .apply()
@@ -191,6 +198,117 @@ object UpdateUtil {
     suspend fun deleteOutdatedApk() {
         syncInstalledVersionState(App.context)
     }
+
+    /**
+     * Downloads the selected KirinDL APK into the app cache, reporting progress like YTDLnis.
+     * The caller owns cancellation through its coroutine Job. Incomplete files are deleted.
+     */
+    suspend fun downloadReleaseApk(
+        context: Context,
+        release: Release,
+        onProgress: suspend (Int?) -> Unit,
+    ): File = withContext(Dispatchers.IO) {
+        val asset =
+            preferredApkAsset(release)
+                ?: throw IOException("No APK compatible with this device was attached to the release")
+        val downloadUrl =
+            asset.browserDownloadUrl?.takeIf { it.startsWith("https://") }
+                ?: throw IOException("The KirinDL APK download URL is unavailable")
+
+        val safeVersion =
+            (release.tagName ?: release.name ?: "update")
+                .removePrefix("v")
+                .replace(Regex("[^A-Za-z0-9._-]"), "-")
+        val apkFile = File.createTempFile("KirinDL-update-$safeVersion-", ".apk", context.cacheDir)
+        var completed = false
+
+        try {
+            val request =
+                Request.Builder()
+                    .url(downloadUrl)
+                    .header("Accept", "application/octet-stream")
+                    .header("User-Agent", "KirinDL in-app updater")
+                    .build()
+
+            getClient().newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("KirinDL APK download failed (HTTP ${response.code})")
+                }
+                val body = response.body ?: throw IOException("The KirinDL APK response was empty")
+                val expectedBytes =
+                    body.contentLength().takeIf { it > 0L }
+                        ?: asset.size?.takeIf { it > 0L }
+                var downloadedBytes = 0L
+                var lastProgress: Int? = null
+                val coroutineContext = currentCoroutineContext()
+
+                body.byteStream().use { input ->
+                    apkFile.outputStream().buffered().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            coroutineContext.ensureActive()
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            output.write(buffer, 0, count)
+                            downloadedBytes += count
+
+                            val progress =
+                                expectedBytes?.let {
+                                    ((downloadedBytes * 100L) / it).toInt().coerceIn(0, 99)
+                                }
+                            if (progress != lastProgress) {
+                                onProgress(progress)
+                                lastProgress = progress
+                            }
+                        }
+                    }
+                }
+
+                if (expectedBytes != null && downloadedBytes != expectedBytes) {
+                    throw IOException(
+                        "KirinDL APK download was incomplete ($downloadedBytes/$expectedBytes bytes)"
+                    )
+                }
+            }
+
+            if (apkFile.length() <= 0L) throw IOException("The downloaded KirinDL APK is empty")
+            onProgress(100)
+            completed = true
+            apkFile
+        } finally {
+            if (!completed) apkFile.delete()
+        }
+    }
+
+    /**
+     * Opens Android's package installer for an APK downloaded by the in-app updater.
+     * If Android requires install permission, remember the cache file and resume from MainActivity.
+     */
+    fun installDownloadedAppUpdate(context: Context, apkFile: File): Result<Unit> =
+        runCatching {
+            if (!apkFile.isFile || apkFile.length() <= 0L) {
+                throw IOException("The downloaded KirinDL APK is unavailable")
+            }
+
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                    !context.packageManager.canRequestPackageInstalls()
+            ) {
+                context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(KEY_PENDING_APK_PATH, apkFile.absolutePath)
+                    .putBoolean(KEY_WAITING_INSTALL_PERMISSION, true)
+                    .apply()
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}"),
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } else {
+                openDownloadedAppUpdateInstaller(context, apkFile)
+            }
+        }
 
     /**
      * Starts the APK download through Android's DownloadManager. This is deliberately separate
@@ -296,10 +414,24 @@ object UpdateUtil {
             ) {
                 return@runCatching false
             }
-            val downloadId = prefs.getLong(KEY_PENDING_DOWNLOAD_ID, NO_DOWNLOAD_ID)
-            if (downloadId == NO_DOWNLOAD_ID) return@runCatching false
-            prefs.edit().putBoolean(KEY_WAITING_INSTALL_PERMISSION, false).apply()
-            openDownloadedAppUpdateInstaller(context, downloadId)
+            val pendingApkPath = prefs.getString(KEY_PENDING_APK_PATH, null)
+            if (!pendingApkPath.isNullOrBlank()) {
+                val apkFile = File(pendingApkPath)
+                if (!apkFile.isFile || apkFile.length() <= 0L) {
+                    clearPendingAppUpdate(context)
+                    throw IOException("The downloaded KirinDL APK is no longer available")
+                }
+                prefs.edit()
+                    .remove(KEY_PENDING_APK_PATH)
+                    .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
+                    .apply()
+                openDownloadedAppUpdateInstaller(context, apkFile)
+            } else {
+                val downloadId = prefs.getLong(KEY_PENDING_DOWNLOAD_ID, NO_DOWNLOAD_ID)
+                if (downloadId == NO_DOWNLOAD_ID) return@runCatching false
+                prefs.edit().putBoolean(KEY_WAITING_INSTALL_PERMISSION, false).apply()
+                openDownloadedAppUpdateInstaller(context, downloadId)
+            }
         }
 
     private fun openDownloadedAppUpdateInstaller(
@@ -335,6 +467,23 @@ object UpdateUtil {
 
         context.startActivity(installIntent)
         return true
+    }
+
+    private fun openDownloadedAppUpdateInstaller(context: Context, apkFile: File) {
+        val apkUri =
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                apkFile,
+            )
+        val installIntent =
+            Intent(Intent.ACTION_VIEW)
+                .setDataAndType(apkUri, APK_MIME)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .setClipData(ClipData.newUri(context.contentResolver, apkFile.name, apkUri))
+
+        context.startActivity(installIntent)
     }
 
     private fun showInstallReadyNotification(
@@ -391,24 +540,37 @@ object UpdateUtil {
             .edit()
             .remove(KEY_PENDING_DOWNLOAD_ID)
             .remove(KEY_PENDING_VERSION)
+            .remove(KEY_PENDING_APK_PATH)
             .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
             .apply()
     }
 
-    fun hasBackgroundAppUpdate(release: Release): Boolean = preferredApkAsset(release) != null
+    fun hasInAppAppUpdate(release: Release): Boolean = preferredApkAsset(release) != null
+
+    // Retained as a compatibility alias for existing updater callers.
+    fun hasBackgroundAppUpdate(release: Release): Boolean = hasInAppAppUpdate(release)
 
     private fun preferredApkAsset(release: Release): ReleaseAsset? =
-        release.assets
-            .asSequence()
-            .filter { asset ->
+        selectCompatibleAppUpdateAsset(release.assets, Build.SUPPORTED_ABIS.toList())
+
+    internal fun selectCompatibleAppUpdateAsset(
+        assets: List<ReleaseAsset>,
+        supportedAbis: List<String>,
+    ): ReleaseAsset? {
+        val apkAssets =
+            assets.filter { asset ->
                 asset.name?.endsWith(".apk", ignoreCase = true) == true &&
-                    asset.name.orEmpty().contains("universal", ignoreCase = true) &&
                     asset.browserDownloadUrl?.startsWith("https://") == true
             }
-            .sortedByDescending {
-                it.name.orEmpty().contains("release", ignoreCase = true)
+
+        supportedAbis.forEach { abi ->
+            apkAssets.firstOrNull { it.name.orEmpty().contains(abi, ignoreCase = true) }?.let {
+                return it
             }
-            .firstOrNull()
+        }
+
+        return apkAssets.firstOrNull { it.name.orEmpty().contains("universal", ignoreCase = true) }
+    }
 
     fun shouldRunAutomaticUpdateCheck(
         context: Context = App.context,
