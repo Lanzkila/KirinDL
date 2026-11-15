@@ -132,7 +132,11 @@ fun UpdateDialog(
             }
     }
 
+    // Match YTDLnis: tapping outside/back does not interrupt an active APK download.
     val dismissOrCancel: () -> Unit = {
+        if (!isDownloading) onDismissRequest()
+    }
+    val cancelAndClose: () -> Unit = {
         if (isDownloading) cancelDownload()
         onDismissRequest()
     }
@@ -151,6 +155,7 @@ fun UpdateDialog(
         inAppDownloadMode = canDownloadInApp,
         isDownloading = isDownloading,
         downloadProgress = downloadProgress,
+        onCancelDownload = cancelAndClose,
         onIgnore = onIgnore,
         onConfirmUpdate = {
             when {
@@ -195,6 +200,7 @@ fun UpdateDialogImpl(
     inAppDownloadMode: Boolean = false,
     isDownloading: Boolean = false,
     downloadProgress: Int? = null,
+    onCancelDownload: (() -> Unit)? = null,
     onIgnore: (() -> Unit)? = null,
     onConfirmUpdate: () -> Unit,
     releaseNote: String,
@@ -244,7 +250,13 @@ fun UpdateDialogImpl(
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismissRequest) {
+            OutlinedButton(
+                onClick = if (isDownloading) {
+                    onCancelDownload ?: onDismissRequest
+                } else {
+                    onDismissRequest
+                }
+            ) {
                 Text(
                     text = when {
                         isDownloading || (isUpdateAvailable && onIgnore != null) -> "Cancel"
