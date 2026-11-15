@@ -1,14 +1,38 @@
 package com.junkfood.seal.ui.page
 
 import android.content.Context
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.junkfood.seal.util.DEFAULT_INTERVAL
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.UpdateUtil
@@ -16,19 +40,12 @@ import com.junkfood.seal.util.UpdateUtil
 private const val UPDATE_POPUP_PREFERENCES = "kirin_update_popup"
 private const val KEY_DISMISSED_RELEASE = "dismissed_release"
 
-/*
- * Kode popup startup ini mengikuti aliran dialog update YTDLnis oleh Denis Çerri.
- * Sumber asal: UiUtil.showNewAppUpdateDialog()
- * https://github.com/deniscerri/ytdlnis/blob/00f3b1b95378adb169314b61f13c1e2a641ef9ee/app/src/main/java/com/deniscerri/ytdl/util/UiUtil.kt#L2901-L2997
- * KirinDL menggunakan dialog Compose dan fungsi muat turun/installer sendiri.
- */
-
 /**
- * Checks for updates on startup and opens the release dialog directly, following the
- * single-dialog flow used by YTDLnis. About -> App Update remains a separate manual entry point.
+ * Checks for a KirinDL release when the main app opens and presents an Updates inbox card.
+ * Tapping the card opens the existing release-details dialog. The About update page remains an
+ * independent manual entry point and is intentionally not coupled to this startup popup.
  *
- * Cancel closes the current prompt without ignoring the release. Ignore remembers that release.
- * A forced Stable migration cannot be permanently ignored while a Pre-release build is installed.
+ * Dismissal is remembered per release tag, so a dismissed update does not interrupt every launch.
  */
 @Composable
 fun StartupUpdatePopup() {
@@ -38,76 +55,155 @@ fun StartupUpdatePopup() {
     }
 
     var releaseToShow by remember { mutableStateOf<UpdateUtil.Release?>(null) }
-    val sharedAvailableRelease by UpdateUtil.availableAppUpdate.collectAsState()
-    var showUpdateDialog by remember { mutableStateOf(false) }
+    var showPopup by remember { mutableStateOf(false) }
+    var showDetails by remember { mutableStateOf(false) }
 
     LaunchedEffect(context) {
-        // The existing App Update setting controls automatic checks.
+        // The existing App Update setting controls automatic checks. Notifications are separate.
         if (!PreferenceUtil.isAutoUpdateEnabled()) return@LaunchedEffect
 
         val cachedRelease = UpdateUtil.restoreCachedAvailableUpdate(context)
-        val candidate =
-            if (
-                UpdateUtil.shouldRunAutomaticUpdateCheck(
-                    context = context,
-                    intervalMs = DEFAULT_INTERVAL,
-                )
-            ) {
-                // Keep a previously resolved update available when the network check fails.
-                UpdateUtil.checkForUpdateResult(context).getOrElse { cachedRelease }
-            } else {
-                cachedRelease
-            }
+        val candidate = if (
+            UpdateUtil.shouldRunAutomaticUpdateCheck(
+                context = context,
+                intervalMs = DEFAULT_INTERVAL,
+            )
+        ) {
+            // Keep a previously resolved update available when the network check fails.
+            UpdateUtil.checkForUpdateResult(context).getOrElse { cachedRelease }
+        } else {
+            cachedRelease
+        }
 
         val releaseKey = candidate?.let(::releaseKey) ?: return@LaunchedEffect
-        val ignoredRelease = popupPreferences.getString(KEY_DISMISSED_RELEASE, null)
-        val forcedStableMigration = UpdateUtil.isForcedStableMigration(context, candidate)
-        if (forcedStableMigration || releaseKey != ignoredRelease) {
+        val dismissedRelease = popupPreferences.getString(KEY_DISMISSED_RELEASE, null)
+        if (releaseKey != dismissedRelease) {
             releaseToShow = candidate
-            showUpdateDialog = true
-        }
-    }
-
-    // Observe a check completed by AppUpdater so its result is not lost to the startup cooldown.
-    LaunchedEffect(sharedAvailableRelease) {
-        val candidate = sharedAvailableRelease ?: return@LaunchedEffect
-        if (!PreferenceUtil.isAutoUpdateEnabled()) return@LaunchedEffect
-
-        val key = releaseKey(candidate) ?: return@LaunchedEffect
-        val ignoredRelease = popupPreferences.getString(KEY_DISMISSED_RELEASE, null)
-        val forcedStableMigration = UpdateUtil.isForcedStableMigration(context, candidate)
-        if (forcedStableMigration || key != ignoredRelease) {
-            releaseToShow = candidate
-            showUpdateDialog = true
+            showPopup = true
         }
     }
 
     val release = releaseToShow
-    val ignoreRelease: () -> Unit = {
-        showUpdateDialog = false
+    val dismissRelease: () -> Unit = {
+        showPopup = false
+        showDetails = false
         release?.let { target ->
-            // Keep forced Stable migration prompts active until the installed tag is promoted.
-            if (!UpdateUtil.isForcedStableMigration(context, target)) {
-                releaseKey(target)?.let { key ->
-                    popupPreferences.edit()
-                        .putString(KEY_DISMISSED_RELEASE, key)
-                        .apply()
-                }
+            releaseKey(target)?.let { key ->
+                popupPreferences.edit()
+                    .putString(KEY_DISMISSED_RELEASE, key)
+                    .apply()
             }
         }
     }
 
-    if (showUpdateDialog && release != null) {
+    if (showPopup && release != null) {
+        val releaseLabel = release.tagName?.takeIf { it.isNotBlank() }
+            ?: release.name?.takeIf { it.isNotBlank() }
+            ?: "New release"
+        val cardTitle = if (releaseLabel.startsWith("KirinDL", ignoreCase = true)) {
+            releaseLabel
+        } else {
+            "KirinDL $releaseLabel"
+        }
+
+        AlertDialog(
+            onDismissRequest = dismissRelease,
+            title = {
+                Column {
+                    Text(
+                        text = "Updates",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "1 update available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            text = {
+                Card(
+                    onClick = {
+                        showPopup = false
+                        showDetails = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(
+                            start = 14.dp,
+                            top = 14.dp,
+                            end = 6.dp,
+                            bottom = 14.dp,
+                        ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(42.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.NewReleases,
+                                contentDescription = null,
+                                modifier = Modifier.padding(10.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f).padding(start = 12.dp),
+                        ) {
+                            Text(
+                                text = cardTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Tap to see changes and install",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                    alpha = 0.8f,
+                                ),
+                            )
+                        }
+                        IconButton(
+                            onClick = dismissRelease,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "Dismiss update",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = dismissRelease) {
+                    Text("Dismiss")
+                }
+            },
+        )
+    }
+
+    if (showDetails && release != null) {
         UpdateDialog(
-            onDismissRequest = { showUpdateDialog = false },
+            onDismissRequest = dismissRelease,
             release = release,
             isUpdateAvailable = true,
             useInAppUpdate = true,
-            onIgnore = ignoreRelease,
             onUpdateLaunched = {
-                // Hide the prompt while Android's installer is in front.
-                // If installation is cancelled, the release can be offered again next launch.
-                showUpdateDialog = false
+                // Hide the dialog while Android's installer is in front. Do not mark the
+                // release dismissed: a cancelled system install can be retried on next launch.
+                showDetails = false
             },
         )
     }
