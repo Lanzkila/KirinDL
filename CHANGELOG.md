@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Make in-app APK downloads respond immediately to Cancel (`cbc721c3`)
 - Test compatible KirinDL updater APK asset selection (`35fbc4fe`)
 - Document in-app update download flow for v3.2.3 (`fb9980ab`)
 - Credit YTDLnis and Denis Çerri for updater reference (`e679659a`)
