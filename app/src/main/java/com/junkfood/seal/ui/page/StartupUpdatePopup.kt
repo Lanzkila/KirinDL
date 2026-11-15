@@ -79,7 +79,8 @@ fun StartupUpdatePopup() {
 
         val releaseKey = candidate?.let(::releaseKey) ?: return@LaunchedEffect
         val dismissedRelease = popupPreferences.getString(KEY_DISMISSED_RELEASE, null)
-        if (releaseKey != dismissedRelease) {
+        val forcedStableMigration = UpdateUtil.isForcedStableMigration(context, candidate)
+        if (forcedStableMigration || releaseKey != dismissedRelease) {
             releaseToShow = candidate
             showPopup = true
         }
@@ -93,7 +94,8 @@ fun StartupUpdatePopup() {
 
         val key = releaseKey(candidate) ?: return@LaunchedEffect
         val dismissedRelease = popupPreferences.getString(KEY_DISMISSED_RELEASE, null)
-        if (key != dismissedRelease) {
+        val forcedStableMigration = UpdateUtil.isForcedStableMigration(context, candidate)
+        if (forcedStableMigration || key != dismissedRelease) {
             releaseToShow = candidate
             showPopup = true
         }
@@ -104,10 +106,13 @@ fun StartupUpdatePopup() {
         showPopup = false
         showDetails = false
         release?.let { target ->
-            releaseKey(target)?.let { key ->
-                popupPreferences.edit()
-                    .putString(KEY_DISMISSED_RELEASE, key)
-                    .apply()
+            val forcedStableMigration = UpdateUtil.isForcedStableMigration(context, target)
+            if (!forcedStableMigration) {
+                releaseKey(target)?.let { key ->
+                    popupPreferences.edit()
+                        .putString(KEY_DISMISSED_RELEASE, key)
+                        .apply()
+                }
             }
         }
     }
