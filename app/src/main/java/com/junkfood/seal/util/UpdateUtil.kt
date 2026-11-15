@@ -438,6 +438,7 @@ object UpdateUtil {
                     .putBoolean(KEY_WAITING_INSTALL_PERMISSION, false)
                     .apply()
                 openDownloadedAppUpdateInstaller(context, apkFile)
+                true
             } else {
                 val downloadId = prefs.getLong(KEY_PENDING_DOWNLOAD_ID, NO_DOWNLOAD_ID)
                 if (downloadId == NO_DOWNLOAD_ID) return@runCatching false
@@ -493,7 +494,8 @@ object UpdateUtil {
                 .setDataAndType(apkUri, APK_MIME)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                .setClipData(ClipData.newUri(context.contentResolver, apkFile.name, apkUri))
+        installIntent.clipData =
+            ClipData.newUri(context.contentResolver, apkFile.name, apkUri)
 
         context.startActivity(installIntent)
     }
