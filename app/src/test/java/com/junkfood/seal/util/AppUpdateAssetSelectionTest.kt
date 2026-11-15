@@ -1,7 +1,9 @@
 package com.junkfood.seal.util
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppUpdateAssetSelectionTest {
@@ -63,6 +65,19 @@ class AppUpdateAssetSelectionTest {
         )
 
         assertEquals(universal, selected)
+    }
+
+    @Test
+    fun aboutBackgroundUpdaterKeepsItsUniversalOnlyAssetContract() {
+        val abiOnlyRelease = UpdateUtil.Release(
+            assets = listOf(asset("KirinDL-3.2.3-arm64-v8a.apk")),
+        )
+        val universalRelease = UpdateUtil.Release(
+            assets = listOf(asset("KirinDL-3.2.3-universal.apk")),
+        )
+
+        assertFalse(UpdateUtil.hasBackgroundAppUpdate(abiOnlyRelease))
+        assertTrue(UpdateUtil.hasBackgroundAppUpdate(universalRelease))
     }
 
     @Test
