@@ -2,7 +2,6 @@ package com.junkfood.seal.ui.page
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,11 +62,6 @@ private val releaseVersionPattern =
         RegexOption.IGNORE_CASE,
     )
 
-// Kode popup update ini diadaptasi daripada YTDLnis oleh Denis Çerri.
-// Sumber asal: UiUtil.showNewAppUpdateDialog()
-// https://github.com/deniscerri/ytdlnis/blob/00f3b1b95378adb169314b61f13c1e2a641ef9ee/app/src/main/java/com/deniscerri/ytdl/util/UiUtil.kt#L2901-L2997
-// Aliran dialog, butang Update/Cancel/Ignore dan muat turun APK disesuaikan untuk Jetpack Compose
-// serta UpdateUtil/installer KirinDL. YTDLnis dan kod adaptasi ini berada di bawah GPL-3.0.
 @Composable
 fun UpdateDialog(
     onDismissRequest: () -> Unit,
@@ -77,7 +70,6 @@ fun UpdateDialog(
     onBackgroundUpdate: (() -> Unit)? = null,
     useInAppUpdate: Boolean = false,
     onUpdateLaunched: () -> Unit = onDismissRequest,
-    onIgnore: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -132,13 +124,8 @@ fun UpdateDialog(
             }
     }
 
-    // Match YTDLnis: tapping outside/back does not interrupt an active APK download.
     val dismissOrCancel: () -> Unit = {
-        if (!isDownloading) onDismissRequest()
-    }
-    val cancelAndClose: () -> Unit = {
-        if (isDownloading) cancelDownload()
-        onDismissRequest()
+        if (isDownloading) cancelDownload() else onDismissRequest()
     }
 
     UpdateDialogImpl(
@@ -155,8 +142,7 @@ fun UpdateDialog(
         inAppDownloadMode = canDownloadInApp,
         isDownloading = isDownloading,
         downloadProgress = downloadProgress,
-        onCancelDownload = cancelAndClose,
-        onIgnore = onIgnore,
+        onCancelDownload = ::cancelDownload,
         onConfirmUpdate = {
             when {
                 canDownloadInApp -> startDownload()
@@ -201,7 +187,6 @@ fun UpdateDialogImpl(
     isDownloading: Boolean = false,
     downloadProgress: Int? = null,
     onCancelDownload: (() -> Unit)? = null,
-    onIgnore: (() -> Unit)? = null,
     onConfirmUpdate: () -> Unit,
     releaseNote: String,
 ) {
@@ -230,23 +215,16 @@ fun UpdateDialogImpl(
             )
         },
         confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (isUpdateAvailable && onIgnore != null) {
-                    TextButton(onClick = onIgnore, enabled = !isDownloading) {
-                        Text("Ignore")
+            Button(onClick = onConfirmUpdate, enabled = !isDownloading) {
+                Text(
+                    when {
+                        isDownloading && downloadProgress != null -> "Downloading ${downloadProgress}%"
+                        isDownloading -> "Downloading…"
+                        backgroundUpdateMode -> "Update"
+                        isUpdateAvailable -> "Open update"
+                        else -> "Open release"
                     }
-                }
-                Button(onClick = onConfirmUpdate, enabled = !isDownloading) {
-                    Text(
-                        when {
-                            isDownloading && downloadProgress != null -> "Downloading ${downloadProgress}%"
-                            isDownloading -> "Downloading…"
-                            backgroundUpdateMode -> "Update"
-                            isUpdateAvailable -> "Open update"
-                            else -> "Open release"
-                        }
-                    )
-                }
+                )
             }
         },
         dismissButton = {
@@ -259,7 +237,7 @@ fun UpdateDialogImpl(
             ) {
                 Text(
                     text = when {
-                        isDownloading || (isUpdateAvailable && onIgnore != null) -> "Cancel"
+                        isDownloading -> "Cancel"
                         isUpdateAvailable -> "Later"
                         else -> stringResource(id = R.string.dismiss)
                     }
