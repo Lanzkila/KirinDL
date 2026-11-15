@@ -7,6 +7,10 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Cover legacy About updater asset behavior (`2bcd6737`)
+- Enable in-app APK downloads for the automatic update popup (`82b43dbe`)
+- Keep About DownloadManager flow separate from startup in-app updater (`90bb2a00`)
+- Preserve About updater asset selection while enabling ABI-specific popup downloads (`e1dfed54`)
 - Polish update dialog launch callback and progress state (`99c802d8`)
 - Make in-app APK downloads respond immediately to Cancel (`cbc721c3`)
 - Test compatible KirinDL updater APK asset selection (`35fbc4fe`)
