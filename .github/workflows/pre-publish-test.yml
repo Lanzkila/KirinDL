@@ -1,0 +1,105 @@
+name: KirinDL Pre-publish Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "buildSrc/**"
+      - "color/**"
+      - "gradle/**"
+      - "gradlew"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/pre-publish-test.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "buildSrc/**"
+      - "color/**"
+      - "gradle/**"
+      - "gradlew"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/pre-publish-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kirindl-prepublish-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Compile, unit test and build Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
+      - name: Compile Generic Release sources
+        run: |
+          ./gradlew \
+            :app:compileGenericReleaseKotlin \
+            :app:compileGenericReleaseUnitTestKotlin \
+            --stacktrace --no-daemon --no-configuration-cache
+
+      - name: Run fast local unit tests
+        run: |
+          ./gradlew -Pandroid.onlyEnableUnitTestForTheTestedBuildType=false \
+            :app:testGenericReleaseUnitTest \
+            --tests com.junkfood.seal.util.AppUpdateAssetSelectionTest \
+            --tests com.junkfood.seal.util.NetscapeCookieParserTest \
+            --tests com.junkfood.seal.ExampleUnitTest \
+            --stacktrace --no-daemon --no-configuration-cache
+
+      - name: Build Generic Release APKs (unsigned)
+        run: |
+          ./gradlew assembleGenericRelease \
+            --stacktrace --no-daemon --no-configuration-cache
+
+      - name: Verify Release APK output
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_DIR="app/build/outputs/apk/generic/release"
+          APK_COUNT="$(find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' | wc -l)"
+          if [[ "$APK_COUNT" -lt 1 ]]; then
+            echo "::error::Generic Release APK output was not generated."
+            exit 1
+          fi
+          echo "Generic Release build produced $APK_COUNT APK file(s)."
+          find "$APK_DIR" -maxdepth 1 -type f -name '*.apk' -printf '%f\n'
+
+      - name: Report test-only result
+        if: success()
+        run: |
+          echo "Pre-publish checks passed."
+          echo "No version was changed, no APK was signed or uploaded, and no GitHub Release was published."
