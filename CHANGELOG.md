@@ -7,6 +7,9 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- docs(release): document persistent stable migration prompt (`8855a162`)
+- test(update): cover forced stable offer persistence (`d40e8138`)
+- fix(update): keep forced stable offer until promotion (`b1e20df0`)
 - refactor(update): remove obsolete latest release helper (`95563212`)
 - docs(release): clarify forced stable update behavior (`91428b22`)
 - test(update): cover forced stable downgrade from prerelease (`01beb777`)
