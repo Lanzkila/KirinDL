@@ -88,10 +88,8 @@ fun UpdateDialog(
     val canDownloadInApp = isUpdateAvailable && UpdateUtil.hasInAppAppUpdate(release)
 
     fun cancelDownload() {
+        // Let the cancelled coroutine finish cleanup before the dialog allows a retry.
         downloadJob?.cancel()
-        downloadJob = null
-        isDownloading = false
-        downloadProgress = null
     }
 
     fun startDownload() {
