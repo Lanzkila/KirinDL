@@ -44,7 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.junkfood.seal.App
 import com.junkfood.seal.R
 import com.junkfood.seal.util.UpdateUtil
 import com.junkfood.seal.util.makeToast
