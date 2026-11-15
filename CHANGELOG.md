@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- chore(version): bump KirinDL to v3.2.3 (`30257956`)
+- docs(release): complete KirinDL v3.2.3 updater notes (`6868b399`)
 - Clean up updater dialog imports (`6174921f`)
 - Cover legacy About updater asset behavior (`2bcd6737`)
 - Enable in-app APK downloads for the automatic update popup (`82b43dbe`)
