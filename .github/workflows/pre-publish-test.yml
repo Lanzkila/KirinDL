@@ -72,10 +72,10 @@ jobs:
 
           version_source = Path("buildSrc/src/main/kotlin/Version.kt").read_text(encoding="utf-8")
           match = re.search(
-              r"Version\\.Stable\\(\\s*versionMajor\\s*=\\s*(\\d+),"
-              r"\\s*versionMinor\\s*=\\s*(\\d+),"
-              r"\\s*versionPatch\\s*=\\s*(\\d+)"
-              r"(?:,\\s*versionBuild\\s*=\\s*(\\d+))?\\s*\\)",
+              r"Version\.Stable\(\s*versionMajor\s*=\s*(\d+),"
+              r"\s*versionMinor\s*=\s*(\d+),"
+              r"\s*versionPatch\s*=\s*(\d+)"
+              r"(?:,\s*versionBuild\s*=\s*(\d+))?\s*\)",
               version_source,
               re.S,
           )
@@ -95,7 +95,7 @@ jobs:
           gradle_file = Path("app/build.gradle.kts")
           gradle_source = gradle_file.read_text(encoding="utf-8")
           gradle_source, count = re.subn(
-              r"versionCode\\s*=\\s*[0-9_]+",
+              r"versionCode\s*=\s*[0-9_]+",
               f"versionCode = {version_code}",
               gradle_source,
               count=1,
