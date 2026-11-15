@@ -7,6 +7,10 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- chore(updater): disable: Morphe home update alert (`a21add91`)
+- chore(updater): disable: startup update popup (`16520bb1`)
+- chore(updater): disable: automatic update checker (`bb4df981`)
+- chore(updater): disable: AppUpdater() call (`318b122f`)
 - refactor(home): disable and extract Morphe update alert (`fd5217c8`)
 - refactor(home): isolate Morphe update alert (`482760d1`)
 - chore(update): temporarily disable home update alert (`8c21f3a8`)
