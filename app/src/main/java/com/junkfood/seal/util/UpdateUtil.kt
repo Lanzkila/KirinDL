@@ -209,6 +209,17 @@ object UpdateUtil {
         forcedStableMigration: Boolean,
     ): Boolean = forcedStableMigration || installedVersion < cachedVersion
 
+    fun isForcedStableMigration(
+        context: Context,
+        release: Release,
+    ): Boolean {
+        val forcedFromVersion =
+            context.getSharedPreferences(APP_UPDATE_PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_FORCED_STABLE_FROM_VERSION, null)
+        return forcedFromVersion == context.getCurrentVersionName() &&
+            release.preRelease != true
+    }
+
     /**
      * Synchronize the installed app version with updater state.
      *
