@@ -7,25 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
-- ci(build): request v3.2.2 stable test APK (`baeb1136`)
-- ci(test): run download regressions before stable APK build (`077e90dc`)
-- docs(release): place update date below prepared date (`7aa74b6c`)
-- docs(release): add v3.2.2 release notes update date (`1db6cd75`)
-- docs(release): complete v3.2.2 Bilibili release notes (`f55b3bdf`)
-- docs: update v3.2.2 release notes for Bilibili completion fix (`3e32aaa8`)
-- docs(release): document Bilibili download reliability fix (`91224e58`)
-- ci(android): run generic debug unit tests on pull requests (`4e16f2da`)
-- fix(download): let local Bilibili merge finish during network loss (`fe04810e`)
-- fix(download): identify local post-processing stages (`f68917f5`)
-- test(download): cover local post-processing network pause guard (`f54d04c3`)
-
-## 2026-11-12
-
-### ✦ Recent changes
-
-- docs(changelog): record startup update popup for next release (`b1da1009`)
-- feat(update): wire standalone popup into app startup (`b8bf8bb1`)
-- feat(update): add standalone startup update popup (`c8104eae`)
+- Document refreshed startup update popup for v3.2.2 (`68af2f3b`)
+- Refresh startup update popup with YTDLnis-style update card (`fc3ad44f`)
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
 
