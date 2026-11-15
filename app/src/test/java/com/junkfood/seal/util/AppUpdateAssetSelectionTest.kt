@@ -41,11 +41,11 @@ class AppUpdateAssetSelectionTest {
             selectedChannel = PRE_RELEASE,
         )
 
-        assertEquals("v3.2.3", selected?.tagName)
+        assertEquals("v3.2.1", selected?.tagName)
     }
 
     @Test
-    fun prereleaseChannelContinuesTestingWhenStableIsOlderThanInstalled() {
+    fun installedPreReleaseMovesToStableEvenWhenStableIsOlder() {
         val selected = UpdateUtil.selectLatestRelease(
             releases = listOf(
                 release("v3.2.3", prerelease = true),
