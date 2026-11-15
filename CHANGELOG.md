@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Clean up updater dialog imports (`6174921f`)
 - Cover legacy About updater asset behavior (`2bcd6737`)
 - Enable in-app APK downloads for the automatic update popup (`82b43dbe`)
 - Keep About DownloadManager flow separate from startup in-app updater (`90bb2a00`)
