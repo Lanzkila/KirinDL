@@ -16,7 +16,7 @@ import com.junkfood.seal.ui.common.LocalDarkTheme
 import com.junkfood.seal.ui.common.SettingsProvider
 import com.junkfood.seal.ui.common.ThemedToastHost
 import com.junkfood.seal.ui.page.AppEntry
-import com.junkfood.seal.ui.page.StartupUpdatePopup
+// import com.junkfood.seal.ui.page.StartupUpdatePopup
 import com.junkfood.seal.ui.page.downloadv2.configure.DownloadDialogViewModel
 import com.junkfood.seal.ui.page.onboarding.OnboardingScreen
 import com.junkfood.seal.ui.page.security.LockScreen
@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         intent.getSharedURL()?.let { url ->
             dialogViewModel.setSharedUrl(url)
         }
-        
+
         setContent {
             KoinContext {
                 val windowSizeClass = calculateWindowSizeClass(this)
@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
                                 AuthenticationManager.isAuthenticationNeeded()
                     }
                 }
-                
+
                 SettingsProvider(windowWidthSizeClass = windowSizeClass.widthSizeClass) {
                     SealTheme(
                         darkTheme = LocalDarkTheme.current.isDarkTheme(),
@@ -95,9 +95,9 @@ class MainActivity : AppCompatActivity() {
                                 }
                                 else -> {
                                     AppEntry(dialogViewModel = dialogViewModel)
-                                    // Startup update check and popup are isolated from the About page.
-                                    StartupUpdatePopup()
-                                    
+                                    // Startup update check and popup are disabled temporarily.
+                                    // StartupUpdatePopup()
+
                                     // Show lock screen overlay if locked
                                     if (isLocked) {
                                         LockScreen(
@@ -117,17 +117,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     override fun onPause() {
         super.onPause()
         isAppInBackground = true
     }
-    
+
     override fun onResume() {
         super.onResume()
         val wasInBackground = isAppInBackground
         isAppInBackground = false
-        if (wasInBackground && AuthenticationManager.isSecurityEnabled() && 
+        if (wasInBackground && AuthenticationManager.isSecurityEnabled() &&
             AuthenticationManager.isAuthenticationNeeded()) {
             // Trigger re-authentication by recreating activity
             recreate()
