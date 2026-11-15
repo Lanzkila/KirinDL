@@ -152,11 +152,27 @@ object UpdateUtil {
     }
 
     /**
-     * Mirrors YTDLnis channel behavior:
-     * - Stable selection only considers Stable releases.
-     * - Pre-release selection prefers a newer Stable release when one is available.
-     * - Otherwise Pre-release selection follows the newest release so the pre-release
-     *   workflow can still be tested before it is promoted.
+     * GitHub records whether a published tag is Pre-release. The APK version name itself does not
+     * include the channel, so match the installed version against the release list.
+     */
+    internal fun isInstalledFromPreRelease(
+        releases: List<Release>,
+        installedVersion: Version,
+    ): Boolean =
+        releases.any { release ->
+            release.draft != true &&
+                release.preRelease == true &&
+                (release.tagName ?: release.name)
+                    .toVersionOrNull()
+                    ?.compareTo(installedVersion) == 0
+        }
+
+    /**
+     * Mirrors the YTDLnis Stable/Beta migration behavior:
+     * - An installed Pre-release is always offered the latest Stable, even when Stable has a
+     *   lower version number. It remains on this path until a Stable APK is installed.
+     * - A Stable installation can opt into newer Pre-releases.
+     * - Stable channel selection never offers a Pre-release build.
      */
     internal fun selectLatestRelease(
         releases: List<Release>,
@@ -172,6 +188,10 @@ object UpdateUtil {
             .filter { it.preRelease != true }
             .maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
 
+        if (isInstalledFromPreRelease(validReleases, installedVersion)) {
+            return latestStable
+        }
+
         if (selectedChannel == STABLE) return latestStable
 
         val stableVersion = (latestStable?.tagName ?: latestStable?.name).toVersionOrNull()
@@ -181,6 +201,12 @@ object UpdateUtil {
 
         return validReleases.maxByOrNull { (it.tagName ?: it.name).toVersionOrNull()!! }
     }
+
+    internal fun shouldOfferSelectedRelease(
+        installedVersion: Version,
+        selectedReleaseVersion: Version,
+        installedFromPreRelease: Boolean,
+    ): Boolean = installedFromPreRelease || installedVersion < selectedReleaseVersion
 
     /**
      * Synchronize the installed app version with updater state.
@@ -648,9 +674,26 @@ object UpdateUtil {
         withContext(Dispatchers.IO) {
             runCatching {
                     val currentVersion = context.getCurrentVersion()
-                    val latestRelease = getLatestRelease(currentVersion)
+                    val releases = getReleaseList()
+                    val installedFromPreRelease =
+                        isInstalledFromPreRelease(releases, currentVersion)
+                    val latestRelease = selectLatestRelease(
+                        releases = releases,
+                        installedVersion = currentVersion,
+                        selectedChannel = UPDATE_CHANNEL.getInt(),
+                    ) ?: throw IOException("No compatible KirinDL release found")
                     val latestVersion = (latestRelease.tagName ?: latestRelease.name).toVersion()
-                    if (currentVersion < latestVersion) latestRelease else null
+                    if (
+                        shouldOfferSelectedRelease(
+                            installedVersion = currentVersion,
+                            selectedReleaseVersion = latestVersion,
+                            installedFromPreRelease = installedFromPreRelease,
+                        )
+                    ) {
+                        latestRelease
+                    } else {
+                        null
+                    }
                 }
                 .onSuccess { candidate ->
                     _availableAppUpdate.value = candidate
