@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- test(updater): resolve version parser in migration test (`53e36361`)
 - fix(updater): keep active download dialog non-cancelable (`b9151020`)
 - docs(release): note YTDLnis-style startup dialog (`f6987bb5`)
 - docs: credit YTDLnis update dialog source (`614c26eb`)
