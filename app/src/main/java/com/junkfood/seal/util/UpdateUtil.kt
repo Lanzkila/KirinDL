@@ -211,7 +211,7 @@ object UpdateUtil {
         onProgress: suspend (Int?) -> Unit,
     ): File = withContext(Dispatchers.IO) {
         val asset =
-            preferredApkAsset(release)
+            preferredInAppApkAsset(release)
                 ?: throw IOException("No APK compatible with this device was attached to the release")
         val downloadUrl =
             asset.browserDownloadUrl?.takeIf { it.startsWith("https://") }
@@ -557,12 +557,25 @@ object UpdateUtil {
             .apply()
     }
 
-    fun hasInAppAppUpdate(release: Release): Boolean = preferredApkAsset(release) != null
+    fun hasInAppAppUpdate(release: Release): Boolean = preferredInAppApkAsset(release) != null
 
-    // Retained as a compatibility alias for existing updater callers.
-    fun hasBackgroundAppUpdate(release: Release): Boolean = hasInAppAppUpdate(release)
+    // The About → App Update page keeps its original Universal-APK DownloadManager behavior.
+    fun hasBackgroundAppUpdate(release: Release): Boolean = preferredApkAsset(release) != null
 
     private fun preferredApkAsset(release: Release): ReleaseAsset? =
+        release.assets
+            .asSequence()
+            .filter { asset ->
+                asset.name?.endsWith(".apk", ignoreCase = true) == true &&
+                    asset.name.orEmpty().contains("universal", ignoreCase = true) &&
+                    asset.browserDownloadUrl?.startsWith("https://") == true
+            }
+            .sortedByDescending {
+                it.name.orEmpty().contains("release", ignoreCase = true)
+            }
+            .firstOrNull()
+
+    private fun preferredInAppApkAsset(release: Release): ReleaseAsset? =
         selectCompatibleAppUpdateAsset(release.assets, Build.SUPPORTED_ABIS.toList())
 
     internal fun selectCompatibleAppUpdateAsset(
