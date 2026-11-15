@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- refactor(update): remove obsolete latest release helper (`95563212`)
 - docs(release): clarify forced stable update behavior (`91428b22`)
 - test(update): cover forced stable downgrade from prerelease (`01beb777`)
 - fix(update): force stable offer for prerelease installs (`5cd1706e`)
