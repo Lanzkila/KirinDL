@@ -199,6 +199,7 @@ fun StartupUpdatePopup() {
             onDismissRequest = dismissRelease,
             release = release,
             isUpdateAvailable = true,
+            useInAppUpdate = true,
             onUpdateLaunched = {
                 // Hide the dialog while Android's installer is in front. Do not mark the
                 // release dismissed: a cancelled system install can be retried on next launch.
