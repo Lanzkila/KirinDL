@@ -3,8 +3,6 @@ package com.junkfood.seal.util.instaloader
 import android.content.Context
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
-import com.junkfood.seal.util.instaloader.InstagramPreviewModels.InstagramProfilePreview
-import com.junkfood.seal.util.instaloader.InstagramPreviewModels.InstagramPreviewPost
 import java.io.IOException
 import org.json.JSONObject
 
