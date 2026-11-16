@@ -576,3 +576,90 @@ main{padding-bottom:0}
   .site-footer .footer-copyright{font-size:10.5px}
   .site-footer .footer-credit{font-size:10px}
 }
+
+/* Compact Material 3 account action beside the universal hamburger menu. */
+.topbar-actions{gap:14px}
+.account-wrap{position:relative;z-index:70;flex:0 0 auto}
+.account-trigger{
+  width:42px;height:42px;display:grid;place-items:center;padding:0;
+  border:1px solid var(--line-strong);border-radius:12px;
+  background:rgba(255,255,255,.025);color:#dce8f7;cursor:pointer;
+  transition:background .2s ease,border-color .2s ease,transform .2s ease
+}
+.account-trigger:hover,.account-trigger[aria-expanded="true"]{
+  border-color:rgba(138,216,255,.5);background:rgba(138,216,255,.07)
+}
+.account-trigger:hover{transform:translateY(-1px)}
+.account-trigger svg{width:22px;height:22px;fill:currentColor}
+.account-popover{
+  position:absolute;z-index:80;top:calc(100% + 12px);right:0;
+  width:min(310px,calc(100vw - 28px));padding:19px;
+  border:1px solid rgba(155,177,214,.22);border-radius:18px;
+  background:linear-gradient(155deg,rgba(19,28,47,.99),rgba(10,15,27,.99));
+  box-shadow:0 24px 65px rgba(0,0,0,.48);
+  animation:menu-in .2s var(--ease) both
+}
+.account-eyebrow{display:block;color:var(--cyan);font-size:9px;font-weight:850;letter-spacing:.16em}
+.account-popover-head strong{display:block;margin-top:9px;color:#f0f4fb;font-size:19px;letter-spacing:-.035em}
+.account-popover-head p{margin:7px 0 16px;color:var(--muted);font-size:12px;line-height:1.6}
+.account-popover-actions{display:grid;gap:9px}
+.account-github-action{
+  min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:0 13px;border:1px solid rgba(138,216,255,.3);border-radius:11px;
+  background:linear-gradient(110deg,rgba(138,216,255,.14),rgba(169,154,255,.12));
+  color:#eaf5ff;font-size:12px;font-weight:780;
+  transition:border-color .2s ease,background .2s ease
+}
+.account-github-action:hover{border-color:rgba(138,216,255,.62);background:rgba(138,216,255,.18)}
+.account-github-action b{color:var(--cyan);font-size:15px;font-weight:500}
+.account-register-link{display:flex;align-items:center;justify-content:center;gap:7px;min-height:35px;color:#b8c6dc;font-size:11px;font-weight:700}
+.account-register-link:hover{color:var(--cyan)}
+.account-popover-note{margin:13px 0 0;padding-top:11px;border-top:1px solid rgba(155,177,214,.1);color:#78869d;font-size:9px;line-height:1.6}
+@media(max-width:700px){
+  .topbar-actions{gap:9px}
+  .account-trigger{width:40px;height:40px;border-radius:11px}
+  .account-popover{top:calc(100% + 10px);right:-2px;width:min(310px,calc(100vw - 28px))}
+}
+
+/* Stable and README-matched devpatch releases are presented side by side. */
+.release-cluster{
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:stretch;gap:10px;width:min(100%,520px);min-width:0
+}
+.release-cluster .release-pill{
+  min-width:0;width:100%;display:flex;flex-direction:column;align-items:stretch;
+  justify-content:center;gap:9px;padding:13px 14px;border:1px solid var(--line);
+  border-radius:14px;background:linear-gradient(140deg,rgba(18,27,45,.94),rgba(13,19,32,.9));
+  white-space:normal;transition:border-color .2s ease,transform .2s ease,background .2s ease
+}
+.release-cluster .release-pill:hover{
+  transform:translateY(-2px);border-color:rgba(138,216,255,.42);
+  background:linear-gradient(140deg,rgba(25,39,62,.97),rgba(15,22,37,.95))
+}
+.release-pill-top,.release-pill-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.release-pill-top{justify-content:flex-start}
+.release-pill-label{color:#9cabc1;font-size:9px;letter-spacing:.1em;font-weight:850}
+.release-pill-state{margin-left:auto;padding:4px 6px;border:1px solid rgba(138,228,192,.2);border-radius:6px;color:#9ee4ca;font-size:7px;font-weight:850;letter-spacing:.09em}
+.release-pill-preview .release-pill-state{border-color:rgba(240,214,154,.22);color:#efd69e}
+.release-pill-bottom strong{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f1f5fb;font-size:16px;letter-spacing:-.025em}
+.release-pill-arrow{flex:0 0 auto;color:var(--cyan);font-size:16px}
+.preview-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#f0d69a;box-shadow:0 0 12px rgba(240,214,154,.5)}
+.release-divider{align-self:center;color:#6f7d94;font-size:17px;font-weight:500;line-height:1}
+@media(max-width:700px){
+  .release-cluster{width:100%;gap:8px}
+  .release-cluster .release-pill{padding:11px 9px;gap:8px}
+  .release-pill-label{font-size:8px;letter-spacing:.07em}
+  .release-pill-bottom strong{font-size:14px}
+  .release-pill-state{font-size:6.5px;padding:3px 4px}
+}
+@media(max-width:380px){
+  .release-cluster{grid-template-columns:minmax(0,1fr) 8px minmax(0,1fr);gap:5px}
+  .release-cluster .release-pill{padding:10px 7px}
+  .release-pill-label{font-size:7px}
+  .release-pill-bottom strong{font-size:12px}
+  .release-pill-state{font-size:6px}
+}
+@media(prefers-reduced-motion:reduce){
+  .account-trigger,.account-github-action,.release-cluster .release-pill{transition:none}
+  .account-popover{animation:none}
+}
