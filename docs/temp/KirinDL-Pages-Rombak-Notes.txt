@@ -121,3 +121,12 @@ Status:
 - Semakan kod dan breakpoint selesai.
 - Reka bentuk berada pada branch planning/kirindl-pages-redesign sahaja.
 - Main branch dan tetapan deployment GitHub Pages kekal tidak disentuh.
+
+
+STATUS AKHIR RESPONSIVE FOOTER — 16 NOVEMBER 2026
+
+- Footer kini menggunakan satu baris mendatar pada laptop dan telefon.
+- Pada telefon, seluruh baris footer boleh discroll mendatar jika gabungan copyright, pautan dan kredit Pages melebihi lebar skrin; item tidak dipindahkan ke baris bawah.
+- GitHub Pages dan All rights reserved kekal bersebelahan.
+- Semakan susun atur dibuat pada lebar 1366px, 1024px, 390px dan 320px; semua kumpulan footer kekal pada baris yang sama tanpa pertindihan dalam semakan layout.
+- Anak panah slider disabled menggunakan warna gelap; lebar kad desktop turut dilaras supaya slider benar-benar mempunyai ruang untuk bergerak.
