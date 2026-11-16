@@ -733,3 +733,134 @@ main{padding-bottom:0}
   .hamburger-icon{width:17px;gap:4.5px}
   .hamburger-icon i{width:17px}
 }
+
+/* Final mobile header alignment: equal square touch targets, icon-only hamburger. */
+@media(max-width:700px){
+  .topbar-actions{display:flex;align-items:center;gap:9px}
+  .topbar-actions .account-trigger,
+  .topbar-actions .menu-wrap .menu-trigger{
+    box-sizing:border-box!important;
+    width:40px!important;height:40px!important;
+    min-width:40px!important;min-height:40px!important;
+    max-width:40px!important;max-height:40px!important;
+    padding:0!important;margin:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    border-radius:11px!important
+  }
+  .topbar-actions .menu-wrap .menu-trigger{
+    gap:0!important;flex:0 0 40px
+  }
+  .topbar-actions .menu-wrap .menu-trigger>span:last-child{
+    display:none!important;visibility:hidden!important;width:0!important
+  }
+  .topbar-actions .menu-wrap .hamburger-icon{
+    display:grid;width:17px;min-width:17px;gap:4.5px
+  }
+  .topbar-actions .menu-wrap .hamburger-icon i{
+    display:block;width:17px;height:1.7px
+  }
+}
+@media(max-width:380px){
+  .topbar-actions .account-trigger,
+  .topbar-actions .menu-wrap .menu-trigger{
+    width:40px!important;height:40px!important;
+    min-width:40px!important;min-height:40px!important
+  }
+}
+
+/* Soft breathing pulse to identify both release channels without flashing. */
+.release-pill-stable{animation:stable-release-pulse 3.2s ease-in-out infinite}
+.release-pill-preview{animation:preview-release-pulse 3.5s ease-in-out infinite}
+@keyframes stable-release-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(138,228,192,0),0 0 0 rgba(138,228,192,0)}
+  50%{box-shadow:0 0 0 2px rgba(138,228,192,.10),0 0 22px rgba(138,228,192,.10)}
+}
+@keyframes preview-release-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(240,214,154,0),0 0 0 rgba(240,214,154,0)}
+  50%{box-shadow:0 0 0 2px rgba(240,214,154,.11),0 0 24px rgba(240,214,154,.12)}
+}
+
+/* Logo-only loader with animated code particles behind the circular mark. */
+.page-loader{
+  isolation:isolate;
+  overflow:hidden;
+  background:rgba(5,8,15,.96)
+}
+.splash-canvas{
+  position:absolute;z-index:0;inset:0;
+  display:block;width:100%;height:100%;
+  pointer-events:none;opacity:.92
+}
+.loader-panel{
+  position:relative;z-index:2;
+  width:auto;max-width:none;
+  display:grid;place-items:center;
+  padding:0;border:0;border-radius:0;
+  background:transparent;box-shadow:none
+}
+.loader-copy,.loader-track{display:none!important}
+.loader-mark{
+  position:relative;
+  width:108px;height:108px;
+  display:grid;place-items:center;
+  margin:0;border:1px solid rgba(138,216,255,.28);
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(138,216,255,.13),rgba(17,27,46,.45) 65%,rgba(8,12,22,.15));
+  box-shadow:0 0 28px rgba(88,184,241,.13),inset 0 0 24px rgba(138,216,255,.08)
+}
+.loader-mark::before{
+  content:"";position:absolute;inset:-10px;
+  border:1px dashed rgba(138,216,255,.58);
+  border-right-color:rgba(169,154,255,.22);
+  border-bottom-color:rgba(138,228,192,.28);
+  border-radius:50%;
+  animation:loader-orbit 9s linear infinite
+}
+.loader-mark::after{
+  content:"";position:absolute;inset:-17px;
+  border:1px solid transparent;border-top-color:rgba(169,154,255,.55);
+  border-left-color:rgba(138,216,255,.24);
+  border-radius:50%;
+  animation:loader-orbit 13s linear infinite reverse
+}
+.loader-mark img{
+  position:relative;z-index:1;
+  width:76px;height:76px;object-fit:cover;
+  border:2px solid rgba(220,242,255,.22);
+  border-radius:50%;
+  box-shadow:0 0 22px rgba(138,216,255,.25);
+  animation:loader-logo-breathe 2.8s ease-in-out infinite
+}
+@keyframes loader-logo-breathe{
+  0%,100%{transform:scale(.96);filter:brightness(.96)}
+  50%{transform:scale(1.04);filter:brightness(1.14)}
+}
+
+/* Non-canvas fallback: small drifting virus-like particles. */
+.splash-virus-fallback{
+  position:absolute;z-index:1;inset:0;overflow:hidden;pointer-events:none
+}
+.splash-virus-fallback span{
+  position:absolute;left:var(--x);top:var(--y);
+  width:7px;height:7px;border:1px solid rgba(138,216,255,.65);
+  border-radius:50%;background:rgba(138,216,255,.22);
+  box-shadow:0 0 12px rgba(138,216,255,.2);
+  animation:virus-particle-drift var(--duration) ease-in-out var(--delay) infinite alternate
+}
+.splash-virus-fallback span::before{
+  content:"";position:absolute;inset:-4px;
+  border:1px dotted rgba(169,154,255,.45);border-radius:50%
+}
+.splash-virus-fallback span::after{
+  content:"";position:absolute;left:2px;top:2px;width:2px;height:2px;
+  border-radius:50%;background:#dff6ff
+}
+@keyframes virus-particle-drift{
+  from{transform:translate3d(0,0,0)}
+  to{transform:translate3d(var(--dx),var(--dy),0)}
+}
+@media(prefers-reduced-motion:reduce){
+  .release-pill-stable,.release-pill-preview{animation:none}
+  .loader-mark::before,.loader-mark::after,.loader-mark img{animation:none}
+  .splash-virus-fallback span{animation:none}
+}
