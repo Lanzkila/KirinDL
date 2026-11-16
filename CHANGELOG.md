@@ -7,6 +7,9 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Document new changes in KirinDL v3.2.3.2 (`55220963`)
+- Update Android version code for 3.2.3.2 (`909e9c80`)
+- Bump KirinDL version to 3.2.3.2 (`dc7ffb09`)
 - Remember last expanded More Tools dropdown (`7d994d69`)
 - Add persistent More Tools dropdown state helper (`596d458c`)
 - Fix Gallery DL preview thumbnail cropping (`ea357f8f`)
