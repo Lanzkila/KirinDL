@@ -404,3 +404,40 @@ h1 span,.section-heading h2 span{
   .footer-credit i{padding:0 3px}
   .footer-links{gap:15px}
 }
+
+/* Keep every footer item on one horizontal line at phone widths. */
+@media(max-width:700px){
+  .site-footer{padding:20px 19px 23px}
+  .footer-row{
+    display:flex;
+    flex-wrap:nowrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    overflow-x:auto;
+    white-space:nowrap;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch
+  }
+  .footer-row::-webkit-scrollbar{display:none}
+  .footer-copyright,.footer-credit{flex:0 0 auto;font-size:9px}
+  .footer-links{
+    order:0;
+    flex:0 0 auto;
+    width:auto;
+    max-width:none;
+    min-width:0;
+    justify-content:center;
+    gap:12px;
+    overflow:visible;
+    white-space:nowrap;
+    padding:0
+  }
+}
+@media(max-width:380px){
+  .site-footer{padding-left:16px;padding-right:16px}
+  .footer-row{gap:10px}
+  .footer-copyright,.footer-credit{font-size:8px}
+  .footer-credit i{padding:0 3px}
+  .footer-links{gap:10px}
+}
