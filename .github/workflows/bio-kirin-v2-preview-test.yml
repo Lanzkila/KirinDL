@@ -1,0 +1,52 @@
+name: Bio Kirin v2 Preview Test
+
+on:
+  push:
+    branches:
+      - test/bio-kirin-v2-preview
+    paths:
+      - "bio-kirin-preview/**"
+      - ".github/workflows/bio-kirin-v2-preview-test.yml"
+      - "_config.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bio-kirin-v2-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-preview:
+    name: Build static preview (no deployment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build GitHub Pages site
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+
+      - name: Verify Bio Kirin preview output
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s _site/bio-kirin-preview/index.html
+          test -s _site/bio-kirin-preview/assets/bio-kirin-v2.css
+          test -s _site/bio-kirin-preview/assets/bio-kirin-v2.js
+          grep -q "Kirin — Bento Profile" _site/bio-kirin-preview/index.html
+          grep -q "discoverGrid" _site/bio-kirin-preview/assets/bio-kirin-v2.js
+          grep -q "profile-layout" _site/bio-kirin-preview/assets/bio-kirin-v2.css
+
+      - name: Upload preview build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bio-kirin-v2-preview
+          path: _site/
+          if-no-files-found: error
+          retention-days: 7
