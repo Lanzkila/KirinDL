@@ -2,8 +2,8 @@
   'use strict';
 
   const API = 'https://api.github.com/repos/Lanzkila/KirinDL';
-  const CACHE_TTL = 60 * 60 * 1000; // One hour; avoids repeat API calls on every visit.
-  const MAX_RELEASE_PAGES = 25; // A safety cap. Never display a partial sum as a total.
+  const CACHE_TTL = 60 * 60 * 1000;
+  const MAX_RELEASE_PAGES = 25;
   const numberFormat = new Intl.NumberFormat('en-US');
 
   const version = document.getElementById('latest-version');
@@ -14,6 +14,140 @@
   const year = document.getElementById('year');
 
   if (year) year.textContent = new Date().getFullYear();
+
+  function initLoading() {
+    const loader = document.getElementById('page-loader');
+    const message = document.getElementById('loader-message');
+    if (!loader) return;
+
+    let alreadyEntered = false;
+    try {
+      alreadyEntered = sessionStorage.getItem('kirindl-pages-entered') === '1';
+      sessionStorage.setItem('kirindl-pages-entered', '1');
+    } catch (_) {
+      // The first-visit splash still works when session storage is unavailable.
+    }
+
+    function show(text) {
+      if (message && text) message.textContent = text;
+      loader.classList.remove('is-hidden');
+      loader.setAttribute('aria-hidden', 'false');
+    }
+
+    function hide() {
+      loader.classList.add('is-hidden');
+      loader.setAttribute('aria-hidden', 'true');
+    }
+
+    if (alreadyEntered) {
+      hide();
+    } else {
+      const startedAt = Date.now();
+      const finishFirstVisit = () => {
+        const elapsed = Date.now() - startedAt;
+        window.setTimeout(hide, Math.max(220, 620 - elapsed));
+      };
+      if (document.readyState === 'complete') finishFirstVisit();
+      else window.addEventListener('load', finishFirstVisit, { once: true });
+      window.setTimeout(hide, 8000);
+    }
+
+    document.addEventListener('click', event => {
+      if (event.defaultPrevented || event.button !== 0 ||
+          event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const target = event.target instanceof Element ? event.target : event.target.parentElement;
+      if (!target) return;
+
+      const anchor = target.closest('a[href]');
+      if (anchor && !anchor.hasAttribute('download')) {
+        const rawHref = anchor.getAttribute('href') || '';
+        if (!rawHref || rawHref.startsWith('javascript:')) return;
+
+        let destination;
+        try { destination = new URL(anchor.href, window.location.href); }
+        catch (_) { return; }
+
+        show('Opening destination…');
+
+        const samePageHash = destination.origin === window.location.origin &&
+          destination.pathname === window.location.pathname &&
+          destination.search === window.location.search && destination.hash;
+
+        if (samePageHash) {
+          window.setTimeout(hide, 420);
+          return;
+        }
+
+        const opensNewContext = anchor.target === '_blank' ||
+          event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1;
+
+        if (destination.origin === window.location.origin && !opensNewContext) {
+          event.preventDefault();
+          window.setTimeout(() => window.location.assign(destination.href), 180);
+          return;
+        }
+
+        window.setTimeout(hide, 850);
+        return;
+      }
+
+      const control = target.closest('button, [role="button"], summary, [data-loading]');
+      if (!control || control.disabled || control.closest('.page-loader')) return;
+      show('Loading…');
+      window.setTimeout(hide, 420);
+    });
+  }
+
+  const menuTrigger = document.getElementById('menu-trigger');
+  const menu = document.getElementById('coming-soon-menu');
+  if (menuTrigger && menu) {
+    menuTrigger.addEventListener('click', () => {
+      const open = menuTrigger.getAttribute('aria-expanded') === 'true';
+      menuTrigger.setAttribute('aria-expanded', String(!open));
+      menuTrigger.setAttribute('aria-label', open ? 'Open menu' : 'Close menu');
+      menu.hidden = open;
+    });
+
+    document.addEventListener('click', event => {
+      if (!menu.contains(event.target) && !menuTrigger.contains(event.target)) {
+        menu.hidden = true;
+        menuTrigger.setAttribute('aria-expanded', 'false');
+        menuTrigger.setAttribute('aria-label', 'Open menu');
+      }
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        menu.hidden = true;
+        menuTrigger.setAttribute('aria-expanded', 'false');
+        menuTrigger.setAttribute('aria-label', 'Open menu');
+      }
+    });
+  }
+
+  const rail = document.getElementById('project-cards');
+  const previous = document.getElementById('cards-prev');
+  const next = document.getElementById('cards-next');
+
+  function updateRailButtons() {
+    if (!rail) return;
+    const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth);
+    if (previous) previous.disabled = rail.scrollLeft <= 2;
+    if (next) next.disabled = rail.scrollLeft >= maxScroll - 2;
+  }
+
+  if (rail) {
+    if (previous) previous.addEventListener('click', () => {
+      rail.scrollBy({ left: -Math.max(260, rail.clientWidth * 0.78), behavior: 'smooth' });
+    });
+    if (next) next.addEventListener('click', () => {
+      rail.scrollBy({ left: Math.max(260, rail.clientWidth * 0.78), behavior: 'smooth' });
+    });
+    rail.addEventListener('scroll', updateRailButtons, { passive: true });
+    window.addEventListener('resize', updateRailButtons);
+    window.setTimeout(updateRailButtons, 80);
+  }
 
   function readCache(key) {
     try {
@@ -57,7 +191,7 @@
       ? (release.tag || release.name)
       : 'See Releases';
     if (latestLink && release && release.url &&
-      release.url.startsWith('https://github.com/Lanzkila/KirinDL/releases/')) {
+        release.url.startsWith('https://github.com/Lanzkila/KirinDL/releases/')) {
       latestLink.href = release.url;
     }
   }
@@ -106,9 +240,6 @@
       let latest = null;
       let finished = false;
 
-      // GitHub does not expose a total-release-downloads field. Sum the
-      // download_count of .apk assets from every published release, including
-      // Pre-releases. Pages are loaded until the final page is reached.
       for (let page = 1; page <= MAX_RELEASE_PAGES; page++) {
         const releases = await requestJson(API + '/releases?per_page=100&page=' + page);
         if (!Array.isArray(releases)) throw new Error('Invalid releases response');
@@ -139,6 +270,7 @@
           break;
         }
       }
+
       if (!finished || !Number.isSafeInteger(totalApkDownloads)) {
         throw new Error('Could not calculate the complete release download total');
       }
@@ -155,8 +287,7 @@
     }
   }
 
-  // Independent requests: even if one API endpoint is rate-limited, the
-  // other counters can still display cached or fresh data.
+  initLoading();
   void loadRepositoryStats();
   void loadReleaseStats();
 })();

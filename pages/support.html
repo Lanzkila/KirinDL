@@ -1,15 +1,40 @@
 ---
 permalink: /support.html
 ---
-
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0a1020"><title>Support · KirinDL</title><link rel="stylesheet" href="pages-assets/style.css">  <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b14"><meta name="description" content="Get help with KirinDL. — KirinDL project information.">
+  <title>Get help with KirinDL. · KirinDL</title>
+  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-1">
+  <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="shortcut icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="apple-touch-icon" href="pages-assets/favicon.png?v=20261116">
+  <script>try{if(sessionStorage.getItem('kirindl-pages-entered')==='1')document.documentElement.classList.add('visited-session')}catch(_){}</script>
 </head>
-<body><header class="topbar"><a class="brand" href="./"><img src="pages-assets/favicon.png?v=20261116" alt="KirinDL"><span>KirinDL</span></a>
-<nav><a href="index.html#features">Features</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a class="nav-github" href="https://github.com/Lanzkila/KirinDL">GitHub</a></nav></header><main class="page"><div class="eyebrow">SUPPORT</div><h1>Need help with KirinDL?</h1>
-<div class="page-card"><h2>Bug reports & feature requests</h2><p>Use the KirinDL issue tracker so reports stay attached to the project and can be followed through updates.</p><p><a href="https://github.com/Lanzkila/KirinDL/issues">Open GitHub Issues →</a></p></div>
-<div class="page-card"><h2>Before reporting</h2><p>Include the KirinDL version, Android version, the action that triggered the problem, and the crash/error text when available.</p></div></main><footer><span>© <span id="year"></span> KirinDL</span><div><a href="contact.html">Contact</a><a href="privacy.html">Privacy</a><a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a></div></footer>
-<script>document.getElementById('year').textContent=new Date().getFullYear()</script></body></html>
+<body>
+<div class="page-loader" id="page-loader" role="status" aria-live="polite" aria-label="Loading KirinDL" aria-hidden="false">
+  <div class="loader-panel"><div class="loader-mark"><img src="pages-assets/favicon.png" alt="KirinDL logo"></div><div class="loader-copy"><strong>KirinDL</strong><span id="loader-message">Preparing your space…</span></div><div class="loader-track"><span></span></div></div>
+</div>
+<header class="topbar">
+  <a class="brand" href="./" aria-label="KirinDL home"><img src="pages-assets/favicon.png" alt=""><span>KirinDL</span><span class="brand-dot" aria-hidden="true"></span></a>
+  <div class="topbar-actions"><span class="topbar-caption">MEDIA · GALLERY · BATCH</span><div class="menu-wrap">
+    <button class="menu-trigger" id="menu-trigger" type="button" aria-expanded="false" aria-controls="coming-soon-menu" aria-label="Open menu"><span class="hamburger-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>Menu</span></button>
+    <div class="menu-popover" id="coming-soon-menu" hidden><span class="eyebrow">KIRINDL MENU</span><strong>Coming Soon</strong><p>More ways to explore the project are on the way.</p><span class="menu-status"><i></i> In the works</span></div>
+  </div></div>
+</header>
+<main class="page">
+  <div class="eyebrow"><span class="eyebrow-line"></span> HELP & SUPPORT</div>
+  <h1>Get help with KirinDL.</h1>
+  <p class="page-kicker">The issue tracker is the best place to report a bug or suggest an improvement. It keeps the report visible and makes it easier to follow fixes.</p>
+  <section class="page-card"><span class="project-kicker">BUG REPORTS &amp; IDEAS</span><h2>Open a GitHub issue</h2><p>Describe what happened, what you expected to happen and the steps that reproduce the issue.</p><a href="https://github.com/Lanzkila/KirinDL/issues">Open the issue tracker <span aria-hidden="true">↗</span></a></section>
+  <section class="page-card"><span class="project-kicker">BEFORE REPORTING</span><h2>Helpful details</h2><ul><li>KirinDL version and Android version.</li><li>The page or action that triggered the problem.</li><li>The full error message or crash log, when available.</li><li>Whether the issue can be reproduced consistently.</li></ul></section>
+</main>
+<footer class="site-footer">
+  <div class="footer-main"><span>© <span id="year"></span> KirinDL</span><div class="footer-links"><a href="contact.html">Contact</a><a href="privacy.html">Privacy</a><a href="support.html">Support</a><a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a></div></div>
+  <div class="footer-bottom"><span>Made for the open-source community</span><span>Published with <a href="https://pages.github.com/">GitHub Pages</a> <i>·</i> All rights reserved</span></div>
+</footer>
+<script src="pages-assets/main.js?v=20261116-redesign-1"></script>
+</body>
+</html>
