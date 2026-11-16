@@ -7,6 +7,9 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add KirinDL 3.2.3.4 release notes (`9d290038`)
+- Update version code for KirinDL 3.2.3.4 (`2d89c757`)
+- Bump KirinDL version to 3.2.3.4 (`41b0e96d`)
 - Add useful file extensions to Telegram downloads (`69b5bb07`)
 - Pass Telegram media type to download adapter (`5b5ed1ee`)
 - Add tests for Telegram URL parsing and media selection (`13a14ede`)
