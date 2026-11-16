@@ -58,6 +58,15 @@ def download_media(media_json, output_dir):
                 item.get("file_name") or url_name,
                 "telegram_media_%d" % (index + 1),
             )
+            if not os.path.splitext(requested_name)[1]:
+                default_extension = {
+                    "photo": ".jpg",
+                    "video": ".mp4",
+                    "audio": ".ogg",
+                    "document": ".bin",
+                    "file": ".bin",
+                }.get(str(item.get("kind") or "file").lower(), ".bin")
+                requested_name += default_extension
             destination = _unique_path(output_dir, requested_name)
             part_path = destination + ".part"
 
