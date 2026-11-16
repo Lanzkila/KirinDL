@@ -18,8 +18,8 @@ Android downloader powered by **yt-dlp** and **gallery-dl**, with batch workflow
 [![yt-dlp stable](https://img.shields.io/github/v/release/yt-dlp/yt-dlp?style=flat-square&label=yt-dlp%20stable)](https://github.com/yt-dlp/yt-dlp/releases/latest)
 [![gallery-dl stable](https://img.shields.io/github/v/release/mikf/gallery-dl?style=flat-square&label=gallery-dl%20stable)](https://codeberg.org/mikf/gallery-dl/releases)
 
-[![Repository views](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FLanzkila%2FKirinDL%2Fmain%2F.github%2Fdata%2Frepo-views.json&style=flat-square&cacheSeconds=300)](https://github.com/Lanzkila/KirinDL/graphs/traffic)
-[![Last visited](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FLanzkila%2FKirinDL%2Fmain%2F.github%2Fdata%2Flast-visited.json&style=flat-square&cacheSeconds=300)](https://github.com/Lanzkila/KirinDL/graphs/traffic)
+[![Repository views](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FLanzkila%2FKirinDL%2Fmain%2F.github%2Fdata%2Frepo-views.json%3Fv%3D20261116-2&style=flat-square&cacheSeconds=300)](https://github.com/Lanzkila/KirinDL/graphs/traffic)
+[![Last visited](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FLanzkila%2FKirinDL%2Fmain%2F.github%2Fdata%2Flast-visited.json%3Fv%3D20261116-2&style=flat-square&cacheSeconds=300)](https://github.com/Lanzkila/KirinDL/graphs/traffic)
 
 **Fork lineage:** Seal → SealPlus → KirinDL
 
