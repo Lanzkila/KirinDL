@@ -22,12 +22,6 @@ on:
         required: false
         default: ""
         type: string
-  push:
-    branches:
-      - main
-    paths:
-      - '.kirin-release-trigger'
-      - '.kirin-prerelease-trigger'
 
 permissions:
   contents: write
