@@ -47,11 +47,11 @@
       const startedAt = Date.now();
       const finishFirstVisit = () => {
         const elapsed = Date.now() - startedAt;
-        window.setTimeout(hide, Math.max(220, 620 - elapsed));
+        window.setTimeout(hide, Math.max(220, 2400 - elapsed));
       };
       if (document.readyState === 'complete') finishFirstVisit();
       else window.addEventListener('load', finishFirstVisit, { once: true });
-      window.setTimeout(hide, 8000);
+      window.setTimeout(hide, 12000);
     }
 
     document.addEventListener('click', event => {
@@ -78,7 +78,7 @@
           destination.search === window.location.search && destination.hash;
 
         if (samePageHash) {
-          window.setTimeout(hide, 420);
+          window.setTimeout(hide, 750);
           return;
         }
 
@@ -87,29 +87,36 @@
 
         if (destination.origin === window.location.origin && !opensNewContext) {
           event.preventDefault();
-          window.setTimeout(() => window.location.assign(destination.href), 180);
+          window.setTimeout(() => window.location.assign(destination.href), 650);
           return;
         }
 
-        window.setTimeout(hide, 850);
+        window.setTimeout(hide, 1100);
         return;
       }
 
       const control = target.closest('button, [role="button"], summary, [data-loading]');
       if (!control || control.disabled || control.closest('.page-loader')) return;
       show('Loading…');
-      window.setTimeout(hide, 420);
+      window.setTimeout(hide, 750);
     });
   }
 
   function initAccountPanel() {
     const trigger = document.querySelector('[data-account-toggle]');
     const panel = document.querySelector('[data-account-menu]');
+    const backdrop = document.querySelector('[data-account-backdrop]');
     if (!trigger || !panel) return;
 
     function setOpen(open) {
       panel.hidden = !open;
+      if (backdrop) backdrop.hidden = !open;
       trigger.setAttribute('aria-expanded', String(open));
+      document.body.classList.toggle('account-modal-open', open);
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener('click', () => setOpen(false));
     }
 
     trigger.addEventListener('click', () => {
