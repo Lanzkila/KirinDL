@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Simplify release note commit link labels (`dda95d29`)
 - Show short commit IDs in release notes links (`8bd54e41`)
 - Use commit hashes as release note link labels (`192dc522`)
 - Merge v3.2.3.1 history and add commit/version references to v3.2.4 notes (`f5d2e3d4`)
