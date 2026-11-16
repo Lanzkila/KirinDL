@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#080b14">
   <title>KirinDL — Media in motion</title>
   <link rel="preconnect" href="https://api.github.com">
-  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-6">
+  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-7">
   <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="shortcut icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="apple-touch-icon" href="pages-assets/favicon.png?v=20261116">
@@ -36,6 +36,34 @@
     </a>
     <div class="topbar-actions">
       <span class="topbar-caption">MEDIA · GALLERY · BATCH</span>
+      
+      <div class="account-wrap">
+        <button class="account-trigger" data-account-toggle data-no-loading type="button"
+                aria-expanded="false" aria-controls="account-menu" aria-label="Account">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z"/>
+          </svg>
+        </button>
+        <div class="account-popover" id="account-menu" data-account-menu hidden
+             role="dialog" aria-labelledby="account-panel-title">
+          <div class="account-popover-head">
+            <span class="account-eyebrow">KIRINDL ACCOUNT</span>
+            <strong id="account-panel-title">Sign in or register</strong>
+            <p>Use your GitHub account to continue. New users can create an account through GitHub.</p>
+          </div>
+          <div class="account-popover-actions">
+            <a class="account-github-action" href="https://github.com/login" target="_blank"
+               rel="noopener noreferrer" data-no-loading>
+              <span>Continue with GitHub</span><b aria-hidden="true">↗</b>
+            </a>
+            <a class="account-register-link" href="https://github.com/signup" target="_blank"
+               rel="noopener noreferrer" data-no-loading>
+              Create a GitHub account <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <p class="account-popover-note">KirinDL website sessions will be enabled after a dedicated GitHub OAuth connection is configured.</p>
+        </div>
+      </div>
       <div class="menu-wrap">
         <button class="menu-trigger" id="menu-trigger" data-menu-toggle data-no-loading type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
           <span class="hamburger-icon" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -118,11 +146,18 @@
           <h2>Small numbers.<br><span>Real community.</span></h2>
           <p>Live repository activity, fetched directly from GitHub.</p>
         </div>
-        <div class="release-pill">
-          <span class="live-dot"></span>
-          <span class="release-pill-label">LATEST RELEASE</span>
-          <strong id="latest-version">Checking…</strong>
-          <a id="latest-link" href="https://github.com/Lanzkila/KirinDL/releases" aria-label="View latest KirinDL release">↗</a>
+        <div class="release-cluster" aria-label="KirinDL release channels">
+          <a class="release-pill release-pill-stable" id="latest-release-card"
+             href="https://github.com/Lanzkila/KirinDL/releases/latest">
+            <span class="release-pill-top"><span class="live-dot"></span><span class="release-pill-label">LATEST RELEASE</span><span class="release-pill-state">STABLE</span></span>
+            <span class="release-pill-bottom"><strong id="latest-version">Checking…</strong><span class="release-pill-arrow" aria-hidden="true">↗</span></span>
+          </a>
+          <span class="release-divider" aria-hidden="true">|</span>
+          <a class="release-pill release-pill-preview" id="prerelease-release-card"
+             href="https://github.com/Lanzkila/KirinDL/releases">
+            <span class="release-pill-top"><span class="preview-dot"></span><span class="release-pill-label">PRE-RELEASE</span><span class="release-pill-state">DEVPATCH</span></span>
+            <span class="release-pill-bottom"><strong id="prerelease-version">Checking…</strong><span class="release-pill-arrow" aria-hidden="true">↗</span></span>
+          </a>
         </div>
       </div>
 
@@ -209,6 +244,6 @@
     </div>
   </footer>
 
-  <script src="pages-assets/main.js?v=20261116-redesign-5"></script>
+  <script src="pages-assets/main.js?v=20261116-redesign-7"></script>
 </body>
 </html>
