@@ -44,6 +44,7 @@ object TelegramDownloadEngine {
                                 JSONObject()
                                     .put("url", item.downloadUrl)
                                     .put("file_name", item.fileName)
+                                    .put("kind", item.kind)
                             )
                         }
                     }
