@@ -201,3 +201,13 @@ STATUS FIX IKON ACCOUNT — 16 NOVEMBER 2026
 - Semua enam halaman (Home, Contact, Privacy, Support, Issues dan 404) dikemas kini.
 - Cache stylesheet dinaikkan kepada redesign-8 supaya browser mengambil gaya baharu.
 - Perubahan kekal pada planning/kirindl-pages-redesign sahaja.
+
+STATUS CENTER MODAL / MOBILE MENU / LOADING DURATION — 16 NOVEMBER 2026
+
+- Account Login/Register popup kini dipusatkan pada viewport untuk desktop dan telefon, dengan backdrop gelap/blur, had lebar responsif dan had tinggi skrin.
+- Backdrop boleh ditekan untuk menutup modal; Escape dan klik luar masih disokong oleh logik panel.
+- Pada telefon (max-width 700px), hamburger hanya memaparkan ikon tiga garis. Label "Menu" kekal pada laptop/desktop.
+- Tempoh minimum splash pertama dinaikkan kepada 2.4 saat supaya logo dan animasinya sempat dilihat.
+- Tempoh overlay tindakan/navigasi dinaikkan: navigasi dalaman 650ms, hash/button 750ms, dan pautan luar 1100ms.
+- Failsafe splash dinaikkan kepada 12 saat bagi mengelakkan overlay tersangkut pada sambungan perlahan.
+- Semua perubahan berada pada branch planning/kirindl-pages-redesign sahaja; main dan tetapan Pages tidak diubah.
