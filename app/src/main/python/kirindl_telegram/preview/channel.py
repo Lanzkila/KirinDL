@@ -2,6 +2,7 @@
 
 import html
 import json
+import mimetypes
 import re
 from html.parser import HTMLParser
 from urllib.parse import quote, urljoin, urlsplit
@@ -29,18 +30,19 @@ def _is_telegram_media_url(raw_url):
 
 def _media_kind(tag, classes, url):
     lower = str(url or "").lower().split("?", 1)[0]
-    if tag in ("video", "source") or "video" in classes:
+    joined = " ".join(classes)
+    if tag in ("video", "source") or "video" in joined:
         return "video"
-    if tag == "audio" or "audio" in classes or "voice" in classes:
+    if tag == "audio" or "audio" in joined or "voice" in joined:
         return "audio"
-    if "document" in classes or "file" in classes:
+    if "document" in joined or "file" in joined:
         return "document"
+    if "photo" in joined or lower.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif")):
+        return "photo"
     if lower.endswith((".mp4", ".m4v", ".mov", ".webm", ".mkv")):
         return "video"
     if lower.endswith((".mp3", ".m4a", ".ogg", ".opus", ".wav")):
         return "audio"
-    if lower.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif")):
-        return "photo"
     return "file"
 
 
@@ -90,6 +92,8 @@ class _TelegramHtmlParser(HTMLParser):
         if any(item["url"] == absolute for item in self._current["media"]):
             return
         kind = _media_kind(tag, classes, absolute)
+        path_name = urlsplit(absolute).path.rsplit("/", 1)[-1]
+        mime_type = mimetypes.guess_type(path_name)[0] or ""
         self._current["media"].append(
             {
                 "id": "%s-%d" % (self._current["id"], len(self._current["media"]) + 1),
@@ -98,8 +102,8 @@ class _TelegramHtmlParser(HTMLParser):
                 "thumbnail_url": thumbnail if _is_telegram_media_url(thumbnail) else (
                     absolute if kind == "photo" else ""
                 ),
-                "file_name": "",
-                "mime_type": "",
+                "file_name": path_name if "." in path_name else "",
+                "mime_type": mime_type,
             }
         )
 
@@ -294,6 +298,16 @@ def preview_channel(url, limit=DEFAULT_PREVIEW_LIMIT, before_id="", requested_me
         parser = _TelegramHtmlParser(username)
         parser.feed(page)
         parser.close()
+
+        counter = re.search(
+            r'<div[^>]+class=["\'][^"\']*tgme_channel_info_counter[^"\']*["\'][^>]*>(.*?)</div>',
+            page,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if counter:
+            parser.subscribers = " ".join(
+                re.sub(r"<[^>]+>", " ", counter.group(1)).split()
+            )
 
         posts = sorted(parser.posts, key=lambda post: post["id"], reverse=True)
         if target_message_id is not None:
