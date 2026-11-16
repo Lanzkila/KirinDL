@@ -10,3 +10,5 @@ This is an isolated conversion test of the **Bio-Kirin v2 Bento Grid** theme fro
 - The profile content, external links, AniList feed, and iCount visitor widget remain as they were in the source for this visual/functional trial.
 
 This folder is a test only. The main KirinDL homepage and existing Support, Contact, and Privacy pages are not replaced by this preview.
+
+The preview-test workflow builds the whole Jekyll site and uploads a temporary artifact only; it does not publish or deploy the preview.
