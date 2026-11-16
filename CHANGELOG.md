@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Remember last expanded More Tools dropdown (`7d994d69`)
+- Add persistent More Tools dropdown state helper (`596d458c`)
 - Fix Gallery DL preview thumbnail cropping (`ea357f8f`)
 - Restore published v3.2.3.1 release notes (`768601ef`)
 - Rewrite v3.2.3.2 notes to include only new changes (`1113fa7b`)
