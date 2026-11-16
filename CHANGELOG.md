@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Preserve Telegram media file extensions when downloading (`0d36354e`)
+- Improve Telegram media metadata and channel counters (`f19f8b21`)
 - Document Telegram public preview and download engine (`770bcff1`)
 - Add Kotlin Telegram preview and download engine (`a4f8c1b4`)
 - Add Kotlin Telegram preview and download engine (`f4e9cac4`)
