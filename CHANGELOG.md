@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix: refresh repository traffic badge endpoints (`c54c0d1c`)
+- chore: update repository traffic (`0b6915cd`)
 - ci: schedule repository traffic snapshots (`04008b7d`)
 - ci: add repository traffic collector (`0be13ea3`)
 - chore: add initial last visited badge (`4c046c63`)
