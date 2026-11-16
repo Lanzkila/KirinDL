@@ -59,3 +59,25 @@ STATUS:
 - Belum mula implementasi atau mengubah halaman.
 - Kekalkan semua butiran Part 1 hingga Part 3.
 - Fail ini kekal sebagai catatan sementara sehingga rombakan selesai dan disahkan pengguna.
+
+
+PART 5 — CLICK / NAVIGATION LOADING POPUP
+
+Keperluan:
+1. Setiap kali pelawat menekan link atau elemen lain yang boleh diklik, paparkan satu popup/overlay loading.
+2. Popup/overlay loading memaparkan logo repository/aplikasi KirinDL.
+3. Logo KirinDL mempunyai animasi berputar semasa proses loading.
+4. Animasi loading digunakan setiap kali tindakan klik/navigasi yang berkaitan berlaku, bukan hanya pada klik pertama.
+5. Popup/overlay loading perlu menutup atau hilang selepas proses navigasi/loading selesai supaya halaman seterusnya boleh digunakan.
+
+STATUS:
+- Part 5 dicatat sahaja.
+- Belum mula implementasi atau mengubah halaman.
+- Kekalkan semua butiran Part 1 hingga Part 4.
+- Fail ini kekal sebagai catatan sementara sehingga rombakan selesai dan disahkan pengguna.
+
+
+NOTA PELAKSANAAN:
+- Semua Part di atas ialah keperluan perancangan sahaja.
+- Jangan mula mengubah halaman GitHub Pages, kod, aset atau konfigurasi sehingga pengguna memberi arahan untuk memulakan implementasi.
+- Selepas rombakan selesai dan pengguna mengesahkan hasilnya, padam fail catatan sementara ini daripada branch perancangan.
