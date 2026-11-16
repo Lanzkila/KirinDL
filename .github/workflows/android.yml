@@ -84,8 +84,8 @@ jobs:
                       text=True,
                   ).splitlines()
               )
-              stable_trigger = ".kirin-release-trigger" in changed
-              prerelease_trigger = ".kirin-prerelease-trigger" in changed
+              stable_trigger = ".github/triggers/release.trigger" in changed
+              prerelease_trigger = ".github/triggers/prerelease.trigger" in changed
 
               if stable_trigger and prerelease_trigger:
                   raise SystemExit("Stable and Pre-release trigger files changed in the same push")
@@ -381,7 +381,12 @@ jobs:
           ignored_only_paths = {
               ".kirin-prerelease-trigger",
               ".kirin-release-trigger",
+              ".kirin-stable-test-trigger",
+              ".github/triggers/prerelease.trigger",
+              ".github/triggers/release.trigger",
+              ".github/triggers/stable-test.trigger",
               ".github/workflows/android.yml",
+              ".github/workflows/stable-test.yml",
               ".github/workflows/auto-changelog.yml",
               "CHANGELOG.md",
               "release-notes/README.md",

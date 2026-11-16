@@ -96,6 +96,12 @@ jobs:
           ignored_only_paths = {
               ".kirin-prerelease-trigger",
               ".kirin-release-trigger",
+              ".kirin-stable-test-trigger",
+              ".github/triggers/prerelease.trigger",
+              ".github/triggers/release.trigger",
+              ".github/triggers/stable-test.trigger",
+              ".github/workflows/android.yml",
+              ".github/workflows/stable-test.yml",
               ".github/workflows/auto-changelog.yml",
           }
 
