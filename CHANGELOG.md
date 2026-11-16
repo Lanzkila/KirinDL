@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- ci: schedule repository traffic snapshots (`04008b7d`)
+- ci: add repository traffic collector (`0be13ea3`)
 - chore: add initial last visited badge (`4c046c63`)
 - chore: add initial repository views badge (`62710512`)
 - chore: initialize repository traffic history (`98dc2cd7`)
