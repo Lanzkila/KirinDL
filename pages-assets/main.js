@@ -7,7 +7,9 @@
   const numberFormat = new Intl.NumberFormat('en-US');
 
   const version = document.getElementById('latest-version');
-  const latestLink = document.getElementById('latest-link');
+  const latestCard = document.getElementById('latest-release-card');
+  const prereleaseVersion = document.getElementById('prerelease-version');
+  const prereleaseCard = document.getElementById('prerelease-release-card');
   const downloads = document.getElementById('github-downloads');
   const forks = document.getElementById('github-forks');
   const stars = document.getElementById('github-stars');
@@ -100,6 +102,42 @@
     });
   }
 
+  function initAccountPanel() {
+    const trigger = document.querySelector('[data-account-toggle]');
+    const panel = document.querySelector('[data-account-menu]');
+    if (!trigger || !panel) return;
+
+    function setOpen(open) {
+      panel.hidden = !open;
+      trigger.setAttribute('aria-expanded', String(open));
+    }
+
+    trigger.addEventListener('click', () => {
+      const open = trigger.getAttribute('aria-expanded') !== 'true';
+      if (open) {
+        const menu = document.querySelector('[data-site-menu]');
+        const menuTrigger = document.querySelector('[data-menu-toggle]');
+        if (menu) menu.hidden = true;
+        if (menuTrigger) {
+          menuTrigger.setAttribute('aria-expanded', 'false');
+          menuTrigger.setAttribute('aria-label', 'Open menu');
+        }
+      }
+      setOpen(open);
+    });
+
+    document.addEventListener('click', event => {
+      if (!panel.contains(event.target) && !trigger.contains(event.target)) setOpen(false);
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        trigger.focus();
+      }
+    });
+  }
+
   function rememberLastPage() {
     const storageKey = 'kirindl-pages:last-page:v1';
     const pageLinks = Array.from(document.querySelectorAll('[data-page-link]'));
@@ -178,7 +216,14 @@
     }
 
     menuTrigger.addEventListener('click', () => {
-      setOpen(menuTrigger.getAttribute('aria-expanded') !== 'true');
+      const open = menuTrigger.getAttribute('aria-expanded') !== 'true';
+      if (open) {
+        const accountPanel = document.querySelector('[data-account-menu]');
+        const accountTrigger = document.querySelector('[data-account-toggle]');
+        if (accountPanel) accountPanel.hidden = true;
+        if (accountTrigger) accountTrigger.setAttribute('aria-expanded', 'false');
+      }
+      setOpen(open);
     });
 
     document.addEventListener('click', event => {
@@ -205,6 +250,7 @@
 
   rememberLastPage();
   initUniversalMenu();
+  initAccountPanel();
 
   const rail = document.getElementById('project-cards');
   const previous = document.getElementById('cards-prev');
@@ -299,15 +345,31 @@
     return response.json();
   }
 
-  function showLatest(release) {
-    if (!version) return;
-    version.textContent = release && (release.tag || release.name)
-      ? (release.tag || release.name)
-      : 'See Releases';
-    if (latestLink && release && release.url &&
-        release.url.startsWith('https://github.com/Lanzkila/KirinDL/releases/')) {
-      latestLink.href = release.url;
-    }
+  function showRelease(card, target, release, emptyLabel) {
+    if (!card || !target) return;
+    const label = release && (release.tag || release.name);
+    target.textContent = label || emptyLabel;
+    card.href = release && release.url &&
+      release.url.startsWith('https://github.com/Lanzkila/KirinDL/releases/')
+      ? release.url
+      : 'https://github.com/Lanzkila/KirinDL/releases';
+    card.setAttribute('aria-label', label
+      ? 'View ' + label + ' on GitHub'
+      : 'View KirinDL releases on GitHub');
+  }
+
+  function showReleases(stable, prerelease) {
+    showRelease(latestCard, version, stable, 'See Releases');
+    showRelease(prereleaseCard, prereleaseVersion, prerelease, 'No devpatch yet');
+  }
+
+  function isNewerRelease(candidate, current) {
+    if (!current) return true;
+    const candidateDate = Date.parse(candidate.publishedAt || '') ||
+      Date.parse(candidate.createdAt || '') || 0;
+    const currentDate = Date.parse(current.publishedAt || '') ||
+      Date.parse(current.createdAt || '') || 0;
+    return candidateDate > currentDate;
   }
 
   async function loadRepositoryStats() {
@@ -341,36 +403,44 @@
   }
 
   async function loadReleaseStats() {
-    const cacheKey = 'kirindl-pages-release-stats-v1';
+    const cacheKey = 'kirindl-pages-release-stats-v2';
     const cached = readCache(cacheKey);
     if (cached) {
       showCount(downloads, cached.downloads);
-      showLatest(cached.latest);
+      showReleases(cached.stable, cached.preRelease);
       if (fresh(cached)) return;
     }
 
     try {
       let totalApkDownloads = 0;
-      let latest = null;
+      let latestStable = null;
+      let latestDevpatch = null;
       let finished = false;
 
       for (let page = 1; page <= MAX_RELEASE_PAGES; page++) {
         const releases = await requestJson(API + '/releases?per_page=100&page=' + page);
         if (!Array.isArray(releases)) throw new Error('Invalid releases response');
 
-        if (page === 1) {
-          const first = releases.find(item => item && !item.draft);
-          if (first) {
-            latest = {
-              tag: first.tag_name || '',
-              name: first.name || '',
-              url: first.html_url || ''
-            };
-          }
-        }
-
         for (const release of releases) {
-          if (!release || release.draft || !Array.isArray(release.assets)) continue;
+          if (!release || release.draft) continue;
+
+          const record = {
+            tag: release.tag_name || '',
+            name: release.name || '',
+            url: release.html_url || '',
+            publishedAt: release.published_at || '',
+            createdAt: release.created_at || ''
+          };
+
+          if (!release.prerelease && isNewerRelease(record, latestStable)) {
+            latestStable = record;
+          }
+          if (release.prerelease && /devpatch/i.test(record.tag) &&
+              isNewerRelease(record, latestDevpatch)) {
+            latestDevpatch = record;
+          }
+
+          if (!Array.isArray(release.assets)) continue;
           for (const asset of release.assets) {
             if (!asset || !/\.apk$/i.test(asset.name || '')) continue;
             if (Number.isSafeInteger(asset.download_count) && asset.download_count >= 0) {
@@ -390,13 +460,17 @@
       }
 
       showCount(downloads, totalApkDownloads);
-      showLatest(latest);
-      saveCache(cacheKey, { downloads: totalApkDownloads, latest });
+      showReleases(latestStable, latestDevpatch);
+      saveCache(cacheKey, {
+        downloads: totalApkDownloads,
+        stable: latestStable,
+        preRelease: latestDevpatch
+      });
     } catch (error) {
       console.warn('KirinDL release statistics unavailable:', error);
       if (!cached) {
         if (downloads) downloads.textContent = '—';
-        showLatest(null);
+        showReleases(null, null);
       }
     }
   }
