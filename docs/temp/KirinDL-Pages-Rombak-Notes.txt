@@ -1,0 +1,21 @@
+KIRINDL GITHUB PAGES — CATATAN ROMBAKAN SEMENTARA
+
+Tujuan:
+- Merancang semula halaman GitHub Pages KirinDL.
+- Reka bentuk keseluruhan yang dicadangkan: susun atur berasaskan card.
+- Catatan ini bersifat sementara untuk mengumpulkan keputusan sebelum rombakan sebenar dimulakan.
+
+PART 1 — SPLASH SCREEN LOGO
+
+Keperluan:
+1. Apabila pelawat membuka website, paparkan splash screen dengan logo KirinDL.
+2. Splash screen muncul semasa halaman sedang dimuatkan.
+3. Selepas halaman utama selesai dimuatkan, splash screen hilang secara automatik dengan animasi fade-out.
+4. Pelawat tidak perlu menekan butang untuk menutup splash screen.
+5. Splash screen hanya untuk kemasukan awal ke website dan tidak muncul semula setiap kali pengguna bertukar bahagian atau navigasi dalaman.
+
+Status:
+- Dicatat sahaja.
+- Belum mula implementasi.
+- Jangan ubah kod, layout, aset atau konfigurasi GitHub Pages sehingga arahan seterusnya diberikan.
+- Fail catatan sementara ini akan dipadam daripada repo selepas rombakan selesai dan pengguna mengesahkannya.
