@@ -244,3 +244,10 @@ STATUS SEMAKAN AKHIR CANVAS SPLASH — 16 NOVEMBER 2026
 - Kesemua enam halaman disahkan menggunakan cache CSS redesign-10 dan JavaScript redesign-9.
 - Semakan kod mengesahkan mobile menu label disembunyikan dengan override khusus, hamburger dan Account sama-sama 40x40px pada telefon, serta pulse berasingan untuk Stable dan Pre-release.
 - Semakan struktur juga mengesahkan semua enam halaman mempunyai canvas splash dan loader logo-only.
+
+
+PART 7 — ACCOUNT / LOGIN TEMPORARILY DISABLED (2026-11-16)
+- Remove the Account icon, backdrop, and sign-in/register popover from all six website pages.
+- Park the Account panel initializer in pages-assets/main.js; hamburger navigation remains enabled and unchanged.
+- Bump the main.js cache key on all pages to redesign-10.
+- Keep Account panel CSS and JS implementation dormant for a later re-enable; no GitHub OAuth/session functionality is implemented in this patch.
