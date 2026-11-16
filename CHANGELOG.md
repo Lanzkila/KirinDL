@@ -7,6 +7,9 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Consolidate 3.2.3.x changes into v3.2.4 release notes (`51f6c10e`)
+- Update Android version code for KirinDL 3.2.4 (`6b2c1694`)
+- Open KirinDL v3.2.4 release (`e11fad25`)
 - Add KirinDL 3.2.3.4 release notes (`9d290038`)
 - Update version code for KirinDL 3.2.3.4 (`2d89c757`)
 - Bump KirinDL version to 3.2.3.4 (`41b0e96d`)
