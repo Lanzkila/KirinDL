@@ -43,3 +43,19 @@ STATUS TAMBAHAN:
 - Belum mula implementasi atau mengubah halaman.
 - Kekalkan semua butiran Part 1.
 - Semua bahagian akan dikumpulkan dalam fail sementara ini sehingga rombakan selesai dan disahkan pengguna.
+
+
+PART 4 — ANIMATED DIVIDER / FOOTER
+
+Keperluan:
+1. Selepas bahagian koleksi card dalam Part 3, letakkan satu divider.
+2. Divider mempunyai animasi bergerak seperti loading bar.
+3. Pergerakan animasi perlu smooth dan tidak terlalu laju atau mengganggu.
+4. Bahagian footer sedia ada dikekalkan.
+5. Tambahkan teks "All rights reserved" di bawah footer, bersebelahan nama Pages.
+
+STATUS:
+- Part 4 dicatat sahaja.
+- Belum mula implementasi atau mengubah halaman.
+- Kekalkan semua butiran Part 1 hingga Part 3.
+- Fail ini kekal sebagai catatan sementara sehingga rombakan selesai dan disahkan pengguna.
