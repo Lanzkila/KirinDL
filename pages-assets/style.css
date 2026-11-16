@@ -342,3 +342,35 @@ h1 span,.section-heading h2 span{
 @media(min-width:901px){
   .project-card{flex-basis:calc((100% - 42px)/3.5)}
 }
+
+/* Phone footer: reserve a complete row for the navigation instead of shrinking it. */
+@media(max-width:700px){
+  .footer-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    column-gap:12px;
+    row-gap:13px
+  }
+  .footer-copyright{grid-column:1;grid-row:1}
+  .footer-credit{grid-column:2;grid-row:1;justify-self:end}
+  .footer-links{
+    grid-column:1 / -1;
+    grid-row:2;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    flex:none;
+    justify-content:flex-start;
+    overflow-x:auto;
+    white-space:nowrap;
+    padding:3px 0 4px
+  }
+}
+@media(max-width:380px){
+  .site-footer{padding-left:16px;padding-right:16px}
+  .footer-row{column-gap:8px;row-gap:12px}
+  .footer-copyright,.footer-credit{font-size:8px}
+  .footer-credit i{padding:0 3px}
+  .footer-links{gap:15px}
+}
