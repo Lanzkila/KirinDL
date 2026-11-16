@@ -105,3 +105,19 @@ STATUS PENAMBAHBAIKAN RESPONSIVE — 16 NOVEMBER 2026
 Status:
 - Penambahbaikan ini dicatat dan disimpan pada branch perancangan sahaja.
 - Main branch dan tetapan GitHub Pages tidak diubah.
+
+
+STATUS SEMAKAN SLIDER DESKTOP / FOOTER RESPONSIVE — 16 NOVEMBER 2026
+
+- Anak panah slider yang disabled kini menggunakan latar dan warna ikon gelap, bukan sekadar opacity rendah.
+- Logik anak panah mengesan hujung pertama dan terakhir dengan kemas kini semasa scroll dan perubahan saiz skrin.
+- Klik anak panah menggerakkan satu kad pada satu masa.
+- Lebar kad desktop dilaras kepada kira-kira 3.5 kad dalam viewport supaya masih ada ruang scroll dan semua kad boleh dicapai.
+- Footer desktop disusun dalam satu baris: copyright, navigation links dan GitHub Pages · All rights reserved.
+- Footer telefon kekal padat; copyright dan credit berada pada satu baris, manakala navigation links disediakan sebagai satu baris mendatar yang boleh discroll jika perlu.
+- Breakpoint tambahan untuk skrin kecil menjaga ruang dan mengelakkan elemen footer bertindih.
+
+Status:
+- Semakan kod dan breakpoint selesai.
+- Reka bentuk berada pada branch planning/kirindl-pages-redesign sahaja.
+- Main branch dan tetapan deployment GitHub Pages kekal tidak disentuh.
