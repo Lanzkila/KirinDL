@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add release notes for v3.2.3.2 (`ea5162c8`)
 - docs(release): clarify restored automatic app updates (`00a5b3d5`)
 - fix(updater): restore AppUpdater entry point (`bc221357`)
 - fix(updater): re-enable About-controlled automatic checks (`9147d3c8`)
