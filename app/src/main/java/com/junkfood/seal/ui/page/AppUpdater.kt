@@ -10,14 +10,12 @@ import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.UpdateUtil
 import java.util.concurrent.TimeUnit
 
-// Komikku-style automatic update trigger.
-// Disabled for now so About > App Update is the only active update entry point.
+// Automatic app-update check controlled by the built-in About > App Update preference.
 private val AUTO_UPDATE_CHECK_INTERVAL_MS = TimeUnit.DAYS.toMillis(1)
 
 @Composable
 fun AppUpdater() {
-    // Matikan semakan automatik dan notifikasi update sementara.
-    // Kod asal dikekalkan di bawah dan boleh diaktifkan semula melalui suis ini.
+    // Keep the built-in checker active; the About > App Update switch controls it.
     if (ENABLE_AUTOMATIC_APP_UPDATE_CHECK) {
         val context = LocalContext.current
 
@@ -61,4 +59,4 @@ fun AppUpdater() {
     }
 }
 
-private const val ENABLE_AUTOMATIC_APP_UPDATE_CHECK = false
+private const val ENABLE_AUTOMATIC_APP_UPDATE_CHECK = true
