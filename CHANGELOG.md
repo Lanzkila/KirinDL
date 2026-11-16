@@ -7,6 +7,13 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add public Telegram preview and media download engine (`02fd61e9`)
+- Add public Telegram preview and media download engine (`e694c9b3`)
+- Add public Telegram preview and media download engine (`9bfac248`)
+- Add public Telegram preview and media download engine (`1c3f375c`)
+- Add public Telegram preview and media download engine (`bc742629`)
+- Add public Telegram preview and media download engine (`65637a52`)
+- Add public Telegram preview and media download engine (`78912df7`)
 - Fix same-package imports after extracting Instagram preview models (`0c43fc30`)
 - Move Instaloader models into dedicated source file (`087502b0`)
 - Separate Instaloader preview data models (`446006f6`)
