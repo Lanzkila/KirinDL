@@ -374,3 +374,33 @@ h1 span,.section-heading h2 span{
   .footer-credit i{padding:0 3px}
   .footer-links{gap:15px}
 }
+
+/* Force the footer navigation onto its own full-width mobile row. */
+@media(max-width:700px){
+  .footer-row{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:13px 12px
+  }
+  .footer-copyright,.footer-credit{flex:0 0 auto}
+  .footer-links{
+    order:3;
+    flex:0 0 100%;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    justify-content:flex-start;
+    gap:17px;
+    overflow-x:auto;
+    white-space:nowrap;
+    padding:3px 0 4px
+  }
+}
+@media(max-width:380px){
+  .footer-row{gap:12px 8px}
+  .footer-copyright,.footer-credit{font-size:8px}
+  .footer-credit i{padding:0 3px}
+  .footer-links{gap:15px}
+}
