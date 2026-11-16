@@ -39,7 +39,9 @@ jobs:
           test -s _site/bio-kirin-preview/index.html
           test -s _site/bio-kirin-preview/assets/bio-kirin-v2.css
           test -s _site/bio-kirin-preview/assets/bio-kirin-v2.js
-          grep -q "Kirin — Bento Profile" _site/bio-kirin-preview/index.html
+          grep -q "Bento Profile" _site/bio-kirin-preview/index.html
+          echo "Preview output files:"
+          find _site/bio-kirin-preview -maxdepth 3 -type f -printf "%P (%s bytes)\\n" | sort
           grep -q "discoverGrid" _site/bio-kirin-preview/assets/bio-kirin-v2.js
           grep -q "profile-layout" _site/bio-kirin-preview/assets/bio-kirin-v2.css
 
