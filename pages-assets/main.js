@@ -254,6 +254,7 @@
     if (alreadyEntered) {
       hide();
     } else {
+      splashEffects.start();
       const startedAt = Date.now();
       const finishFirstVisit = () => {
         const elapsed = Date.now() - startedAt;
