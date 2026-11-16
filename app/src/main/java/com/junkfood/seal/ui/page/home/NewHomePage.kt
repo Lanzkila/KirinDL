@@ -153,6 +153,8 @@ import com.junkfood.seal.util.DatabaseUtil
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.GalleryDlStore
+import com.junkfood.seal.util.GalleryDlBehaviorPreference
+import com.junkfood.seal.util.instaloader.InstagramProfileRouting
 import com.junkfood.seal.util.HOME_RECENT_LIMIT
 import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
 import com.junkfood.seal.util.HOME_INPUT_ANIMATION
@@ -902,7 +904,12 @@ fun NewHomePage(
                         when {
                             resolvedUrl != null -> {
                                 view.slightHapticFeedback()
-                                dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
+                                if (InstagramProfileRouting.isProfileUrl(resolvedUrl)) {
+                                    GalleryDlBehaviorPreference.setPendingHomeUrl(resolvedUrl)
+                                    onNavigateToGalleryDl()
+                                } else {
+                                    dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
+                                }
                                 urlText = ""
                                 keyboardController?.hide()
                             }
