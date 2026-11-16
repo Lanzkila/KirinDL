@@ -172,3 +172,23 @@ STATUS RESPONSIVE FOOTER — 16 NOVEMBER 2026 (KEMAS KINI)
 - Pada telefon, teks dikekalkan sekitar 10–11px dengan padding yang sesuai; ruang footer boleh menyesuaikan baris apabila lebar skrin tidak mencukupi.
 - Jarak antara divider dan footer kekal rapat; tiada margin atau padding bawah main ditambah semula.
 - Perubahan dibuat pada branch planning/kirindl-pages-redesign sahaja.
+
+PART 7 — RELEASE CHANNELS / GITHUB ACCOUNT ENTRY — 16 NOVEMBER 2026
+
+1. Release channels:
+- Stable box selects the newest published release where prerelease=false and draft=false.
+- Pre-release box follows the README badge filter *devpatch*: prerelease=true and tag contains devpatch (case-insensitive), selecting the newest published date.
+- The two boxes are shown side by side with a small vertical divider "|".
+- Release cards link to their own GitHub release page and remain responsive on small screens.
+- Release cache key is versioned so the old single-release cache cannot hide the new two-channel display.
+
+2. Account entry:
+- A Material 3 account_circle icon button is placed immediately beside the hamburger menu on all shared-header pages.
+- The icon opens a responsive account panel with GitHub sign-in and GitHub account-registration links.
+- The panel and hamburger close each other; Escape and outside click dismiss the panel.
+- GitHub Pages is static. This UI opens GitHub's own login/signup pages; an actual KirinDL website session still requires a backend OAuth callback and secure token handling.
+
+STATUS:
+- Implemented on planning/kirindl-pages-redesign only.
+- Main branch and GitHub Pages publishing settings remain unchanged.
+- Keep this note until the user approves the full redesign.
