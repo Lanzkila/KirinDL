@@ -494,7 +494,7 @@ h1 span,.section-heading h2 span{
   .menu-popover-head{padding:19px 18px 15px}
 }
 @media(prefers-reduced-motion:reduce){
-  .menu-submenu-chevron{transition:none}
+  .submenu-chevron{transition:none}
 }
 
 /* Keep the animated divider flush between the card collection and the footer. */
@@ -523,3 +523,5 @@ main{padding-bottom:0}
 
 /* Content pages should finish naturally, without a forced blank block before the footer. */
 .page{min-height:0;margin-top:32px;margin-bottom:0}
+
+.page > .page-card:last-child{margin-bottom:0}

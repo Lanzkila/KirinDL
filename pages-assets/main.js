@@ -58,6 +58,7 @@
 
       const target = event.target instanceof Element ? event.target : event.target.parentElement;
       if (!target) return;
+      if (target.closest('[data-no-loading]')) return;
 
       const anchor = target.closest('a[href]');
       if (anchor && !anchor.hasAttribute('download')) {
