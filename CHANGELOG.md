@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add Instagram post selection and GalleryDL queue UI (`a2c6ed79`)
 - Route Instagram profile links from Home to Gallery DL (`011cc4a4`)
 - Bump KirinDL version to 3.2.3.3 (`260d8b46`)
 - Add pinned Instaloader Python dependency (`b6eb48d9`)
