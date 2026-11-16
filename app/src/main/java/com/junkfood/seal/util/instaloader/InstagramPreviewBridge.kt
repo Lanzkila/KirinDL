@@ -3,23 +3,10 @@ package com.junkfood.seal.util.instaloader
 import android.content.Context
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
+import com.junkfood.seal.util.instaloader.InstagramPreviewModels.InstagramProfilePreview
+import com.junkfood.seal.util.instaloader.InstagramPreviewModels.InstagramPreviewPost
 import java.io.IOException
 import org.json.JSONObject
-
-data class InstagramPreviewPost(
-    val id: String,
-    val title: String,
-    val url: String,
-    val thumbnailUrl: String,
-    val creator: String,
-)
-
-data class InstagramProfilePreview(
-    val username: String,
-    val fullName: String,
-    val mediaCount: Int?,
-    val posts: List<InstagramPreviewPost>,
-)
 
 /**
  * Calls KirinDL's isolated Python adapter. This only reads public profile metadata;
