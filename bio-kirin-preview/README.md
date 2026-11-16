@@ -11,4 +11,4 @@ This is an isolated conversion test of the **Bio-Kirin v2 Bento Grid** theme fro
 
 This folder is a test only. The main KirinDL homepage and existing Support, Contact, and Privacy pages are not replaced by this preview.
 
-The preview-test workflow builds the whole Jekyll site and uploads a temporary artifact only; it does not publish or deploy the preview.
+The preview-test workflow builds the whole Jekyll site and uploads a temporary artifact only; it does not publish or deploy the preview. Its content checks target the actual IDs and selectors used by this template.
