@@ -7,6 +7,10 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Route Instagram profile links from Home to Gallery DL (`011cc4a4`)
+- Bump KirinDL version to 3.2.3.3 (`260d8b46`)
+- Add pinned Instaloader Python dependency (`b6eb48d9`)
+- Route Instagram profile previews through Instaloader (`5a171604`)
 - Add isolated KirinDL Instaloader module (`7ef868d5`)
 - Add isolated KirinDL Instaloader module (`425e7bc0`)
 - Add isolated KirinDL Instaloader module (`63079804`)
