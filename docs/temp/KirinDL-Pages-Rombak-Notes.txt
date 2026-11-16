@@ -19,3 +19,27 @@ Status:
 - Belum mula implementasi.
 - Jangan ubah kod, layout, aset atau konfigurasi GitHub Pages sehingga arahan seterusnya diberikan.
 - Fail catatan sementara ini akan dipadam daripada repo selepas rombakan selesai dan pengguna mengesahkannya.
+
+
+PART 2 — HOME PAGE / HEADER
+
+Keperluan:
+1. Home page mempunyai hamburger menu.
+2. Hamburger menu dipaparkan sebagai fungsi "Coming Soon" buat masa ini.
+3. Sediakan hero card untuk profil repository.
+4. Hero card memaparkan logo repository, nama author dan pautan ke repository.
+
+PART 3 — BODY / REPOSITORY DETAILS
+
+Keperluan:
+1. Di bahagian body, sediakan satu tab/section statistik repository.
+2. Tab statistik memaparkan jumlah Star, Fork dan Download.
+3. Di bawah tab statistik, paparkan koleksi card.
+4. Card boleh dislide secara mendatar ke kiri dan kanan.
+5. Sediakan anak panah navigasi kiri dan kanan ("<" dan ">") untuk mengawal slide card.
+
+STATUS TAMBAHAN:
+- Part 2 dan Part 3 dicatat sahaja.
+- Belum mula implementasi atau mengubah halaman.
+- Kekalkan semua butiran Part 1.
+- Semua bahagian akan dikumpulkan dalam fail sementara ini sehingga rombakan selesai dan disahkan pengguna.
