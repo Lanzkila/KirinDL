@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add Instaloader inspiration acknowledgement to v3.2.4 notes (`95a722d1`)
 - Consolidate 3.2.3.x changes into v3.2.4 release notes (`51f6c10e`)
 - Update Android version code for KirinDL 3.2.4 (`6b2c1694`)
 - Open KirinDL v3.2.4 release (`e11fad25`)
