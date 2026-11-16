@@ -227,6 +227,7 @@ fun MoreToolsPage(
     onNavigateToCommentDownload: (() -> Unit)? = null,
     onNavigateToGalleryDl: (() -> Unit)? = null,
 ) {
+    val rememberedToolDropdown = rememberLastPage()
     var activeConverter by remember { mutableStateOf<Int?>(null) }
     var activeUtility by remember { mutableStateOf<Int?>(null) }
     BackHandler(enabled = activeConverter != null || activeUtility != null) {
@@ -271,8 +272,10 @@ fun MoreToolsPage(
     val isGradientDark = LocalGradientDarkMode.current
     val useGradientColors = isGradientDark && isDarkTheme
     var infoDialogTool by remember { mutableStateOf<ToolItem?>(null) }
-    var videoToolsExpanded by remember { mutableStateOf(false) }
-    var galleryToolsExpanded by remember { mutableStateOf(false) }
+    val videoToolsExpanded =
+        rememberedToolDropdown.expandedSection == MoreToolsDropdownSection.VIDEO
+    val galleryToolsExpanded =
+        rememberedToolDropdown.expandedSection == MoreToolsDropdownSection.GALLERY
 
     val backgroundColor = if (useGradientColors) {
         GradientDarkColors.Background
@@ -348,7 +351,7 @@ fun MoreToolsPage(
                     expanded = videoToolsExpanded,
                     useGradientColors = useGradientColors,
                     accentStyle = AccentStyle.PRIMARY,
-                    onClick = { videoToolsExpanded = !videoToolsExpanded },
+                    onClick = { rememberedToolDropdown.toggle(MoreToolsDropdownSection.VIDEO) },
                 )
             }
 
@@ -378,7 +381,7 @@ fun MoreToolsPage(
                     expanded = galleryToolsExpanded,
                     useGradientColors = useGradientColors,
                     accentStyle = AccentStyle.TERTIARY,
-                    onClick = { galleryToolsExpanded = !galleryToolsExpanded },
+                    onClick = { rememberedToolDropdown.toggle(MoreToolsDropdownSection.GALLERY) },
                 )
             }
 
