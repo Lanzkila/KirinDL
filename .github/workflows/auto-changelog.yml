@@ -130,6 +130,21 @@ jobs:
               if changed_paths and set(changed_paths).issubset(ignored_only_paths):
                   continue
 
+              # This file documents Android app changes, not website, repository
+              # maintenance, or CI-only edits.
+              app_prefixes = (
+                  "app/", "buildSrc/", "gradle/", "fastlane/",
+                  "translations/", "color/", "splashlogo/",
+              )
+              app_files = {
+                  "build.gradle.kts", "settings.gradle.kts", "gradle.properties",
+              }
+              if not any(
+                  path.startswith(app_prefixes) or path in app_files
+                  for path in changed_paths
+              ):
+                  continue
+
               entries.append((day, short_sha, subject))
 
           start_marker = "<!-- KIRIN-AUTO-CHANGELOG:START -->"
