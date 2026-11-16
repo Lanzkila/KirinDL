@@ -2,24 +2,6 @@
 
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
-<!-- KIRIN-AUTO-CHANGELOG:START -->
-## 2026-11-16
-
-### ✦ Recent changes
-
-- chore: move website favicon into assets folder (`15e564f3`)
-- fix: refresh repository traffic badge endpoints (`c54c0d1c`)
-- chore: update repository traffic (`0b6915cd`)
-- ci: schedule repository traffic snapshots (`04008b7d`)
-- ci: add repository traffic collector (`0be13ea3`)
-- chore: add initial last visited badge (`4c046c63`)
-- chore: add initial repository views badge (`62710512`)
-- chore: initialize repository traffic history (`98dc2cd7`)
-- docs: add repository traffic badges (`26ca6140`)
-- Reduce cache time for stable release badge (`341bdcf7`)
-
-<!-- KIRIN-AUTO-CHANGELOG:END -->
-
 ## [3.2.2] - Unreleased
 
 ### ✦ App Update Popup
