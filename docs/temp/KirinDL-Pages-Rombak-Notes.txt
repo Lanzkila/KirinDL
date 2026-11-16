@@ -91,3 +91,17 @@ STATUS IMPLEMENTASI — 16 NOVEMBER 2026
 - Splash screen, loading overlay logo berputar, profil repository, statistik GitHub, card slider, divider animasi dan footer credit telah dimasukkan.
 - Branch main dan tetapan penerbitan GitHub Pages tidak diubah.
 - Catatan sementara ini perlu dikekalkan sehingga pengguna menyemak preview dan mengesahkan hasil rombakan. Selepas pengesahan, barulah fail catatan ini dipadam.
+
+
+STATUS PENAMBAHBAIKAN RESPONSIVE — 16 NOVEMBER 2026
+
+1. Anak panah slider menggunakan gaya disabled yang jelas lebih gelap apabila berada di hujung kiri (kad pertama) atau hujung kanan (kad terakhir).
+2. Satu klik anak panah menggerakkan slider sebanyak satu kad supaya urutan kad lebih terkawal.
+3. Keadaan butang dikemas kini semasa scroll, selepas scroll tamat dan apabila saiz viewport berubah.
+4. Footer disusun semula menjadi satu baris pada desktop/laptop: copyright, pautan footer dan kredit GitHub Pages · All rights reserved.
+5. Pada telefon, footer mengekalkan susunan mendatar yang padat; pautan berada dalam satu baris mendatar yang boleh discroll jika ruang skrin sempit.
+6. Breakpoint telefon kecil turut ditambah untuk menjaga jarak dan mengelakkan teks bertindih.
+
+Status:
+- Penambahbaikan ini dicatat dan disimpan pada branch perancangan sahaja.
+- Main branch dan tetapan GitHub Pages tidak diubah.

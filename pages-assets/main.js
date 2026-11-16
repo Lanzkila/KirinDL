@@ -132,21 +132,55 @@
 
   function updateRailButtons() {
     if (!rail) return;
+
     const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth);
-    if (previous) previous.disabled = rail.scrollLeft <= 2;
-    if (next) next.disabled = rail.scrollLeft >= maxScroll - 2;
+    const atFirstCard = rail.scrollLeft <= 2;
+    const atLastCard = maxScroll <= 2 || rail.scrollLeft >= maxScroll - 2;
+
+    if (previous) {
+      previous.disabled = atFirstCard;
+      previous.setAttribute('aria-disabled', String(atFirstCard));
+    }
+    if (next) {
+      next.disabled = atLastCard;
+      next.setAttribute('aria-disabled', String(atLastCard));
+    }
+  }
+
+  function scrollOneCard(direction) {
+    if (!rail) return;
+    const firstCard = rail.querySelector('.project-card');
+    if (!firstCard) return;
+
+    const styles = window.getComputedStyle(rail);
+    const gap = parseFloat(styles.columnGap || styles.gap) || 14;
+    const distance = firstCard.getBoundingClientRect().width + gap;
+    rail.scrollBy({ left: direction * distance, behavior: 'smooth' });
   }
 
   if (rail) {
-    if (previous) previous.addEventListener('click', () => {
-      rail.scrollBy({ left: -Math.max(260, rail.clientWidth * 0.78), behavior: 'smooth' });
-    });
-    if (next) next.addEventListener('click', () => {
-      rail.scrollBy({ left: Math.max(260, rail.clientWidth * 0.78), behavior: 'smooth' });
-    });
-    rail.addEventListener('scroll', updateRailButtons, { passive: true });
-    window.addEventListener('resize', updateRailButtons);
-    window.setTimeout(updateRailButtons, 80);
+    if (previous) previous.addEventListener('click', () => scrollOneCard(-1));
+    if (next) next.addEventListener('click', () => scrollOneCard(1));
+
+    let railFrame = 0;
+    const scheduleRailUpdate = () => {
+      if (railFrame) window.cancelAnimationFrame(railFrame);
+      railFrame = window.requestAnimationFrame(() => {
+        railFrame = 0;
+        updateRailButtons();
+      });
+    };
+
+    rail.addEventListener('scroll', scheduleRailUpdate, { passive: true });
+    rail.addEventListener('scrollend', updateRailButtons);
+    window.addEventListener('resize', scheduleRailUpdate);
+
+    if ('ResizeObserver' in window) {
+      const railObserver = new ResizeObserver(scheduleRailUpdate);
+      railObserver.observe(rail);
+    }
+
+    window.setTimeout(updateRailButtons, 100);
   }
 
   function readCache(key) {
