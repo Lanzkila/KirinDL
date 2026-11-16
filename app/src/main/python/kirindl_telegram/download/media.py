@@ -53,8 +53,9 @@ def download_media(media_json, output_dir):
                 )
                 continue
 
+            url_name = urlsplit(url).path.rsplit("/", 1)[-1]
             requested_name = _safe_filename(
-                item.get("file_name"),
+                item.get("file_name") or url_name,
                 "telegram_media_%d" % (index + 1),
             )
             destination = _unique_path(output_dir, requested_name)
@@ -93,6 +94,13 @@ def download_media(media_json, output_dir):
                 mime = response.headers.get("Content-Type", "").split(";", 1)[0].strip()
                 if not mime:
                     mime = mimetypes.guess_type(destination)[0] or ""
+                if not os.path.splitext(destination)[1]:
+                    extension = mimetypes.guess_extension(mime or "") or ""
+                    if extension:
+                        renamed = destination + extension
+                        if not os.path.exists(renamed):
+                            os.replace(destination, renamed)
+                            destination = renamed
                 results.append(
                     {
                         "ok": True,
