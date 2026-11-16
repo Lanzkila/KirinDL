@@ -1,16 +1,59 @@
 ---
 permalink: /privacy.html
 ---
-
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0a1020"><title>Privacy · KirinDL</title><link rel="stylesheet" href="pages-assets/style.css">  <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b14"><meta name="description" content="KirinDL website and application privacy information.">
+  <title>Privacy · KirinDL</title>
+  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-10">
+  <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="shortcut icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="apple-touch-icon" href="pages-assets/favicon.png?v=20261116">
+  <script>try{if(sessionStorage.getItem('kirindl-pages-entered')==='1')document.documentElement.classList.add('visited-session')}catch(_){}</script>
 </head>
-<body><header class="topbar"><a class="brand" href="./"><img src="pages-assets/favicon.png?v=20261116" alt="KirinDL"><span>KirinDL</span></a>
-<nav><a href="index.html#features">Features</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a class="nav-github" href="https://github.com/Lanzkila/KirinDL">GitHub</a></nav></header><main class="page"><div class="eyebrow">PRIVACY</div><h1>KirinDL privacy note</h1>
-<div class="page-card"><p>KirinDL is an open-source Android application. Downloads, preferences, and local app data are handled on the device according to the app's source code and the services you choose to access.</p>
-<p>This website does not use SealPlus sponsor data, the sealplus.in domain, or the archived SealPlus website assets.</p>
-<p>For implementation details, review the <a href="https://github.com/Lanzkila/KirinDL">KirinDL source code</a>.</p></div></main><footer><span>© <span id="year"></span> KirinDL</span><div><a href="contact.html">Contact</a><a href="privacy.html">Privacy</a><a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a></div></footer>
-<script>document.getElementById('year').textContent=new Date().getFullYear()</script></body></html>
+<body>
+  <div class="page-loader" id="page-loader" role="status" aria-live="polite" aria-label="Loading KirinDL" aria-hidden="false">
+    <canvas class="splash-canvas" data-splash-canvas aria-hidden="true"></canvas>
+    <div class="loader-panel">
+      <div class="loader-mark"><img src="pages-assets/favicon.png" alt="KirinDL"></div>
+    </div>
+  </div>
+<header class="topbar">
+  <a class="brand" href="./" aria-label="KirinDL home"><img src="pages-assets/favicon.png" alt=""><span>KirinDL</span><span class="brand-dot" aria-hidden="true"></span></a>
+  <div class="topbar-actions"><span class="topbar-caption">MEDIA · GALLERY · BATCH</span><div class="menu-wrap">
+  <button class="menu-trigger" id="menu-trigger" data-menu-toggle data-no-loading type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu"><span class="hamburger-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>Menu</span></button>
+  <div class="menu-popover" id="site-menu" data-site-menu hidden>
+    <div class="menu-popover-head"><span class="eyebrow">KIRINDL NAVIGATION</span><strong>Explore KirinDL</strong><p>Quick access to project information and support.</p></div>
+    <details class="menu-submenu" data-menu-submenu open>
+      <summary data-no-loading><span>Pages</span><span class="submenu-count">04</span><span class="submenu-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="menu-submenu-links">
+        <a href="contact.html" data-page-link data-page-label="Contact"><span class="menu-page-icon">01</span><span>Contact</span><b aria-hidden="true">↗</b></a>
+        <a href="privacy.html" data-page-link data-page-label="Privacy"><span class="menu-page-icon">02</span><span>Privacy</span><b aria-hidden="true">↗</b></a>
+        <a href="support.html" data-page-link data-page-label="Support"><span class="menu-page-icon">03</span><span>Support</span><b aria-hidden="true">↗</b></a>
+        <a href="issues.html" data-page-link data-page-label="Issues"><span class="menu-page-icon">04</span><span>Issues</span><b aria-hidden="true">↗</b></a>
+      </div>
+    </details>
+    <div class="menu-resume" data-menu-resume hidden><span>REMEMBER LAST PAGE</span><a href="./" data-last-page-link><span data-last-page-name>Continue where you left off</span><b aria-hidden="true">↗</b></a></div>
+    <div class="menu-coming-soon"><span class="menu-status"><i></i> More sections coming soon</span></div>
+  </div>
+</div></div>
+</header>
+<main class="page">
+  <div class="eyebrow"><span class="eyebrow-line"></span> PRIVACY</div>
+  <h1>A clear note on privacy.</h1>
+  <p class="page-kicker">KirinDL is an open-source Android application. This page explains the basic scope of this project website and where to review the app implementation.</p>
+  
+  <section class="page-card"><span class="project-kicker">THE APPLICATION</span><h2>App data and downloads</h2><p>Downloads, preferences and local app data are handled on the device according to the application source code and the services a user chooses to access.</p><p>For implementation details, review the public <a href="https://github.com/Lanzkila/KirinDL">KirinDL source code <span aria-hidden="true">↗</span></a>.</p></section>
+  <section class="page-card"><span class="project-kicker">THIS WEBSITE</span><h2>Project website</h2><p>The site requests public repository and release statistics from the GitHub API. The homepage may store these counts locally for up to one hour to reduce repeat requests. It does not require an account to browse.</p><p>This is an independent KirinDL site and does not use SealPlus sponsor data, the sealplus.in domain or archived SealPlus website assets.</p></section>
+</main>
+<footer class="site-footer">
+  <div class="footer-row">
+    <span class="footer-copyright">© <span id="year"></span> KirinDL</span>
+    <span class="footer-credit"><a href="https://pages.github.com/">GitHub Pages</a><i>·</i>All rights reserved</span>
+  </div>
+</footer>
+<script src="pages-assets/main.js?v=20261116-redesign-10"></script>
+</body>
+</html>

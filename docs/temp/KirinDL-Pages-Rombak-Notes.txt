@@ -1,0 +1,253 @@
+KIRINDL GITHUB PAGES — CATATAN ROMBAKAN SEMENTARA
+
+Tujuan:
+- Merancang semula halaman GitHub Pages KirinDL.
+- Reka bentuk keseluruhan yang dicadangkan: susun atur berasaskan card.
+- Catatan ini bersifat sementara untuk mengumpulkan keputusan sebelum rombakan sebenar dimulakan.
+
+PART 1 — SPLASH SCREEN LOGO
+
+Keperluan:
+1. Apabila pelawat membuka website, paparkan splash screen dengan logo KirinDL.
+2. Splash screen muncul semasa halaman sedang dimuatkan.
+3. Selepas halaman utama selesai dimuatkan, splash screen hilang secara automatik dengan animasi fade-out.
+4. Pelawat tidak perlu menekan butang untuk menutup splash screen.
+5. Splash screen hanya untuk kemasukan awal ke website dan tidak muncul semula setiap kali pengguna bertukar bahagian atau navigasi dalaman.
+
+Status:
+- Dicatat sahaja.
+- Belum mula implementasi.
+- Jangan ubah kod, layout, aset atau konfigurasi GitHub Pages sehingga arahan seterusnya diberikan.
+- Fail catatan sementara ini akan dipadam daripada repo selepas rombakan selesai dan pengguna mengesahkannya.
+
+
+PART 2 — HOME PAGE / HEADER
+
+Keperluan:
+1. Home page mempunyai hamburger menu.
+2. Hamburger menu dipaparkan sebagai fungsi "Coming Soon" buat masa ini.
+3. Sediakan hero card untuk profil repository.
+4. Hero card memaparkan logo repository, nama author dan pautan ke repository.
+
+PART 3 — BODY / REPOSITORY DETAILS
+
+Keperluan:
+1. Di bahagian body, sediakan satu tab/section statistik repository.
+2. Tab statistik memaparkan jumlah Star, Fork dan Download.
+3. Di bawah tab statistik, paparkan koleksi card.
+4. Card boleh dislide secara mendatar ke kiri dan kanan.
+5. Sediakan anak panah navigasi kiri dan kanan ("<" dan ">") untuk mengawal slide card.
+
+STATUS TAMBAHAN:
+- Part 2 dan Part 3 dicatat sahaja.
+- Belum mula implementasi atau mengubah halaman.
+- Kekalkan semua butiran Part 1.
+- Semua bahagian akan dikumpulkan dalam fail sementara ini sehingga rombakan selesai dan disahkan pengguna.
+
+
+PART 4 — ANIMATED DIVIDER / FOOTER
+
+Keperluan:
+1. Selepas bahagian koleksi card dalam Part 3, letakkan satu divider.
+2. Divider mempunyai animasi bergerak seperti loading bar.
+3. Pergerakan animasi perlu smooth dan tidak terlalu laju atau mengganggu.
+4. Bahagian footer sedia ada dikekalkan.
+5. Tambahkan teks "All rights reserved" di bawah footer, bersebelahan nama Pages.
+
+STATUS:
+- Part 4 dicatat sahaja.
+- Belum mula implementasi atau mengubah halaman.
+- Kekalkan semua butiran Part 1 hingga Part 3.
+- Fail ini kekal sebagai catatan sementara sehingga rombakan selesai dan disahkan pengguna.
+
+
+PART 5 — CLICK / NAVIGATION LOADING POPUP
+
+Keperluan:
+1. Setiap kali pelawat menekan link atau elemen lain yang boleh diklik, paparkan satu popup/overlay loading.
+2. Popup/overlay loading memaparkan logo repository/aplikasi KirinDL.
+3. Logo KirinDL mempunyai animasi berputar semasa proses loading.
+4. Animasi loading digunakan setiap kali tindakan klik/navigasi yang berkaitan berlaku, bukan hanya pada klik pertama.
+5. Popup/overlay loading perlu menutup atau hilang selepas proses navigasi/loading selesai supaya halaman seterusnya boleh digunakan.
+
+STATUS:
+- Part 5 dicatat sahaja.
+- Belum mula implementasi atau mengubah halaman.
+- Kekalkan semua butiran Part 1 hingga Part 4.
+- Fail ini kekal sebagai catatan sementara sehingga rombakan selesai dan disahkan pengguna.
+
+
+NOTA PELAKSANAAN:
+- Semua Part di atas ialah keperluan perancangan sahaja.
+- Jangan mula mengubah halaman GitHub Pages, kod, aset atau konfigurasi sehingga pengguna memberi arahan untuk memulakan implementasi.
+- Selepas rombakan selesai dan pengguna mengesahkan hasilnya, padam fail catatan sementara ini daripada branch perancangan.
+
+
+STATUS IMPLEMENTASI — 16 NOVEMBER 2026
+
+- Pengguna telah memberi arahan untuk memulakan rombakan GitHub Pages berdasarkan Part 1 hingga Part 5.
+- Implementasi awal disimpan pada branch planning/kirindl-pages-redesign.
+- Fail yang diubah: index.html, pages-assets/style.css, pages-assets/main.js, pages/contact.html, pages/privacy.html, pages/support.html dan 404.html.
+- Splash screen, loading overlay logo berputar, profil repository, statistik GitHub, card slider, divider animasi dan footer credit telah dimasukkan.
+- Branch main dan tetapan penerbitan GitHub Pages tidak diubah.
+- Catatan sementara ini perlu dikekalkan sehingga pengguna menyemak preview dan mengesahkan hasil rombakan. Selepas pengesahan, barulah fail catatan ini dipadam.
+
+
+STATUS PENAMBAHBAIKAN RESPONSIVE — 16 NOVEMBER 2026
+
+1. Anak panah slider menggunakan gaya disabled yang jelas lebih gelap apabila berada di hujung kiri (kad pertama) atau hujung kanan (kad terakhir).
+2. Satu klik anak panah menggerakkan slider sebanyak satu kad supaya urutan kad lebih terkawal.
+3. Keadaan butang dikemas kini semasa scroll, selepas scroll tamat dan apabila saiz viewport berubah.
+4. Footer disusun semula menjadi satu baris pada desktop/laptop: copyright, pautan footer dan kredit GitHub Pages · All rights reserved.
+5. Pada telefon, footer mengekalkan susunan mendatar yang padat; pautan berada dalam satu baris mendatar yang boleh discroll jika ruang skrin sempit.
+6. Breakpoint telefon kecil turut ditambah untuk menjaga jarak dan mengelakkan teks bertindih.
+
+Status:
+- Penambahbaikan ini dicatat dan disimpan pada branch perancangan sahaja.
+- Main branch dan tetapan GitHub Pages tidak diubah.
+
+
+STATUS SEMAKAN SLIDER DESKTOP / FOOTER RESPONSIVE — 16 NOVEMBER 2026
+
+- Anak panah slider yang disabled kini menggunakan latar dan warna ikon gelap, bukan sekadar opacity rendah.
+- Logik anak panah mengesan hujung pertama dan terakhir dengan kemas kini semasa scroll dan perubahan saiz skrin.
+- Klik anak panah menggerakkan satu kad pada satu masa.
+- Lebar kad desktop dilaras kepada kira-kira 3.5 kad dalam viewport supaya masih ada ruang scroll dan semua kad boleh dicapai.
+- Footer desktop disusun dalam satu baris: copyright, navigation links dan GitHub Pages · All rights reserved.
+- Footer telefon kekal padat; copyright dan credit berada pada satu baris, manakala navigation links disediakan sebagai satu baris mendatar yang boleh discroll jika perlu.
+- Breakpoint tambahan untuk skrin kecil menjaga ruang dan mengelakkan elemen footer bertindih.
+
+Status:
+- Semakan kod dan breakpoint selesai.
+- Reka bentuk berada pada branch planning/kirindl-pages-redesign sahaja.
+- Main branch dan tetapan deployment GitHub Pages kekal tidak disentuh.
+
+
+STATUS AKHIR RESPONSIVE FOOTER — 16 NOVEMBER 2026
+
+- Footer kini menggunakan satu baris mendatar pada laptop dan telefon.
+- Pada telefon, seluruh baris footer boleh discroll mendatar jika gabungan copyright, pautan dan kredit Pages melebihi lebar skrin; item tidak dipindahkan ke baris bawah.
+- GitHub Pages dan All rights reserved kekal bersebelahan.
+- Semakan susun atur dibuat pada lebar 1366px, 1024px, 390px dan 320px; semua kumpulan footer kekal pada baris yang sama tanpa pertindihan dalam semakan layout.
+- Anak panah slider disabled menggunakan warna gelap; lebar kad desktop turut dilaras supaya slider benar-benar mempunyai ruang untuk bergerak.
+
+
+PART 6 — UNIVERSAL HAMBURGER DROPDOWN / REMEMBER LAST PAGE
+
+Keperluan:
+1. Pautan Contact, Privacy, Support dan Issues dipindahkan daripada footer ke dropdown di dalam hamburger menu.
+2. Empat halaman tersebut disediakan sebagai halaman HTML berasingan; Issues menjadi halaman HTML tempatan yang menghubungkan pengguna ke GitHub Issue Tracker.
+3. Menu menggunakan struktur universal: hamburger trigger > dropdown panel > submenu group > senarai halaman.
+4. Sistem submenu menggunakan atribut/data hook generik supaya submenu tambahan boleh dimasukkan kemudian tanpa membina semula logik menu.
+5. Implementasi fungsi rememberLastPage untuk menyimpan halaman terakhir yang dibuka dan menyediakan pautan Continue di dalam menu.
+6. Fungsi rememberLastPage menggunakan localStorage dan mengutamakan pautan halaman yang didaftarkan dengan data-page-link.
+
+KEPERLUAN JARAK:
+1. Buang closing section yang tidak diperlukan di antara divider animasi dan footer.
+2. Rapatkan divider kepada akhir koleksi card dan footer.
+3. Buang ruang kosong paksa sebelum footer pada halaman Contact, Privacy, Support dan Issues; kekalkan jarak dalaman hanya apabila diperlukan untuk keterbacaan.
+
+STATUS:
+- Part 6 sedang diimplementasikan pada branch planning/kirindl-pages-redesign sahaja.
+- Main branch dan tetapan deployment GitHub Pages tidak diubah.
+
+
+STATUS IMPLEMENTASI PART 6 — SELESAI
+
+- Hamburger menu kini membuka dropdown navigation yang universal.
+- Submenu Pages menyenaraikan Contact, Privacy, Support dan Issues.
+- Halaman Issues tempatan ditambah pada pages/issues.html dengan permalink /issues.html.
+- Fungsi rememberLastPage menyimpan halaman terakhir yang dibuka menggunakan localStorage dan memaparkan pautan Continue apabila pengguna kembali ke homepage.
+- Halaman semasa ditandakan dalam submenu; pautan Continue tidak dipaparkan apabila pengguna sudah berada pada halaman terakhir tersebut.
+- Atribut data-menu-submenu membolehkan submenu tambahan didaftarkan kemudian; logik accordion dikendalikan secara umum.
+- Pautan halaman dikeluarkan daripada footer.
+- Closing section yang tidak diperlukan di antara divider dan footer dibuang; jarak paksa sebelum footer pada halaman kandungan turut dikurangkan.
+- Menu hamburger dan submenu tidak mencetuskan loading overlay; loading hanya untuk navigasi/aksi yang berkaitan.
+- Perubahan disimpan pada branch planning/kirindl-pages-redesign sahaja. Main branch dan tetapan deployment GitHub Pages tidak diubah.
+
+STATUS RESPONSIVE FOOTER — 16 NOVEMBER 2026 (KEMAS KINI)
+
+- Pengguna meminta footer tidak terlalu kecil dan kelihatan seperti footer website responsif biasa.
+- Saiz desktop dinaikkan kepada 12px untuk copyright dan 11px untuk kredit GitHub Pages.
+- Pada telefon, teks dikekalkan sekitar 10–11px dengan padding yang sesuai; ruang footer boleh menyesuaikan baris apabila lebar skrin tidak mencukupi.
+- Jarak antara divider dan footer kekal rapat; tiada margin atau padding bawah main ditambah semula.
+- Perubahan dibuat pada branch planning/kirindl-pages-redesign sahaja.
+
+PART 7 — RELEASE CHANNELS / GITHUB ACCOUNT ENTRY — 16 NOVEMBER 2026
+
+1. Release channels:
+- Stable box selects the newest published release where prerelease=false and draft=false.
+- Pre-release box follows the README badge filter *devpatch*: prerelease=true and tag contains devpatch (case-insensitive), selecting the newest published date.
+- The two boxes are shown side by side with a small vertical divider "|".
+- Release cards link to their own GitHub release page and remain responsive on small screens.
+- Release cache key is versioned so the old single-release cache cannot hide the new two-channel display.
+
+2. Account entry:
+- A Material 3 account_circle icon button is placed immediately beside the hamburger menu on all shared-header pages.
+- The icon opens a responsive account panel with GitHub sign-in and GitHub account-registration links.
+- The panel and hamburger close each other; Escape and outside click dismiss the panel.
+- GitHub Pages is static. This UI opens GitHub's own login/signup pages; an actual KirinDL website session still requires a backend OAuth callback and secure token handling.
+
+STATUS:
+- Implemented on planning/kirindl-pages-redesign only.
+- Main branch and GitHub Pages publishing settings remain unchanged.
+- Keep this note until the user approves the full redesign.
+
+STATUS FIX IKON ACCOUNT — 16 NOVEMBER 2026
+
+- Pengguna melaporkan butang Account hanya kelihatan sebagai kotak kelabu tanpa ikon.
+- Ikon SVG sebelumnya diganti dengan bentuk account_circle gaya Material 3 yang dilukis melalui CSS (bulatan profil, kepala dan bahu).
+- Ikon menggunakan warna kontras dan saiz 24px; tidak bergantung pada SVG atau font luar.
+- Semua enam halaman (Home, Contact, Privacy, Support, Issues dan 404) dikemas kini.
+- Cache stylesheet dinaikkan kepada redesign-8 supaya browser mengambil gaya baharu.
+- Perubahan kekal pada planning/kirindl-pages-redesign sahaja.
+
+STATUS CENTER MODAL / MOBILE MENU / LOADING DURATION — 16 NOVEMBER 2026
+
+- Account Login/Register popup kini dipusatkan pada viewport untuk desktop dan telefon, dengan backdrop gelap/blur, had lebar responsif dan had tinggi skrin.
+- Backdrop boleh ditekan untuk menutup modal; Escape dan klik luar masih disokong oleh logik panel.
+- Pada telefon (max-width 700px), hamburger hanya memaparkan ikon tiga garis. Label "Menu" kekal pada laptop/desktop.
+- Tempoh minimum splash pertama dinaikkan kepada 2.4 saat supaya logo dan animasinya sempat dilihat.
+- Tempoh overlay tindakan/navigasi dinaikkan: navigasi dalaman 650ms, hash/button 750ms, dan pautan luar 1100ms.
+- Failsafe splash dinaikkan kepada 12 saat bagi mengelakkan overlay tersangkut pada sambungan perlahan.
+- Semua perubahan berada pada branch planning/kirindl-pages-redesign sahaja; main dan tetapan Pages tidak diubah.
+
+STATUS MOBILE MENU / RELEASE PULSE / CANVAS LOADER — 16 NOVEMBER 2026
+
+1. Mobile hamburger:
+- Forced icon-only display on max-width 700px using a high-specificity final override.
+- Hamburger button and Account button use matching 40px by 40px touch targets and matching corner radius.
+- Desktop/laptop retains the existing icon + "Menu" label.
+
+2. Release cards:
+- Stable and Pre-release cards receive separate subtle pulse animations (mint for Stable, amber for devpatch).
+- Reduced-motion preference disables pulse effects.
+
+3. Loading / splash:
+- Loading overlay now shows only the circular KirinDL logo, without text or progress bar.
+- Circular logo receives two orbit rings and a slow breathing glow.
+- A full-screen canvas draws drifting code glyphs and a faint code grid.
+- Particles move randomly in all directions; when two approach, a short-lived glowing bond forms, then breaks and pushes them apart.
+- Canvas animation starts while the loader is visible and stops when it hides. Page visibility and reduced-motion preferences are respected.
+- If 2D canvas is unavailable, a CSS fallback displays drifting virus-like particles.
+- First-visit splash minimum duration increased to 3.2 seconds; emergency timeout increased to 15 seconds.
+
+Status:
+- Changes saved to planning/kirindl-pages-redesign only.
+- Main branch and GitHub Pages publishing configuration remain unchanged.
+
+STATUS SEMAKAN AKHIR CANVAS SPLASH — 16 NOVEMBER 2026
+
+- Pembetulan susulan: fungsi canvas kini dimulakan terus semasa first-visit splash dipaparkan; sebelum pembetulan ini canvas hanya bermula apabila loading overlay dipanggil oleh tindakan pengguna.
+- JavaScript berjaya melalui semakan parse/syntax.
+- CSS berjaya melalui semakan delimiter.
+- Kesemua enam halaman disahkan menggunakan cache CSS redesign-10 dan JavaScript redesign-9.
+- Semakan kod mengesahkan mobile menu label disembunyikan dengan override khusus, hamburger dan Account sama-sama 40x40px pada telefon, serta pulse berasingan untuk Stable dan Pre-release.
+- Semakan struktur juga mengesahkan semua enam halaman mempunyai canvas splash dan loader logo-only.
+
+
+PART 7 — ACCOUNT / LOGIN TEMPORARILY DISABLED (2026-11-16)
+- Remove the Account icon, backdrop, and sign-in/register popover from all six website pages.
+- Park the Account panel initializer in pages-assets/main.js; hamburger navigation remains enabled and unchanged.
+- Bump the main.js cache key on all pages to redesign-10.
+- Keep Account panel CSS and JS implementation dormant for a later re-enable; no GitHub OAuth/session functionality is implemented in this patch.

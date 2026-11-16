@@ -1,15 +1,59 @@
 ---
 permalink: /contact.html
 ---
-
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0a1020"><title>Contact · KirinDL</title><link rel="stylesheet" href="pages-assets/style.css">  <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b14"><meta name="description" content="Contact the KirinDL project and maintainers.">
+  <title>Contact · KirinDL</title>
+  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-10">
+  <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="shortcut icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="apple-touch-icon" href="pages-assets/favicon.png?v=20261116">
+  <script>try{if(sessionStorage.getItem('kirindl-pages-entered')==='1')document.documentElement.classList.add('visited-session')}catch(_){}</script>
 </head>
-<body><header class="topbar"><a class="brand" href="./"><img src="pages-assets/favicon.png?v=20261116" alt="KirinDL"><span>KirinDL</span></a>
-<nav><a href="index.html#features">Features</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a class="nav-github" href="https://github.com/Lanzkila/KirinDL">GitHub</a></nav></header><main class="page"><div class="eyebrow">CONTACT</div><h1>Project contact</h1>
-<div class="page-card"><p>For KirinDL support, bug reports, feature requests, and project discussion, use the repository's GitHub Issues.</p>
-<p><a href="https://github.com/Lanzkila/KirinDL/issues">KirinDL Issues →</a></p></div></main><footer><span>© <span id="year"></span> KirinDL</span><div><a href="contact.html">Contact</a><a href="privacy.html">Privacy</a><a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a></div></footer>
-<script>document.getElementById('year').textContent=new Date().getFullYear()</script></body></html>
+<body>
+  <div class="page-loader" id="page-loader" role="status" aria-live="polite" aria-label="Loading KirinDL" aria-hidden="false">
+    <canvas class="splash-canvas" data-splash-canvas aria-hidden="true"></canvas>
+    <div class="loader-panel">
+      <div class="loader-mark"><img src="pages-assets/favicon.png" alt="KirinDL"></div>
+    </div>
+  </div>
+<header class="topbar">
+  <a class="brand" href="./" aria-label="KirinDL home"><img src="pages-assets/favicon.png" alt=""><span>KirinDL</span><span class="brand-dot" aria-hidden="true"></span></a>
+  <div class="topbar-actions"><span class="topbar-caption">MEDIA · GALLERY · BATCH</span><div class="menu-wrap">
+  <button class="menu-trigger" id="menu-trigger" data-menu-toggle data-no-loading type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu"><span class="hamburger-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>Menu</span></button>
+  <div class="menu-popover" id="site-menu" data-site-menu hidden>
+    <div class="menu-popover-head"><span class="eyebrow">KIRINDL NAVIGATION</span><strong>Explore KirinDL</strong><p>Quick access to project information and support.</p></div>
+    <details class="menu-submenu" data-menu-submenu open>
+      <summary data-no-loading><span>Pages</span><span class="submenu-count">04</span><span class="submenu-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="menu-submenu-links">
+        <a href="contact.html" data-page-link data-page-label="Contact"><span class="menu-page-icon">01</span><span>Contact</span><b aria-hidden="true">↗</b></a>
+        <a href="privacy.html" data-page-link data-page-label="Privacy"><span class="menu-page-icon">02</span><span>Privacy</span><b aria-hidden="true">↗</b></a>
+        <a href="support.html" data-page-link data-page-label="Support"><span class="menu-page-icon">03</span><span>Support</span><b aria-hidden="true">↗</b></a>
+        <a href="issues.html" data-page-link data-page-label="Issues"><span class="menu-page-icon">04</span><span>Issues</span><b aria-hidden="true">↗</b></a>
+      </div>
+    </details>
+    <div class="menu-resume" data-menu-resume hidden><span>REMEMBER LAST PAGE</span><a href="./" data-last-page-link><span data-last-page-name>Continue where you left off</span><b aria-hidden="true">↗</b></a></div>
+    <div class="menu-coming-soon"><span class="menu-status"><i></i> More sections coming soon</span></div>
+  </div>
+</div></div>
+</header>
+<main class="page">
+  <div class="eyebrow"><span class="eyebrow-line"></span> PROJECT CONTACT</div>
+  <h1>A direct line to the project.</h1>
+  <p class="page-kicker">For KirinDL support, bug reports, feature requests and project discussion, use the repository issue tracker so conversations stay connected to the project.</p>
+  
+  <section class="page-card"><span class="project-kicker">GITHUB · ISSUES</span><h2>Talk to the maintainers</h2><p>Open an issue for questions, bug reports or ideas. Include the KirinDL version and the steps needed to reproduce a problem whenever possible.</p><a href="issues.html">Go to the Issues page <span aria-hidden="true">↗</span></a></section>
+  <section class="page-card"><span class="project-kicker">SOURCE</span><h2>Follow the project</h2><p>Browse the code and follow updates directly from the public repository.</p><a href="https://github.com/Lanzkila/KirinDL">Visit KirinDL on GitHub <span aria-hidden="true">↗</span></a></section>
+</main>
+<footer class="site-footer">
+  <div class="footer-row">
+    <span class="footer-copyright">© <span id="year"></span> KirinDL</span>
+    <span class="footer-credit"><a href="https://pages.github.com/">GitHub Pages</a><i>·</i>All rights reserved</span>
+  </div>
+</footer>
+<script src="pages-assets/main.js?v=20261116-redesign-10"></script>
+</body>
+</html>
