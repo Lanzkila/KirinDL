@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add Telegram engine selection and facade APIs (`d3bdbbf7`)
+- Add Telegram engine selection and facade APIs (`4d5ad164`)
 - Preserve Telegram media file extensions when downloading (`0d36354e`)
 - Improve Telegram media metadata and channel counters (`f19f8b21`)
 - Document Telegram public preview and download engine (`770bcff1`)
