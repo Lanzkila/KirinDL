@@ -23,6 +23,13 @@ on:
         default: ""
         type: string
 
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/triggers/release.trigger'
+      - '.github/triggers/prerelease.trigger'
+
 permissions:
   contents: write
 

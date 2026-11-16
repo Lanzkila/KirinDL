@@ -3,6 +3,12 @@ name: KirinDL Stable Test
 on:
   workflow_dispatch:
 
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/triggers/stable-test.trigger'
+
 permissions:
   actions: write
   contents: read
