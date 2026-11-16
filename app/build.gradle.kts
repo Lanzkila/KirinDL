@@ -209,6 +209,7 @@ chaquopy {
         version = pythonRuntimeVersion
         pip {
             install("requests==2.32.5")
+            install("instaloader==4.15")
         }
     }
 }
