@@ -192,3 +192,12 @@ STATUS:
 - Implemented on planning/kirindl-pages-redesign only.
 - Main branch and GitHub Pages publishing settings remain unchanged.
 - Keep this note until the user approves the full redesign.
+
+STATUS FIX IKON ACCOUNT — 16 NOVEMBER 2026
+
+- Pengguna melaporkan butang Account hanya kelihatan sebagai kotak kelabu tanpa ikon.
+- Ikon SVG sebelumnya diganti dengan bentuk account_circle gaya Material 3 yang dilukis melalui CSS (bulatan profil, kepala dan bahu).
+- Ikon menggunakan warna kontras dan saiz 24px; tidak bergantung pada SVG atau font luar.
+- Semua enam halaman (Home, Contact, Privacy, Support, Issues dan 404) dikemas kini.
+- Cache stylesheet dinaikkan kepada redesign-8 supaya browser mengambil gaya baharu.
+- Perubahan kekal pada planning/kirindl-pages-redesign sahaja.
