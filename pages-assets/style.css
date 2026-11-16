@@ -525,3 +525,12 @@ main{padding-bottom:0}
 .page{min-height:0;margin-top:32px;margin-bottom:0}
 
 .page > .page-card:last-child{margin-bottom:0}
+
+.menu-submenu-links a[aria-current="page"]{
+  background:rgba(138,216,255,.08);
+  color:#f4f8ff
+}
+.menu-submenu-links a[aria-current="page"] .menu-page-icon{
+  border-color:rgba(138,216,255,.3);
+  color:var(--cyan)
+}

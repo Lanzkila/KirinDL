@@ -138,7 +138,10 @@
     const currentPage = pageLinks.find(link =>
       pathOf(link.href) === pathOf(window.location.pathname)
     );
-    if (currentPage) save(currentPage);
+    if (currentPage) {
+      currentPage.setAttribute('aria-current', 'page');
+      save(currentPage);
+    }
 
     let saved = null;
     try {
@@ -151,7 +154,10 @@
       pathOf(link.href) === saved.path
     );
 
-    if (resume && resumeLink && resumeName && matchingPage) {
+    const viewingSavedPage = Boolean(matchingPage) &&
+      pathOf(window.location.pathname) === saved.path;
+
+    if (resume && resumeLink && resumeName && matchingPage && !viewingSavedPage) {
       resumeLink.href = matchingPage.getAttribute('href');
       resumeName.textContent = 'Continue: ' + (matchingPage.getAttribute('data-page-label') || 'Last page');
       resume.hidden = false;
