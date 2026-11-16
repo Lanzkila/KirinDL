@@ -7,6 +7,11 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Add isolated KirinDL Instaloader module (`7ef868d5`)
+- Add isolated KirinDL Instaloader module (`425e7bc0`)
+- Add isolated KirinDL Instaloader module (`63079804`)
+- Add isolated KirinDL Instaloader module (`b1b3d75e`)
+- Add isolated KirinDL Instaloader module (`f674f60d`)
 - Create dedicated folder for KirinDL Instaloader integration (`c79c36c4`)
 - Document new changes in KirinDL v3.2.3.2 (`55220963`)
 - Update Android version code for 3.2.3.2 (`909e9c80`)
