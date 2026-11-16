@@ -7,7 +7,6 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
-- chore: pause path triggers for safe reorganization (`2e99fb0c`)
 - fix: refresh repository traffic badge endpoints (`c54c0d1c`)
 - chore: update repository traffic (`0b6915cd`)
 - ci: schedule repository traffic snapshots (`04008b7d`)
