@@ -164,3 +164,11 @@ STATUS IMPLEMENTASI PART 6 — SELESAI
 - Closing section yang tidak diperlukan di antara divider dan footer dibuang; jarak paksa sebelum footer pada halaman kandungan turut dikurangkan.
 - Menu hamburger dan submenu tidak mencetuskan loading overlay; loading hanya untuk navigasi/aksi yang berkaitan.
 - Perubahan disimpan pada branch planning/kirindl-pages-redesign sahaja. Main branch dan tetapan deployment GitHub Pages tidak diubah.
+
+STATUS RESPONSIVE FOOTER — 16 NOVEMBER 2026 (KEMAS KINI)
+
+- Pengguna meminta footer tidak terlalu kecil dan kelihatan seperti footer website responsif biasa.
+- Saiz desktop dinaikkan kepada 12px untuk copyright dan 11px untuk kredit GitHub Pages.
+- Pada telefon, teks dikekalkan sekitar 10–11px dengan padding yang sesuai; ruang footer boleh menyesuaikan baris apabila lebar skrin tidak mencukupi.
+- Jarak antara divider dan footer kekal rapat; tiada margin atau padding bawah main ditambah semula.
+- Perubahan dibuat pada branch planning/kirindl-pages-redesign sahaja.
