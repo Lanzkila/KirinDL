@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Move Instaloader models into dedicated source file (`087502b0`)
+- Separate Instaloader preview data models (`446006f6`)
 - Create isolated Telegram integration folder (`4dcf8298`)
 - Create isolated Telegram integration folder (`a4203512`)
 - Add KirinDL 3.2.3.3 release notes (`f982fccc`)
