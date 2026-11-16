@@ -675,7 +675,7 @@ private fun GalleryDownloadTab(
                                 Modifier.fillMaxWidth()
                                     .aspectRatio(16f / 9f)
                                     .clip(RoundedCornerShape(14.dp)),
-                            contentScale = ContentScale.Crop,
+                            contentScale = ContentScale.Fit,
                         )
                     }
             }
