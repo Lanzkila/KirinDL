@@ -5,9 +5,9 @@ permalink: /support.html
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#080b14"><meta name="description" content="Get help with KirinDL. — KirinDL project information.">
-  <title>Get help with KirinDL. · KirinDL</title>
-  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-4">
+  <meta name="theme-color" content="#080b14"><meta name="description" content="Help, troubleshooting and support information for KirinDL.">
+  <title>Support · KirinDL</title>
+  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-5">
   <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="shortcut icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="apple-touch-icon" href="pages-assets/favicon.png?v=20261116">
@@ -20,29 +20,37 @@ permalink: /support.html
 <header class="topbar">
   <a class="brand" href="./" aria-label="KirinDL home"><img src="pages-assets/favicon.png" alt=""><span>KirinDL</span><span class="brand-dot" aria-hidden="true"></span></a>
   <div class="topbar-actions"><span class="topbar-caption">MEDIA · GALLERY · BATCH</span><div class="menu-wrap">
-    <button class="menu-trigger" id="menu-trigger" type="button" aria-expanded="false" aria-controls="coming-soon-menu" aria-label="Open menu"><span class="hamburger-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>Menu</span></button>
-    <div class="menu-popover" id="coming-soon-menu" hidden><span class="eyebrow">KIRINDL MENU</span><strong>Coming Soon</strong><p>More ways to explore the project are on the way.</p><span class="menu-status"><i></i> In the works</span></div>
-  </div></div>
+  <button class="menu-trigger" id="menu-trigger" data-menu-toggle data-no-loading type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu"><span class="hamburger-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>Menu</span></button>
+  <div class="menu-popover" id="site-menu" data-site-menu hidden>
+    <div class="menu-popover-head"><span class="eyebrow">KIRINDL NAVIGATION</span><strong>Explore KirinDL</strong><p>Quick access to project information and support.</p></div>
+    <details class="menu-submenu" data-menu-submenu open>
+      <summary data-no-loading><span>Pages</span><span class="submenu-count">04</span><span class="submenu-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="menu-submenu-links">
+        <a href="contact.html" data-page-link data-page-label="Contact"><span class="menu-page-icon">01</span><span>Contact</span><b aria-hidden="true">↗</b></a>
+        <a href="privacy.html" data-page-link data-page-label="Privacy"><span class="menu-page-icon">02</span><span>Privacy</span><b aria-hidden="true">↗</b></a>
+        <a href="support.html" data-page-link data-page-label="Support"><span class="menu-page-icon">03</span><span>Support</span><b aria-hidden="true">↗</b></a>
+        <a href="issues.html" data-page-link data-page-label="Issues"><span class="menu-page-icon">04</span><span>Issues</span><b aria-hidden="true">↗</b></a>
+      </div>
+    </details>
+    <div class="menu-resume" data-menu-resume hidden><span>REMEMBER LAST PAGE</span><a href="./" data-last-page-link><span data-last-page-name>Continue where you left off</span><b aria-hidden="true">↗</b></a></div>
+    <div class="menu-coming-soon"><span class="menu-status"><i></i> More sections coming soon</span></div>
+  </div>
+</div></div>
 </header>
 <main class="page">
   <div class="eyebrow"><span class="eyebrow-line"></span> HELP & SUPPORT</div>
   <h1>Get help with KirinDL.</h1>
   <p class="page-kicker">The issue tracker is the best place to report a bug or suggest an improvement. It keeps the report visible and makes it easier to follow fixes.</p>
-  <section class="page-card"><span class="project-kicker">BUG REPORTS &amp; IDEAS</span><h2>Open a GitHub issue</h2><p>Describe what happened, what you expected to happen and the steps that reproduce the issue.</p><a href="https://github.com/Lanzkila/KirinDL/issues">Open the issue tracker <span aria-hidden="true">↗</span></a></section>
+  
+  <section class="page-card"><span class="project-kicker">BUG REPORTS &amp; IDEAS</span><h2>Open a GitHub issue</h2><p>Describe what happened, what you expected to happen and the steps that reproduce the issue.</p><a href="issues.html">Go to the Issues page <span aria-hidden="true">↗</span></a></section>
   <section class="page-card"><span class="project-kicker">BEFORE REPORTING</span><h2>Helpful details</h2><ul><li>KirinDL version and Android version.</li><li>The page or action that triggered the problem.</li><li>The full error message or crash log, when available.</li><li>Whether the issue can be reproduced consistently.</li></ul></section>
 </main>
 <footer class="site-footer">
-    <div class="footer-row">
-      <span class="footer-copyright">© <span id="year"></span> KirinDL</span>
-      <nav class="footer-links" aria-label="Footer navigation">
-        <a href="contact.html">Contact</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="support.html">Support</a>
-        <a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a>
-      </nav>
-      <span class="footer-credit"><a href="https://pages.github.com/">GitHub Pages</a><i>·</i>All rights reserved</span>
-    </div>
-  </footer>
-<script src="pages-assets/main.js?v=20261116-redesign-2"></script>
+  <div class="footer-row">
+    <span class="footer-copyright">© <span id="year"></span> KirinDL</span>
+    <span class="footer-credit"><a href="https://pages.github.com/">GitHub Pages</a><i>·</i>All rights reserved</span>
+  </div>
+</footer>
+<script src="pages-assets/main.js?v=20261116-redesign-5"></script>
 </body>
 </html>

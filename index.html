@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#080b14">
   <title>KirinDL — Media in motion</title>
   <link rel="preconnect" href="https://api.github.com">
-  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-4">
+  <link rel="stylesheet" href="pages-assets/style.css?v=20261116-redesign-5">
   <link rel="icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="shortcut icon" type="image/png" href="pages-assets/favicon.png?v=20261116">
   <link rel="apple-touch-icon" href="pages-assets/favicon.png?v=20261116">
@@ -37,15 +37,34 @@
     <div class="topbar-actions">
       <span class="topbar-caption">MEDIA · GALLERY · BATCH</span>
       <div class="menu-wrap">
-        <button class="menu-trigger" id="menu-trigger" type="button" aria-expanded="false" aria-controls="coming-soon-menu" aria-label="Open menu">
+        <button class="menu-trigger" id="menu-trigger" data-menu-toggle data-no-loading type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
           <span class="hamburger-icon" aria-hidden="true"><i></i><i></i><i></i></span>
           <span>Menu</span>
         </button>
-        <div class="menu-popover" id="coming-soon-menu" hidden>
-          <span class="eyebrow">KIRINDL MENU</span>
-          <strong>Coming Soon</strong>
-          <p>More ways to explore the project are on the way.</p>
-          <span class="menu-status"><i></i> In the works</span>
+        <div class="menu-popover" id="site-menu" data-site-menu hidden>
+          <div class="menu-popover-head">
+            <span class="eyebrow">KIRINDL NAVIGATION</span>
+            <strong>Explore KirinDL</strong>
+            <p>Quick access to project information and support.</p>
+          </div>
+          <details class="menu-submenu" data-menu-submenu open>
+            <summary data-no-loading>
+              <span>Pages</span>
+              <span class="submenu-count">04</span>
+              <span class="submenu-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="menu-submenu-links">
+              <a href="contact.html" data-page-link data-page-label="Contact"><span class="menu-page-icon">01</span><span>Contact</span><b aria-hidden="true">↗</b></a>
+              <a href="privacy.html" data-page-link data-page-label="Privacy"><span class="menu-page-icon">02</span><span>Privacy</span><b aria-hidden="true">↗</b></a>
+              <a href="support.html" data-page-link data-page-label="Support"><span class="menu-page-icon">03</span><span>Support</span><b aria-hidden="true">↗</b></a>
+              <a href="issues.html" data-page-link data-page-label="Issues"><span class="menu-page-icon">04</span><span>Issues</span><b aria-hidden="true">↗</b></a>
+            </div>
+          </details>
+          <div class="menu-resume" data-menu-resume hidden>
+            <span>REMEMBER LAST PAGE</span>
+            <a href="./" data-last-page-link><span data-last-page-name>Continue where you left off</span><b aria-hidden="true">↗</b></a>
+          </div>
+          <div class="menu-coming-soon"><span class="menu-status"><i></i> More sections coming soon</span></div>
         </div>
       </div>
     </div>
@@ -181,26 +200,15 @@
     </section>
 
     <div class="animated-divider" role="presentation"><span></span></div>
-    <section class="closing-note">
-      <div class="closing-mark"><img src="pages-assets/favicon.png" alt=""></div>
-      <div><span class="eyebrow">KIRINDL · BUILT IN THE OPEN</span><p>An independent project, with upstream work credited to its respective authors.</p></div>
-      <a href="https://github.com/Lanzkila/KirinDL">Visit GitHub <span aria-hidden="true">↗</span></a>
-    </section>
-  </main>
+</main>
 
   <footer class="site-footer">
     <div class="footer-row">
       <span class="footer-copyright">© <span id="year"></span> KirinDL</span>
-      <nav class="footer-links" aria-label="Footer navigation">
-        <a href="contact.html">Contact</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="support.html">Support</a>
-        <a href="https://github.com/Lanzkila/KirinDL/issues">Issues</a>
-      </nav>
       <span class="footer-credit"><a href="https://pages.github.com/">GitHub Pages</a><i>·</i>All rights reserved</span>
     </div>
   </footer>
 
-  <script src="pages-assets/main.js?v=20261116-redesign-2"></script>
+  <script src="pages-assets/main.js?v=20261116-redesign-5"></script>
 </body>
 </html>

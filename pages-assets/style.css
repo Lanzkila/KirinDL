@@ -445,3 +445,81 @@ h1 span,.section-heading h2 span{
 @media(max-width:700px){
   .footer-links{width:max-content;min-width:max-content;flex:0 0 auto}
 }
+
+
+/* Universal hamburger dropdown with reusable submenu groups. */
+.menu-popover{
+  z-index:50;
+  width:min(340px,calc(100vw - 32px));
+  padding:0;
+  overflow:hidden;
+  border:1px solid rgba(155,177,214,.22);
+  border-radius:19px;
+  background:linear-gradient(155deg,rgba(19,28,47,.99),rgba(10,15,27,.99));
+  box-shadow:0 25px 70px rgba(0,0,0,.48)
+}
+.menu-popover-head{padding:21px 21px 17px}
+.menu-popover-head strong{display:block;margin-top:9px;font-size:20px;letter-spacing:-.04em}
+.menu-popover-head p{margin:7px 0 0;color:var(--muted);font-size:11px;line-height:1.55}
+.menu-submenu{margin:0 13px;border:1px solid rgba(155,177,214,.13);border-radius:13px;background:rgba(255,255,255,.025);overflow:hidden}
+.menu-submenu+ .menu-submenu{margin-top:9px}
+.menu-submenu summary{
+  display:flex;align-items:center;gap:10px;min-height:46px;padding:0 13px;
+  color:#eaf0fa;font-size:12px;font-weight:750;cursor:pointer;list-style:none
+}
+.menu-submenu summary::-webkit-details-marker{display:none}
+.submenu-count{margin-left:auto;color:#74839c;font-size:9px;letter-spacing:.08em}
+.submenu-chevron{color:#8fa0b8;font-size:16px;transition:transform .2s ease}
+.menu-submenu[open] .submenu-chevron{transform:rotate(180deg)}
+.menu-submenu-links{display:grid;gap:3px;padding:0 7px 7px}
+.menu-submenu-links a{
+  min-height:39px;display:flex;align-items:center;gap:10px;padding:0 8px;
+  border-radius:9px;color:#b8c5d9;font-size:11px;
+  transition:background .18s ease,color .18s ease
+}
+.menu-submenu-links a:hover,.menu-submenu-links a:focus-visible{background:rgba(138,216,255,.08);color:#f4f8ff}
+.menu-page-icon{width:23px;height:23px;display:grid;place-items:center;flex:0 0 23px;border:1px solid rgba(155,177,214,.13);border-radius:7px;color:#91a1ba;font-size:8px;font-weight:800}
+.menu-submenu-links a b{margin-left:auto;color:var(--cyan);font-size:13px;font-weight:500}
+.menu-resume{margin:12px 13px 0;padding:12px 11px;border:1px solid rgba(138,216,255,.15);border-radius:12px;background:rgba(138,216,255,.045)}
+.menu-resume>span{display:block;margin-bottom:7px;color:#8292aa;font-size:8px;font-weight:850;letter-spacing:.15em}
+.menu-resume>a{display:flex;align-items:center;justify-content:space-between;gap:9px;color:#d5eaff;font-size:11px;font-weight:750}
+.menu-resume>a b{color:var(--cyan);font-size:14px}
+.menu-coming-soon{padding:15px 21px 17px}
+.menu-status{display:inline-flex;align-items:center;gap:8px;color:#9eacc1;font-size:9px;font-weight:700}
+.menu-status i{width:6px;height:6px;border-radius:50%;background:var(--violet);box-shadow:0 0 12px rgba(169,154,255,.55)}
+.menu-popover .eyebrow{font-size:9px}
+.menu-wrap{z-index:60}
+@media(max-width:700px){
+  .menu-popover{right:0;top:calc(100% + 10px);width:min(340px,calc(100vw - 28px))}
+  .menu-popover-head{padding:19px 18px 15px}
+}
+@media(prefers-reduced-motion:reduce){
+  .menu-submenu-chevron{transition:none}
+}
+
+/* Keep the animated divider flush between the card collection and the footer. */
+main{padding-bottom:0}
+.cards-section{padding-bottom:0}
+.animated-divider{margin:0}
+.site-footer{padding:13px 26px 15px}
+.site-footer .footer-row{
+  display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:14px;
+  min-width:0;overflow:visible;white-space:nowrap
+}
+.site-footer .footer-copyright{flex:0 0 auto;color:#b3bfd1;font-size:10px}
+.site-footer .footer-credit{flex:0 0 auto;color:#8795aa;font-size:9px}
+.site-footer .footer-credit a{color:#b8c8dd}
+@media(max-width:700px){
+  .site-footer{padding:11px 19px 13px}
+  .site-footer .footer-row{gap:10px}
+  .site-footer .footer-copyright,.site-footer .footer-credit{font-size:8px}
+}
+@media(max-width:380px){
+  .site-footer{padding-left:16px;padding-right:16px}
+  .site-footer .footer-row{gap:7px}
+  .site-footer .footer-copyright,.site-footer .footer-credit{font-size:7.5px}
+  .site-footer .footer-credit i{padding:0 3px}
+}
+
+/* Content pages should finish naturally, without a forced blank block before the footer. */
+.page{min-height:0;margin-top:32px;margin-bottom:0}

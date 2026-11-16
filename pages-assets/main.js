@@ -99,32 +99,105 @@
     });
   }
 
-  const menuTrigger = document.getElementById('menu-trigger');
-  const menu = document.getElementById('coming-soon-menu');
-  if (menuTrigger && menu) {
+  function rememberLastPage() {
+    const storageKey = 'kirindl-pages:last-page:v1';
+    const pageLinks = Array.from(document.querySelectorAll('[data-page-link]'));
+    const resume = document.querySelector('[data-menu-resume]');
+    const resumeLink = document.querySelector('[data-last-page-link]');
+    const resumeName = document.querySelector('[data-last-page-name]');
+
+    function pathOf(url) {
+      try {
+        return new URL(url, window.location.href).pathname.replace(/\/+$/, '') || '/';
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function save(link) {
+      if (!link) return;
+      const href = link.getAttribute('href');
+      const record = {
+        path: pathOf(link.href),
+        label: link.getAttribute('data-page-label') || link.textContent.trim(),
+        href: href
+      };
+      if (!record.path || !record.href) return;
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(record));
+      } catch (_) {
+        // Page navigation continues normally when storage is unavailable.
+      }
+    }
+
+    pageLinks.forEach(link => {
+      link.addEventListener('click', () => save(link));
+    });
+
+    const currentPage = pageLinks.find(link =>
+      pathOf(link.href) === pathOf(window.location.pathname)
+    );
+    if (currentPage) save(currentPage);
+
+    let saved = null;
+    try {
+      saved = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
+    } catch (_) {
+      saved = null;
+    }
+
+    const matchingPage = saved && pageLinks.find(link =>
+      pathOf(link.href) === saved.path
+    );
+
+    if (resume && resumeLink && resumeName && matchingPage) {
+      resumeLink.href = matchingPage.getAttribute('href');
+      resumeName.textContent = 'Continue: ' + (matchingPage.getAttribute('data-page-label') || 'Last page');
+      resume.hidden = false;
+    } else if (resume) {
+      resume.hidden = true;
+    }
+  }
+
+  function initUniversalMenu() {
+    const menuTrigger = document.querySelector('[data-menu-toggle]');
+    const menu = document.querySelector('[data-site-menu]');
+    if (!menuTrigger || !menu) return;
+
+    function setOpen(open) {
+      menu.hidden = !open;
+      menuTrigger.setAttribute('aria-expanded', String(open));
+      menuTrigger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+
     menuTrigger.addEventListener('click', () => {
-      const open = menuTrigger.getAttribute('aria-expanded') === 'true';
-      menuTrigger.setAttribute('aria-expanded', String(!open));
-      menuTrigger.setAttribute('aria-label', open ? 'Open menu' : 'Close menu');
-      menu.hidden = open;
+      setOpen(menuTrigger.getAttribute('aria-expanded') !== 'true');
     });
 
     document.addEventListener('click', event => {
       if (!menu.contains(event.target) && !menuTrigger.contains(event.target)) {
-        menu.hidden = true;
-        menuTrigger.setAttribute('aria-expanded', 'false');
-        menuTrigger.setAttribute('aria-label', 'Open menu');
+        setOpen(false);
       }
     });
 
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
-        menu.hidden = true;
-        menuTrigger.setAttribute('aria-expanded', 'false');
-        menuTrigger.setAttribute('aria-label', 'Open menu');
-      }
+      if (event.key === 'Escape') setOpen(false);
+    });
+
+    // Any details[data-menu-submenu] added later joins this shared accordion behavior.
+    const groups = Array.from(menu.querySelectorAll('details[data-menu-submenu]'));
+    groups.forEach(group => {
+      group.addEventListener('toggle', () => {
+        if (!group.open) return;
+        groups.forEach(other => {
+          if (other !== group) other.open = false;
+        });
+      });
     });
   }
+
+  rememberLastPage();
+  initUniversalMenu();
 
   const rail = document.getElementById('project-cards');
   const previous = document.getElementById('cards-prev');

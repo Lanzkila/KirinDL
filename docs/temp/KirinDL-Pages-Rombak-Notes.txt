@@ -130,3 +130,23 @@ STATUS AKHIR RESPONSIVE FOOTER — 16 NOVEMBER 2026
 - GitHub Pages dan All rights reserved kekal bersebelahan.
 - Semakan susun atur dibuat pada lebar 1366px, 1024px, 390px dan 320px; semua kumpulan footer kekal pada baris yang sama tanpa pertindihan dalam semakan layout.
 - Anak panah slider disabled menggunakan warna gelap; lebar kad desktop turut dilaras supaya slider benar-benar mempunyai ruang untuk bergerak.
+
+
+PART 6 — UNIVERSAL HAMBURGER DROPDOWN / REMEMBER LAST PAGE
+
+Keperluan:
+1. Pautan Contact, Privacy, Support dan Issues dipindahkan daripada footer ke dropdown di dalam hamburger menu.
+2. Empat halaman tersebut disediakan sebagai halaman HTML berasingan; Issues menjadi halaman HTML tempatan yang menghubungkan pengguna ke GitHub Issue Tracker.
+3. Menu menggunakan struktur universal: hamburger trigger > dropdown panel > submenu group > senarai halaman.
+4. Sistem submenu menggunakan atribut/data hook generik supaya submenu tambahan boleh dimasukkan kemudian tanpa membina semula logik menu.
+5. Implementasi fungsi rememberLastPage untuk menyimpan halaman terakhir yang dibuka dan menyediakan pautan Continue di dalam menu.
+6. Fungsi rememberLastPage menggunakan localStorage dan mengutamakan pautan halaman yang didaftarkan dengan data-page-link.
+
+KEPERLUAN JARAK:
+1. Buang closing section yang tidak diperlukan di antara divider animasi dan footer.
+2. Rapatkan divider kepada akhir koleksi card dan footer.
+3. Buang ruang kosong paksa sebelum footer pada halaman Contact, Privacy, Support dan Issues; kekalkan jarak dalaman hanya apabila diperlukan untuk keterbacaan.
+
+STATUS:
+- Part 6 sedang diimplementasikan pada branch planning/kirindl-pages-redesign sahaja.
+- Main branch dan tetapan deployment GitHub Pages tidak diubah.
