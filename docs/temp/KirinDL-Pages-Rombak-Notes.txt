@@ -211,3 +211,27 @@ STATUS CENTER MODAL / MOBILE MENU / LOADING DURATION — 16 NOVEMBER 2026
 - Tempoh overlay tindakan/navigasi dinaikkan: navigasi dalaman 650ms, hash/button 750ms, dan pautan luar 1100ms.
 - Failsafe splash dinaikkan kepada 12 saat bagi mengelakkan overlay tersangkut pada sambungan perlahan.
 - Semua perubahan berada pada branch planning/kirindl-pages-redesign sahaja; main dan tetapan Pages tidak diubah.
+
+STATUS MOBILE MENU / RELEASE PULSE / CANVAS LOADER — 16 NOVEMBER 2026
+
+1. Mobile hamburger:
+- Forced icon-only display on max-width 700px using a high-specificity final override.
+- Hamburger button and Account button use matching 40px by 40px touch targets and matching corner radius.
+- Desktop/laptop retains the existing icon + "Menu" label.
+
+2. Release cards:
+- Stable and Pre-release cards receive separate subtle pulse animations (mint for Stable, amber for devpatch).
+- Reduced-motion preference disables pulse effects.
+
+3. Loading / splash:
+- Loading overlay now shows only the circular KirinDL logo, without text or progress bar.
+- Circular logo receives two orbit rings and a slow breathing glow.
+- A full-screen canvas draws drifting code glyphs and a faint code grid.
+- Particles move randomly in all directions; when two approach, a short-lived glowing bond forms, then breaks and pushes them apart.
+- Canvas animation starts while the loader is visible and stops when it hides. Page visibility and reduced-motion preferences are respected.
+- If 2D canvas is unavailable, a CSS fallback displays drifting virus-like particles.
+- First-visit splash minimum duration increased to 3.2 seconds; emergency timeout increased to 15 seconds.
+
+Status:
+- Changes saved to planning/kirindl-pages-redesign only.
+- Main branch and GitHub Pages publishing configuration remain unchanged.
