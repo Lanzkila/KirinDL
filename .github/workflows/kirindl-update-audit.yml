@@ -1,0 +1,408 @@
+name: KirinDL Update Audit
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kirindl-update-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit repository update
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout full history
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        id: java
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: gradle
+
+      - name: Set up Android SDK
+        id: android_sdk
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+
+      - name: Set up Python 3.11
+        id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Gradle
+        id: gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Audit repository files and website links
+        id: static_audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/kirindl-audit"
+          python - <<'PY' 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/static-audit.log"
+          import json
+          import posixpath
+          import re
+          import subprocess
+          import xml.etree.ElementTree as ET
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import unquote, urlsplit
+
+          tracked = [
+              Path(item)
+              for item in subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
+              if item
+          ]
+          failures = []
+          checks = 0
+
+          def check(condition, message):
+              global checks
+              checks += 1
+              if condition:
+                  print(f"PASS: {message}")
+              else:
+                  failures.append(message)
+                  print(f"FAIL: {message}")
+
+          # Parse every tracked JSON, XML, and Python source file.
+          for path in tracked:
+              suffix = path.suffix.lower()
+              if suffix == ".json":
+                  try:
+                      json.loads(path.read_text(encoding="utf-8-sig"))
+                      check(True, f"Valid JSON: {path}")
+                  except Exception as exc:
+                      check(False, f"Invalid JSON: {path}: {exc}")
+              elif suffix == ".xml":
+                  try:
+                      ET.parse(path)
+                      check(True, f"Valid XML: {path}")
+                  except Exception as exc:
+                      check(False, f"Invalid XML: {path}: {exc}")
+              elif suffix == ".py":
+                  try:
+                      compile(path.read_text(encoding="utf-8"), str(path), "exec")
+                      check(True, f"Valid Python syntax: {path}")
+                  except Exception as exc:
+                      check(False, f"Invalid Python syntax: {path}: {exc}")
+
+          # Core Android project files must stay present.
+          required_project_files = [
+              "settings.gradle.kts",
+              "build.gradle.kts",
+              "gradle/wrapper/gradle-wrapper.properties",
+              "buildSrc/src/main/kotlin/Version.kt",
+              "app/build.gradle.kts",
+              "app/src/main/AndroidManifest.xml",
+          ]
+          tracked_names = {path.as_posix() for path in tracked}
+          for name in required_project_files:
+              check(name in tracked_names, f"Required project file exists: {name}")
+
+          # Check that the moved website pages keep their old public URLs.
+          page_permalinks = {
+              "pages/support.html": "/support.html",
+              "pages/contact.html": "/contact.html",
+              "pages/privacy.html": "/privacy.html",
+          }
+          html_files = [
+              path for path in tracked
+              if path.suffix.lower() == ".html"
+              and (path.parent == Path(".") or path.parent == Path("pages"))
+          ]
+          html_routes = {}
+          for source, expected in page_permalinks.items():
+              path = Path(source)
+              if source not in tracked_names:
+                  check(False, f"Moved page exists: {source}")
+                  continue
+              content = path.read_text(encoding="utf-8")
+              front_matter = re.match(r"^---\s*\n(.*?)\n---\s*(?:\n|$)", content, re.S)
+              permalink = None
+              if front_matter:
+                  match = re.search(r"(?m)^permalink:\s*['\"]?([^'\"]+)['\"]?\s*$", front_matter.group(1))
+                  permalink = match.group(1).strip() if match else None
+              check(permalink == expected, f"{source} has permalink {expected}")
+              if permalink:
+                  html_routes[source] = permalink
+
+          check("pages-assets/favicon.png" in tracked_names, "Moved favicon exists in pages-assets/")
+          check("favicon.png" not in tracked_names, "No duplicate favicon remains in repository root")
+
+          # Build the set of paths that Jekyll can publish. Permalink pages are
+          # mapped to their public URL rather than their source directory.
+          excluded_roots = {
+              ".github", ".idea", ".vscode", "_sealplus-pages-disabled",
+              "app", "buildSrc", "color", "fastlane", "gradle",
+              "splashlogo", "tests", "translations", "release-notes",
+          }
+          published = set()
+          for path in tracked:
+              rel = path.as_posix()
+              first = rel.split("/", 1)[0]
+              if first in excluded_roots or first.startswith("."):
+                  continue
+              if rel.startswith("pages/") and rel.endswith(".html"):
+                  continue
+              published.add(rel)
+          for source, route in html_routes.items():
+              output_path = route.lstrip("/") or "index.html"
+              if output_path.endswith("/"):
+                  output_path += "index.html"
+              published.add(output_path)
+
+          class LocalLinks(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.urls = []
+
+              def handle_starttag(self, tag, attrs):
+                  for key, value in attrs:
+                      if key in {"href", "src", "poster", "action"} and value:
+                          self.urls.append((tag, key, value.strip()))
+
+          for page in html_files:
+              content = page.read_text(encoding="utf-8")
+              route = html_routes.get(page.as_posix(), "/" + page.as_posix())
+              parser = LocalLinks()
+              parser.feed(content)
+              for tag, attr, raw_url in parser.urls:
+                  parsed = urlsplit(raw_url)
+                  if parsed.scheme or parsed.netloc or not parsed.path:
+                      continue
+                  target_path = unquote(parsed.path)
+                  if target_path.startswith("/"):
+                      target = posixpath.normpath(target_path).lstrip("/")
+                  else:
+                      target = posixpath.normpath(
+                          posixpath.join(posixpath.dirname(route.lstrip("/")), target_path)
+                      ).lstrip("/")
+                  if target in {"", "."}:
+                      target = "index.html"
+                  elif target.endswith("/"):
+                      target += "index.html"
+                  check(target in published, f"Local HTML {attr} resolves: {page} -> {raw_url}")
+
+          # The sitemap must resolve to the pages that are intended to be public.
+          sitemap_path = Path("sitemap.xml")
+          if sitemap_path.exists():
+              try:
+                  sitemap = ET.parse(sitemap_path).getroot()
+                  config = Path("_config.yml").read_text(encoding="utf-8")
+                  base_match = re.search(r"(?m)^baseurl:\s*['\"]?([^'\"\s]*)", config)
+                  baseurl = base_match.group(1).rstrip("/") if base_match else ""
+                  locations = []
+                  for node in sitemap.iter():
+                      if node.tag.endswith("loc") and node.text:
+                          site_path = urlsplit(node.text.strip()).path
+                          if baseurl and (site_path == baseurl or site_path.startswith(baseurl + "/")):
+                              site_path = site_path[len(baseurl):]
+                          target = site_path.lstrip("/") or "index.html"
+                          if target.endswith("/"):
+                              target += "index.html"
+                          locations.append(target)
+                          check(target in published, f"Sitemap target exists: {node.text.strip()}")
+                  for expected in ("support.html", "contact.html", "privacy.html"):
+                      check(expected in locations, f"Sitemap includes {expected}")
+              except Exception as exc:
+                  check(False, f"Sitemap validation: {exc}")
+          else:
+              check(False, "sitemap.xml exists")
+
+          # Verify the relocated workflow trigger files and all active references.
+          trigger_paths = [
+              ".github/triggers/release.trigger",
+              ".github/triggers/prerelease.trigger",
+              ".github/triggers/stable-test.trigger",
+          ]
+          for name in trigger_paths:
+              check(name in tracked_names, f"Workflow trigger exists: {name}")
+          for name in (".kirin-release-trigger", ".kirin-prerelease-trigger", ".kirin-stable-test-trigger"):
+              check(name not in tracked_names, f"No old root trigger file remains: {name}")
+
+          workflow_expectations = {
+              ".github/workflows/android.yml": (
+                  ".github/triggers/release.trigger",
+                  ".github/triggers/prerelease.trigger",
+              ),
+              ".github/workflows/stable-test.yml": (
+                  ".github/triggers/stable-test.trigger",
+              ),
+          }
+          for workflow, references in workflow_expectations.items():
+              if workflow not in tracked_names:
+                  check(False, f"Workflow exists: {workflow}")
+                  continue
+              body = Path(workflow).read_text(encoding="utf-8")
+              for reference in references:
+                  check(reference in body, f"{workflow} references {reference}")
+
+          print()
+          print(f"Static audit: {checks - len(failures)}/{checks} checks passed; {len(failures)} failed.")
+          if failures:
+              raise SystemExit(1)
+          PY
+
+      - name: Validate GitHub Actions YAML syntax
+        id: workflow_yaml
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby - <<'RUBY' 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/workflow-yaml.log"
+          require "yaml"
+          files = Dir.glob(".github/workflows/*.{yml,yaml}").sort
+          abort "No workflow YAML files found" if files.empty?
+          files.each do |file|
+            YAML.load_file(file, aliases: true)
+            puts "PASS: #{file}"
+          end
+          puts "Validated #{files.length} workflow YAML files."
+          RUBY
+
+      - name: Check Kotlin formatting
+        id: ktfmt
+        if: steps.gradle.outcome == 'success'
+        continue-on-error: true
+        run: ./gradlew :app:ktfmtCheck --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/ktfmt.log"
+
+      - name: Run Android Lint
+        id: lint
+        if: steps.gradle.outcome == 'success'
+        continue-on-error: true
+        run: ./gradlew :app:lintGenericDebug --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/lint.log"
+
+      - name: Run Android unit tests
+        id: unit_tests
+        if: steps.gradle.outcome == 'success'
+        continue-on-error: true
+        run: ./gradlew :app:testGenericDebugUnitTest --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/unit-tests.log"
+
+      - name: Compile Android debug build
+        id: android_build
+        if: steps.gradle.outcome == 'success'
+        continue-on-error: true
+        run: ./gradlew :app:assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/android-build.log"
+
+      - name: Generate assistant-readable audit report
+        id: report
+        if: always()
+        shell: bash
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          JAVA_RESULT: ${{ steps.java.outcome }}
+          ANDROID_SDK_RESULT: ${{ steps.android_sdk.outcome }}
+          PYTHON_RESULT: ${{ steps.python.outcome }}
+          GRADLE_RESULT: ${{ steps.gradle.outcome }}
+          STATIC_RESULT: ${{ steps.static_audit.outcome }}
+          YAML_RESULT: ${{ steps.workflow_yaml.outcome }}
+          KTFMT_RESULT: ${{ steps.ktfmt.outcome }}
+          LINT_RESULT: ${{ steps.lint.outcome }}
+          TEST_RESULT: ${{ steps.unit_tests.outcome }}
+          BUILD_RESULT: ${{ steps.android_build.outcome }}
+        run: |
+          set -u
+          REPORT="$RUNNER_TEMP/kirindl-audit-report.md"
+          {
+            echo "# KirinDL Update Audit"
+            echo
+            echo "- Commit: `$GITHUB_SHA`"
+            echo "- Ref: `$GITHUB_REF`"
+            echo "- Event: `$GITHUB_EVENT_NAME`"
+            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            echo "## Check results"
+            echo
+            echo "| Check | Result |"
+            echo "|---|---|"
+            echo "| Checkout | $CHECKOUT_RESULT |"
+            echo "| JDK 21 | $JAVA_RESULT |"
+            echo "| Android SDK | $ANDROID_SDK_RESULT |"
+            echo "| Python 3.11 | $PYTHON_RESULT |"
+            echo "| Gradle setup | $GRADLE_RESULT |"
+            echo "| Repository / website integrity | $STATIC_RESULT |"
+            echo "| Workflow YAML syntax | $YAML_RESULT |"
+            echo "| Kotlin formatting | $KTFMT_RESULT |"
+            echo "| Android Lint | $LINT_RESULT |"
+            echo "| Android unit tests | $TEST_RESULT |"
+            echo "| Android debug compilation | $BUILD_RESULT |"
+            echo
+            echo "## Changed files"
+            echo
+            if git rev-parse "$GITHUB_SHA^" >/dev/null 2>&1; then
+              git diff --name-status "$GITHUB_SHA^" "$GITHUB_SHA" || true
+            else
+              git show --pretty="" --name-status "$GITHUB_SHA" || true
+            fi
+            echo
+            echo "## Notes"
+            echo
+            echo "This report contains automated validation results for repository maintenance. It does not claim an AI code review or prove the absence of all runtime bugs."
+            echo "A failed or skipped check should be inspected in the corresponding workflow step log."
+          } > "$REPORT"
+          cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          echo "report_path=$REPORT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload audit report and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KirinDL-Update-Audit-${{ github.run_number }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/kirindl-audit-report.md
+            ${{ runner.temp }}/kirindl-audit/
+            app/build/reports/lint-results-genericDebug.html
+            app/build/reports/tests/testGenericDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail workflow when any audit check failed or was skipped
+        if: always()
+        shell: bash
+        env:
+          CHECKOUT_RESULT: ${{ steps.checkout.outcome }}
+          JAVA_RESULT: ${{ steps.java.outcome }}
+          ANDROID_SDK_RESULT: ${{ steps.android_sdk.outcome }}
+          PYTHON_RESULT: ${{ steps.python.outcome }}
+          GRADLE_RESULT: ${{ steps.gradle.outcome }}
+          STATIC_RESULT: ${{ steps.static_audit.outcome }}
+          YAML_RESULT: ${{ steps.workflow_yaml.outcome }}
+          KTFMT_RESULT: ${{ steps.ktfmt.outcome }}
+          LINT_RESULT: ${{ steps.lint.outcome }}
+          TEST_RESULT: ${{ steps.unit_tests.outcome }}
+          BUILD_RESULT: ${{ steps.android_build.outcome }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for name in CHECKOUT_RESULT JAVA_RESULT ANDROID_SDK_RESULT PYTHON_RESULT GRADLE_RESULT STATIC_RESULT YAML_RESULT KTFMT_RESULT LINT_RESULT TEST_RESULT BUILD_RESULT; do
+            value="${!name}"
+            if [[ "$value" != "success" ]]; then
+              echo "::error::$name finished with '$value'."
+              failed=1
+            fi
+          done
+          if [[ "$failed" -ne 0 ]]; then
+            echo "KirinDL update audit found failed or skipped checks."
+            exit 1
+          fi
+          echo "All KirinDL update audit checks passed."
