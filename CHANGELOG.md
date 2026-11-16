@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Fix same-package imports after extracting Instagram preview models (`0c43fc30`)
 - Move Instaloader models into dedicated source file (`087502b0`)
 - Separate Instaloader preview data models (`446006f6`)
 - Create isolated Telegram integration folder (`4dcf8298`)
