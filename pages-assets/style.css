@@ -590,7 +590,20 @@ main{padding-bottom:0}
   border-color:rgba(138,216,255,.5);background:rgba(138,216,255,.07)
 }
 .account-trigger:hover{transform:translateY(-1px)}
-.account-trigger svg{width:22px;height:22px;fill:currentColor}
+.account-trigger .account-material-icon{
+  position:relative;display:block;width:24px;height:24px;flex:0 0 24px;
+  border:2px solid currentColor;border-radius:50%;color:#e8f1ff;
+  box-sizing:border-box
+}
+.account-trigger .account-material-icon::before{
+  content:"";position:absolute;top:3px;left:7px;width:6px;height:6px;
+  border-radius:50%;background:currentColor
+}
+.account-trigger .account-material-icon::after{
+  content:"";position:absolute;left:3px;bottom:2px;width:14px;height:7px;
+  border:1.7px solid currentColor;border-bottom:0;
+  border-radius:9px 9px 4px 4px;box-sizing:border-box
+}
 .account-popover{
   position:absolute;z-index:80;top:calc(100% + 12px);right:0;
   width:min(310px,calc(100vw - 28px));padding:19px;
