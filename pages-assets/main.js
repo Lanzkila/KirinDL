@@ -313,6 +313,7 @@
     });
   }
 
+  // Account panel logic is intentionally parked; restore its markup and initializer when ready.
   function initAccountPanel() {
     const trigger = document.querySelector('[data-account-toggle]');
     const panel = document.querySelector('[data-account-menu]');
@@ -468,7 +469,7 @@
 
   rememberLastPage();
   initUniversalMenu();
-  initAccountPanel();
+  // Temporarily disabled: re-enable when the KirinDL account flow is ready.
 
   const rail = document.getElementById('project-cards');
   const previous = document.getElementById('cards-prev');
