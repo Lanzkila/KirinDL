@@ -235,3 +235,12 @@ STATUS MOBILE MENU / RELEASE PULSE / CANVAS LOADER — 16 NOVEMBER 2026
 Status:
 - Changes saved to planning/kirindl-pages-redesign only.
 - Main branch and GitHub Pages publishing configuration remain unchanged.
+
+STATUS SEMAKAN AKHIR CANVAS SPLASH — 16 NOVEMBER 2026
+
+- Pembetulan susulan: fungsi canvas kini dimulakan terus semasa first-visit splash dipaparkan; sebelum pembetulan ini canvas hanya bermula apabila loading overlay dipanggil oleh tindakan pengguna.
+- JavaScript berjaya melalui semakan parse/syntax.
+- CSS berjaya melalui semakan delimiter.
+- Kesemua enam halaman disahkan menggunakan cache CSS redesign-10 dan JavaScript redesign-9.
+- Semakan kod mengesahkan mobile menu label disembunyikan dengan override khusus, hamburger dan Account sama-sama 40x40px pada telefon, serta pulse berasingan untuk Stable dan Pre-release.
+- Semakan struktur juga mengesahkan semua enam halaman mempunyai canvas splash dan loader logo-only.
