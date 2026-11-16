@@ -7,6 +7,12 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Document Telegram public preview and download engine (`770bcff1`)
+- Add Kotlin Telegram preview and download engine (`a4f8c1b4`)
+- Add Kotlin Telegram preview and download engine (`f4e9cac4`)
+- Add Kotlin Telegram preview and download engine (`15e4c49a`)
+- Add Kotlin Telegram preview and download engine (`1afdca8f`)
+- Add Kotlin Telegram preview and download engine (`bbb58d26`)
 - Add public Telegram preview and media download engine (`02fd61e9`)
 - Add public Telegram preview and media download engine (`e694c9b3`)
 - Add public Telegram preview and media download engine (`9bfac248`)
