@@ -337,3 +337,8 @@ h1 span,.section-heading h2 span{
   .footer-credit i{padding:0 3px}
   .footer-links{gap:15px}
 }
+
+/* Give the desktop rail enough overflow to make every card reachable. */
+@media(min-width:901px){
+  .project-card{flex-basis:calc((100% - 42px)/3.5)}
+}
