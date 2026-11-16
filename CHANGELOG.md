@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Create isolated Telegram integration folder (`4dcf8298`)
+- Create isolated Telegram integration folder (`a4203512`)
 - Add KirinDL 3.2.3.3 release notes (`f982fccc`)
 - Update Android version code for KirinDL 3.2.3.3 (`1484ba4b`)
 - Add Instagram post selection and GalleryDL queue UI (`a2c6ed79`)
