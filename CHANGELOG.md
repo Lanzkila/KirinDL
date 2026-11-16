@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- Create dedicated folder for KirinDL Instaloader integration (`c79c36c4`)
 - Document new changes in KirinDL v3.2.3.2 (`55220963`)
 - Update Android version code for 3.2.3.2 (`909e9c80`)
 - Bump KirinDL version to 3.2.3.2 (`dc7ffb09`)
