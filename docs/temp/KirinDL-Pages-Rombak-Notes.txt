@@ -150,3 +150,17 @@ KEPERLUAN JARAK:
 STATUS:
 - Part 6 sedang diimplementasikan pada branch planning/kirindl-pages-redesign sahaja.
 - Main branch dan tetapan deployment GitHub Pages tidak diubah.
+
+
+STATUS IMPLEMENTASI PART 6 — SELESAI
+
+- Hamburger menu kini membuka dropdown navigation yang universal.
+- Submenu Pages menyenaraikan Contact, Privacy, Support dan Issues.
+- Halaman Issues tempatan ditambah pada pages/issues.html dengan permalink /issues.html.
+- Fungsi rememberLastPage menyimpan halaman terakhir yang dibuka menggunakan localStorage dan memaparkan pautan Continue apabila pengguna kembali ke homepage.
+- Halaman semasa ditandakan dalam submenu; pautan Continue tidak dipaparkan apabila pengguna sudah berada pada halaman terakhir tersebut.
+- Atribut data-menu-submenu membolehkan submenu tambahan didaftarkan kemudian; logik accordion dikendalikan secara umum.
+- Pautan halaman dikeluarkan daripada footer.
+- Closing section yang tidak diperlukan di antara divider dan footer dibuang; jarak paksa sebelum footer pada halaman kandungan turut dikurangkan.
+- Menu hamburger dan submenu tidak mencetuskan loading overlay; loading hanya untuk navigasi/aksi yang berkaitan.
+- Perubahan disimpan pada branch planning/kirindl-pages-redesign sahaja. Main branch dan tetapan deployment GitHub Pages tidak diubah.
