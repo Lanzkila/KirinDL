@@ -1,0 +1,61 @@
+name: Repository Traffic
+
+on:
+  schedule:
+    - cron: "23 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repository-traffic
+  cancel-in-progress: false
+
+jobs:
+  update-traffic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check traffic token
+        id: token-check
+        env:
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+        run: |
+          if [ -n "$TRAFFIC_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Add the TRAFFIC_TOKEN Actions secret to enable repository traffic collection."
+          fi
+
+      - name: Checkout
+        if: steps.token-check.outputs.configured == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        if: steps.token-check.outputs.configured == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Collect repository traffic
+        if: steps.token-check.outputs.configured == 'true'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+        run: python .github/scripts/update-traffic.py
+
+      - name: Save traffic history and refresh badges
+        if: steps.token-check.outputs.configured == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/data/traffic-history.json .github/data/repo-views.json .github/data/last-visited.json
+          if git diff --cached --quiet; then
+            echo "Traffic data has not changed."
+          else
+            git commit -m "chore: update repository traffic"
+            git push
+          fi
