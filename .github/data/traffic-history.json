@@ -1,11 +1,82 @@
 {
   "schema_version": 1,
   "source": "GitHub repository traffic API",
-  "first_sync_at": null,
-  "last_updated": null,
-  "last_visited": null,
-  "total_views": 0,
-  "total_daily_unique_views": 0,
-  "daily": [],
-  "note": "GitHub exposes a rolling 14-day traffic window. The workflow preserves each daily snapshot here after the first successful sync."
+  "first_sync_at": "2026-11-16T08:06:55Z",
+  "last_updated": "2026-11-16T08:06:55Z",
+  "last_visited": "2026-11-13",
+  "total_views": 33,
+  "total_daily_unique_views": 15,
+  "daily": [
+    {
+      "date": "2026-11-01",
+      "views": 0,
+      "unique_views": 0
+    },
+    {
+      "date": "2026-11-02",
+      "views": 9,
+      "unique_views": 4
+    },
+    {
+      "date": "2026-11-03",
+      "views": 0,
+      "unique_views": 0
+    },
+    {
+      "date": "2026-11-04",
+      "views": 0,
+      "unique_views": 0
+    },
+    {
+      "date": "2026-11-05",
+      "views": 0,
+      "unique_views": 0
+    },
+    {
+      "date": "2026-11-06",
+      "views": 9,
+      "unique_views": 3
+    },
+    {
+      "date": "2026-11-07",
+      "views": 4,
+      "unique_views": 2
+    },
+    {
+      "date": "2026-11-08",
+      "views": 0,
+      "unique_views": 0
+    },
+    {
+      "date": "2026-11-09",
+      "views": 0,
+      "unique_views": 0
+    },
+    {
+      "date": "2026-11-10",
+      "views": 1,
+      "unique_views": 1
+    },
+    {
+      "date": "2026-11-11",
+      "views": 0,
+      "unique_views": 0
+    },
+    {
+      "date": "2026-11-12",
+      "views": 7,
+      "unique_views": 3
+    },
+    {
+      "date": "2026-11-13",
+      "views": 3,
+      "unique_views": 2
+    },
+    {
+      "date": "2026-11-14",
+      "views": 0,
+      "unique_views": 0
+    }
+  ],
+  "note": "GitHub supplies a rolling 14-day window. The workflow preserves daily snapshots here after each successful sync. Daily unique views can include the same person on multiple days."
 }
