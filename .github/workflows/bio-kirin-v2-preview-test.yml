@@ -32,6 +32,9 @@ jobs:
           source: ./
           destination: ./_site
 
+      - name: Check preview JavaScript syntax
+        run: node --check bio-kirin-preview/assets/bio-kirin-v2.js
+
       - name: Verify Bio Kirin preview output
         shell: bash
         run: |
