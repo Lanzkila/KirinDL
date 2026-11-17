@@ -78,6 +78,9 @@ object GalleryDlRunner {
         val cookiesLoaded: Boolean,
     )
 
+    private fun JSONObject.isInstagramApiRedirect(): Boolean =
+        optString("error_type") == "instagram_api_redirect"
+
     fun isCandidateUrl(value: String): Boolean {
         val trimmed = value.trim()
         return trimmed.startsWith("https://") ||
@@ -302,44 +305,83 @@ object GalleryDlRunner {
 
                         onProgress?.invoke(0, estimatedTotal, "Preparing")
                         val bridge = getBridge(context)
-                        val raw = coroutineScope {
-                            val watcher =
-                                launch(Dispatchers.IO) {
-                                    var lastCount = -1
-                                    while (true) {
-                                        val count =
-                                            outputDir.walkTopDown().count { file ->
-                                                file.isFile &&
-                                                    !file.name.endsWith(".part") &&
-                                                    !file.name.endsWith(".tmp")
+
+                        suspend fun runGalleryJob(): JSONObject {
+                            val raw =
+                                coroutineScope {
+                                    val watcher =
+                                        launch(Dispatchers.IO) {
+                                            var lastCount = -1
+                                            while (true) {
+                                                val count =
+                                                    outputDir.walkTopDown().count { file ->
+                                                        file.isFile &&
+                                                            !file.name.endsWith(".part") &&
+                                                            !file.name.endsWith(".tmp")
+                                                    }
+                                                if (count != lastCount) {
+                                                    lastCount = count
+                                                    onProgress?.invoke(
+                                                        count,
+                                                        estimatedTotal,
+                                                        "Downloading",
+                                                    )
+                                                }
+                                                delay(400L)
                                             }
-                                        if (count != lastCount) {
-                                            lastCount = count
-                                            onProgress?.invoke(count, estimatedTotal, "Downloading")
                                         }
-                                        delay(400L)
+                                    try {
+                                        bridge.callAttr(
+                                                "download",
+                                                trimmedUrl,
+                                                outputDir.absolutePath,
+                                                engineDir.absolutePath,
+                                                if (
+                                                    GalleryDlBehaviorPreference
+                                                        .isExpertConfigEnabled()
+                                                ) {
+                                                    compatibility.configFile.absolutePath
+                                                } else {
+                                                    ""
+                                                },
+                                                cookiesPath,
+                                                compatibility.cacheFile.absolutePath,
+                                            )
+                                            .toString()
+                                    } finally {
+                                        watcher.cancel()
                                     }
                                 }
-                            try {
-                                bridge.callAttr(
-                                        "download",
-                                        trimmedUrl,
-                                        outputDir.absolutePath,
-                                        engineDir.absolutePath,
-                                        if (GalleryDlBehaviorPreference.isExpertConfigEnabled()) {
-                                            compatibility.configFile.absolutePath
-                                        } else {
-                                            ""
-                                        },
-                                        cookiesPath,
-                                        compatibility.cacheFile.absolutePath,
-                                    )
-                                    .toString()
-                            } finally {
-                                watcher.cancel()
+
+                            // gallery-dl may refresh cookie sessions during a job. The job gets
+                            // a private copy, so persist its latest contents before the sandbox is
+                            // removed or a retry begins.
+                            if (cookiesPath.isNotBlank()) {
+                                GalleryDlConfig.persistUpdatedCookies(context, File(cookiesPath))
+                            }
+                            return JSONObject(raw)
+                        }
+
+                        var result = runGalleryJob()
+
+                        // A valid Instagram session can still hit AbortExtraction when Instagram
+                        // redirects profile/feed API pagination to its home page. Retry once with
+                        // the current Codeberg master only when the installed engine is stale.
+                        if (result.isInstagramApiRedirect()) {
+                            val latestCommit = GalleryDlEngine.latestMasterCommit().getOrNull()
+                            if (
+                                latestCommit != null &&
+                                    GalleryDlEngine.installedSource(context) !=
+                                        "codeberg:$latestCommit"
+                            ) {
+                                onProgress?.invoke(0, estimatedTotal, "Updating Gallery-DL")
+                                GalleryDlEngine.installLatest(context).onSuccess {
+                                    outputDir.listFiles()?.forEach { it.deleteRecursively() }
+                                    onProgress?.invoke(0, estimatedTotal, "Retrying")
+                                    result = runGalleryJob()
+                                }
                             }
                         }
-                        val result = JSONObject(raw)
 
                         if (!result.optBoolean("ok", false)) {
                             val extractor = result.optString("extractor")
@@ -350,15 +392,31 @@ object GalleryDlRunner {
                             val rawMessage =
                                 if (extractor.isBlank()) error else "$extractor: $error"
                             val message =
-                                if (ExtractorHealthUtil.looksUnavailable(rawMessage)) {
-                                    ExtractorHealthUtil.unavailableMessage(
-                                        context,
-                                        ExtractorHealthUtil.Engine.GALLERY_DL,
-                                        trimmedUrl,
-                                        rawMessage,
-                                    )
-                                } else {
-                                    rawMessage
+                                when {
+                                    result.isInstagramApiRedirect() -> {
+                                        val sessionReady =
+                                            GalleryDlConfig.hasInstagramSessionCookie(context)
+                                        val sessionHint =
+                                            if (sessionReady) {
+                                                "An Instagram sessionid cookie is present, but Instagram redirected the API request. " +
+                                                    "This can be an Instagram-side restriction or a profile/feed pagination change; " +
+                                                    "try a direct post or Reel URL, then retry the profile later."
+                                            } else {
+                                                "No active Instagram sessionid was found in Gallery DL > Cookies. " +
+                                                    "Export a Netscape cookies.txt from a browser logged into your own Instagram account, " +
+                                                    "then import it in Gallery DL > Cookies."
+                                            }
+                                        "$rawMessage\n$sessionHint"
+                                    }
+                                    ExtractorHealthUtil.looksUnavailable(rawMessage) -> {
+                                        ExtractorHealthUtil.unavailableMessage(
+                                            context,
+                                            ExtractorHealthUtil.Engine.GALLERY_DL,
+                                            trimmedUrl,
+                                            rawMessage,
+                                        )
+                                    }
+                                    else -> rawMessage
                                 }
                             throw IOException(message)
                         }
