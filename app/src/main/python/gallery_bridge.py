@@ -268,6 +268,7 @@ def _classify_preflight_error(exc, url=""):
         or "not logged in" in text
         or "cookies required" in text
         or "cookie required" in text
+        or "redirect to login page" in text
         or "/accounts/login" in text
     ):
         return "login_required"
