@@ -269,6 +269,8 @@ def _classify_preflight_error(exc, url=""):
         or "cookies required" in text
         or "cookie required" in text
         or "redirect to login page" in text
+        or "redirect to challenge page" in text
+        or "redirect to checkpoint page" in text
         or "/accounts/login" in text
     ):
         return "login_required"
