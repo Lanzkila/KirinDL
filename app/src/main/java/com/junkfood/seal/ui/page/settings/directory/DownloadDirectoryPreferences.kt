@@ -63,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -154,6 +155,7 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
             canScroll = { true },
         )
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showSubdirectoryDialog by remember { mutableStateOf(false) }
@@ -598,7 +600,7 @@ fun DownloadDirectoryPreferences(onNavigateBack: () -> Unit) {
 
                         withContext(Dispatchers.Main) {
                             snackbarHostState.showSnackbar(
-                                context.getString(R.string.clear_temp_files_count).format(count)
+                                resources.getString(R.string.clear_temp_files_count).format(count)
                             )
                         }
                     }

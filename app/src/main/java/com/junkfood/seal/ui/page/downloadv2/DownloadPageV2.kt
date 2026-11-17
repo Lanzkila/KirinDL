@@ -81,6 +81,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
@@ -225,6 +226,7 @@ fun DownloadPageV2(
 ) {
     val view = LocalView.current
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
@@ -296,7 +298,7 @@ fun DownloadPageV2(
                 uriHandler.openUri(action.url)
             }
             is UiAction.ShareFile -> {
-                val shareTitle = context.getString(R.string.share)
+                val shareTitle = resources.getString(R.string.share)
                 FileUtil.createIntentForSharingFile(action.filePath)?.let {
                     context.startActivity(Intent.createChooser(it, shareTitle))
                 }
@@ -430,6 +432,7 @@ fun DownloadPageImplV2(
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     var selectedTask by remember { mutableStateOf<Task?>(null) }

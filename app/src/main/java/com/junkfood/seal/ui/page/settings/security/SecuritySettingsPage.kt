@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,6 +37,7 @@ fun SecuritySettingsPage(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var securityEnabled by remember { mutableStateOf(AuthenticationManager.isSecurityEnabled()) }
     var useBiometric by remember { mutableStateOf(AuthenticationManager.useBiometric()) }
     var requireAuthOnLaunch by remember { mutableStateOf(AuthenticationManager.requireAuthOnLaunch()) }
@@ -351,6 +353,7 @@ private fun VerifyOldPinDialog(
     val maxAttempts = 5
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     
     // Handle PIN verification
     LaunchedEffect(pin) {
@@ -363,11 +366,11 @@ private fun VerifyOldPinDialog(
                 attempts++
                 
                 if (attempts >= maxAttempts) {
-                    errorMessage = context.getString(R.string.too_many_attempts)
+                    errorMessage = resources.getString(R.string.too_many_attempts)
                     delay(1500)
                     onDismiss()
                 } else {
-                    errorMessage = context.getString(
+                    errorMessage = resources.getString(
                         R.string.incorrect_pin_attempts,
                         maxAttempts - attempts
                     )

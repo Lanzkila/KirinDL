@@ -56,6 +56,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
@@ -105,6 +106,7 @@ fun TemplateListPage(onNavigateBack: () -> Unit, onNavigateToEditPage: (Int) -> 
     val view = LocalView.current
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    val resources = LocalResources.current
     var showHelpDialog by remember { mutableStateOf(false) }
     var showKirinPresetsDialog by remember { mutableStateOf(false) }
     var presetInsertInProgress by remember { mutableStateOf(false) }
@@ -178,8 +180,7 @@ fun TemplateListPage(onNavigateBack: () -> Unit, onNavigateToEditPage: (Int) -> 
                                     onClick = {
                                         scope.launch {
                                             snackbarHostState.showSnackbar(
-                                                context
-                                                    .getString(R.string.template_exported)
+                                                resources.getString(R.string.template_exported)
                                                     .format(templates.size)
                                             )
                                         }
@@ -202,8 +203,7 @@ fun TemplateListPage(onNavigateBack: () -> Unit, onNavigateToEditPage: (Int) -> 
                                                     val res =
                                                         DatabaseUtil.importTemplatesFromJson(it)
                                                     snackbarHostState.showSnackbar(
-                                                        context
-                                                            .getString(R.string.template_imported)
+                                                        resources.getString(R.string.template_imported)
                                                             .format(res)
                                                     )
                                                 }
@@ -268,8 +268,7 @@ fun TemplateListPage(onNavigateBack: () -> Unit, onNavigateToEditPage: (Int) -> 
                                 view.slightHapticFeedback()
                                 scope.launch {
                                     snackbarHostState.showSnackbar(
-                                        context
-                                            .getString(R.string.template_exported)
+                                        resources.getString(R.string.template_exported)
                                             .format(selectedTemplates.size)
                                     )
                                 }

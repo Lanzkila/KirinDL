@@ -118,6 +118,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
@@ -2131,7 +2132,7 @@ fun DownloadDetailsDialog(
                     DetailCard(
                         icon = Icons.Outlined.CalendarToday,
                         label = stringResource(R.string.download_date),
-                        value = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                        value = java.text.SimpleDateFormat("MMM dd, yyyy", LocalLocale.current.platformLocale)
                             .format(java.util.Date(task.timeCreated)),
                         modifier = Modifier.weight(1f)
                     )
@@ -2502,7 +2503,7 @@ private fun RecentDownloadDetailsContent(
                     )
                     
                     val downloadDate = if (file.exists()) {
-                        java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                        java.text.SimpleDateFormat("MMM dd, yyyy", LocalLocale.current.platformLocale)
                             .format(java.util.Date(file.lastModified()))
                     } else {
                         "N/A"
