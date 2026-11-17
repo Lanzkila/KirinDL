@@ -85,6 +85,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -109,6 +110,7 @@ fun ThumbnailDownloadPage(
     viewModel: ThumbnailDownloadViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val clipboardManager = LocalClipboardManager.current
     val haptic = LocalHapticFeedback.current
     val palette = rememberToolPalette()
@@ -124,7 +126,7 @@ fun ThumbnailDownloadPage(
     LaunchedEffect(state.downloadSuccess) {
         if (state.downloadSuccess) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            context.makeToast(context.getString(R.string.thumbnail_downloaded))
+            context.makeToast(resources.getString(R.string.thumbnail_downloaded))
             // Let the success card's own enter animation start first so the scroll and the
             // expand/scale-in animation read as one smooth motion instead of a jump-cut.
             kotlinx.coroutines.delay(120L)
@@ -265,7 +267,7 @@ fun ThumbnailDownloadPage(
                                 onOpenFile = {
                                     state.savedFilePath?.let { path ->
                                         FileUtil.openFile(path) {
-                                            context.makeToast(context.getString(R.string.file_unavailable))
+                                            context.makeToast(resources.getString(R.string.file_unavailable))
                                         }
                                     }
                                 },
@@ -275,7 +277,7 @@ fun ThumbnailDownloadPage(
                                             context.startActivity(
                                                 android.content.Intent.createChooser(
                                                     intent,
-                                                    context.getString(R.string.share_thumbnail),
+                                                    resources.getString(R.string.share_thumbnail),
                                                 )
                                             )
                                         }

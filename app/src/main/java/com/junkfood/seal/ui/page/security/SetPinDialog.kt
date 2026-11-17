@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +51,7 @@ fun SetPinDialog(
     var errorMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     
     Dialog(
         onDismissRequest = onDismiss,
@@ -148,7 +150,7 @@ fun SetPinDialog(
                                                             delay(1500)
                                                             onPinSet()
                                                         } else {
-                                                            errorMessage = context.getString(R.string.error_setting_pin)
+                                                            errorMessage = resources.getString(R.string.error_setting_pin)
                                                             state = SetPinState.ERROR
                                                             delay(2000)
                                                             state = SetPinState.ENTER_NEW_PIN
@@ -156,7 +158,7 @@ fun SetPinDialog(
                                                             confirmPin = ""
                                                         }
                                                     } else {
-                                                        errorMessage = context.getString(R.string.pins_do_not_match)
+                                                        errorMessage = resources.getString(R.string.pins_do_not_match)
                                                         state = SetPinState.ERROR
                                                         delay(1500)
                                                         state = SetPinState.CONFIRM_NEW_PIN

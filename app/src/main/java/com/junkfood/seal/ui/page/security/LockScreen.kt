@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,6 +47,7 @@ fun LockScreen(
     val maxAttempts = 5
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     
     // Show biometric prompt on first composition if available
     var biometricShown by remember { mutableStateOf(false) }
@@ -55,9 +57,9 @@ fun LockScreen(
                 biometricShown = true
                 AuthenticationManager.showBiometricPrompt(
                     activity = context,
-                    title = context.getString(R.string.unlock_seal_plus),
-                    subtitle = context.getString(R.string.biometric_prompt_subtitle),
-                    description = context.getString(R.string.biometric_prompt_description),
+                    title = resources.getString(R.string.unlock_seal_plus),
+                    subtitle = resources.getString(R.string.biometric_prompt_subtitle),
+                    description = resources.getString(R.string.biometric_prompt_description),
                     allowDeviceCredential = false,
                     onSuccess = {
                         if (!context.isFinishing) {
@@ -93,7 +95,7 @@ fun LockScreen(
                     val lockoutSeconds = 30
                     isLockedOut = true
                     lockoutSecondsLeft = lockoutSeconds
-                    errorMessage = context.getString(R.string.too_many_attempts)
+                    errorMessage = resources.getString(R.string.too_many_attempts)
                     pin = ""
                     isError = false
                     scope.launch {
@@ -108,7 +110,7 @@ fun LockScreen(
                     }
                     return@LaunchedEffect
                 } else {
-                    errorMessage = context.getString(
+                    errorMessage = resources.getString(
                         R.string.incorrect_pin_attempts,
                         maxAttempts - attempts
                     )
@@ -199,8 +201,8 @@ fun LockScreen(
                 ) {
                     Text(
                         text = if (lockoutSecondsLeft > 0)
-                            context.getString(R.string.too_many_attempts) + "\n" +
-                                context.getString(R.string.lockout_countdown, lockoutSecondsLeft)
+                            resources.getString(R.string.too_many_attempts) + "\n" +
+                                resources.getString(R.string.lockout_countdown, lockoutSecondsLeft)
                         else errorMessage,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
@@ -231,8 +233,8 @@ fun LockScreen(
                         {
                             AuthenticationManager.showBiometricPrompt(
                                 activity = context,
-                                title = context.getString(R.string.unlock_seal_plus),
-                                subtitle = context.getString(R.string.biometric_prompt_subtitle),
+                                title = resources.getString(R.string.unlock_seal_plus),
+                                subtitle = resources.getString(R.string.biometric_prompt_subtitle),
                                 allowDeviceCredential = false,
                                 onSuccess = {
                                     AuthenticationManager.updateLastAuthTime()
@@ -242,7 +244,7 @@ fun LockScreen(
                                     context.makeToast(error)
                                 },
                                 onFailed = {
-                                    context.makeToast(context.getString(R.string.authentication_failed))
+                                    context.makeToast(resources.getString(R.string.authentication_failed))
                                 }
                             )
                         }

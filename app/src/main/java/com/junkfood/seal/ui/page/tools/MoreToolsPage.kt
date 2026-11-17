@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -267,6 +268,7 @@ fun MoreToolsPage(
     }
 
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val isDarkTheme = LocalDarkTheme.current.isDarkTheme()
     val isGradientDark = LocalGradientDarkMode.current
@@ -299,7 +301,7 @@ fun MoreToolsPage(
             5 -> onNavigateToGalleryDl?.invoke()
             else -> {
                 context.makeToast(
-                    "${context.getString(tool.titleRes)} — ${context.getString(R.string.feature_unavailable)}"
+                    "${resources.getString(tool.titleRes)} — ${resources.getString(R.string.feature_unavailable)}"
                 )
             }
         }

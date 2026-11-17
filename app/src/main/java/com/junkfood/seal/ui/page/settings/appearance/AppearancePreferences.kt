@@ -52,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -99,7 +100,6 @@ import com.kyant.monet.a1
 import com.kyant.monet.a2
 import com.kyant.monet.a3
 import io.material.hct.Hct
-import java.util.Locale
 import kotlinx.coroutines.Job
 
 private val ColorList =
@@ -333,7 +333,7 @@ fun AppearancePreferences(onNavigateBack: () -> Unit, onNavigateTo: (String) -> 
                 PreferenceItem(
                     title = stringResource(R.string.language),
                     icon = Icons.Outlined.Language,
-                    description = Locale.getDefault().toDisplayName(),
+                    description = LocalLocale.current.platformLocale.toDisplayName(),
                 ) {
                     onNavigateTo(Route.LANGUAGES)
                 }

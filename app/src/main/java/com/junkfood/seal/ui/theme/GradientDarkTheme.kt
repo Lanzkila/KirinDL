@@ -210,7 +210,7 @@ fun animatedCardAppearance(): State<Float> {
         }
     }
     
-    return derivedStateOf { scale.value * alpha.value }
+    return remember { derivedStateOf { scale.value * alpha.value } }
 }
 
 /**

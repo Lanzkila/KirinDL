@@ -467,8 +467,7 @@ object GalleryDlRunner {
                             for (index in 0 until jsonFiles.length()) {
                                 val file = File(jsonFiles.getString(index)).canonicalFile
                                 if (
-                                    file.isFile &&
-                                        file.toPath().startsWith(outputRoot.toPath())
+                                    file.isFile && isInsideDirectory(file, outputRoot)
                                 ) {
                                     files += file
                                 }
@@ -645,11 +644,9 @@ object GalleryDlRunner {
 
         val siteDir = File(root, siteName).canonicalFile
         val galleryDir = File(siteDir, galleryName).canonicalFile
-        val rootPath = root.toPath()
-
         if (
-            !siteDir.toPath().startsWith(rootPath) ||
-                !galleryDir.toPath().startsWith(rootPath)
+            !isInsideDirectory(siteDir, root) ||
+                !isInsideDirectory(galleryDir, root)
         ) {
             throw SecurityException("Could not create a safe GalleryDL destination")
         }
@@ -741,12 +738,26 @@ object GalleryDlRunner {
         return if (extension.isBlank()) base else "$base.$extension"
     }
 
+    private fun isInsideDirectory(
+        candidate: File,
+        directory: File,
+    ): Boolean {
+        val canonicalDirectory = directory.canonicalPath
+        val directoryPrefix =
+            if (canonicalDirectory.endsWith(File.separator)) {
+                canonicalDirectory
+            } else {
+                canonicalDirectory + File.separator
+            }
+        return candidate.canonicalPath.startsWith(directoryPrefix)
+    }
+
     private fun exportFileSafely(source: File, destinationRoot: File): String {
         val root = destinationRoot.canonicalFile
         val safeName = safeFileName(source.name)
         val desired = File(root, safeName).canonicalFile
 
-        if (!desired.toPath().startsWith(root.toPath())) {
+        if (!isInsideDirectory(desired, root)) {
             throw SecurityException("Could not create a safe GalleryDL filename")
         }
 

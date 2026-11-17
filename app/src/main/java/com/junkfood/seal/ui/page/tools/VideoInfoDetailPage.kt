@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +79,7 @@ fun VideoInfoDetailPage(
     onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val clipboardManager = LocalClipboardManager.current
     val palette = rememberToolPalette()
 
@@ -115,7 +117,7 @@ fun VideoInfoDetailPage(
                                         action = Intent.ACTION_SEND
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_TEXT, current.videoUrl)
-                                    }.let { Intent.createChooser(it, context.getString(R.string.share)) }
+                                    }.let { Intent.createChooser(it, resources.getString(R.string.share)) }
                                 )
                             }
                         }) {
@@ -179,7 +181,7 @@ fun VideoInfoDetailPage(
                 emptyLabel = null,
                 onCopy = {
                     clipboardManager.setText(AnnotatedString(current.title))
-                    context.makeToast(context.getString(R.string.title_copied))
+                    context.makeToast(resources.getString(R.string.title_copied))
                 },
             )
 
@@ -193,7 +195,7 @@ fun VideoInfoDetailPage(
                 emptyLabel = stringResource(R.string.no_description_available),
                 onCopy = {
                     clipboardManager.setText(AnnotatedString(current.description))
-                    context.makeToast(context.getString(R.string.description_copied))
+                    context.makeToast(resources.getString(R.string.description_copied))
                 },
             )
 
@@ -204,7 +206,7 @@ fun VideoInfoDetailPage(
                 tags = current.tags,
                 onCopy = {
                     clipboardManager.setText(AnnotatedString(current.tags.joinToString(", ")))
-                    context.makeToast(context.getString(R.string.tags_copied))
+                    context.makeToast(resources.getString(R.string.tags_copied))
                 },
             )
 
@@ -215,12 +217,12 @@ fun VideoInfoDetailPage(
                 onExportTxt = {
                     VideoInfoExportUtil.exportAsTxt(current)
                         .onSuccess { path -> shareExportedFile(context, path) }
-                        .onFailure { context.makeToast(context.getString(R.string.export_failed)) }
+                        .onFailure { context.makeToast(resources.getString(R.string.export_failed)) }
                 },
                 onExportJson = {
                     VideoInfoExportUtil.exportAsJson(current)
                         .onSuccess { path -> shareExportedFile(context, path) }
-                        .onFailure { context.makeToast(context.getString(R.string.export_failed)) }
+                        .onFailure { context.makeToast(resources.getString(R.string.export_failed)) }
                 },
             )
 

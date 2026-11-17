@@ -73,6 +73,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -141,6 +142,7 @@ fun BatchUrlImportPage(
     downloader: DownloaderV2 = koinInject(),
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val clipboardManager = LocalClipboardManager.current
     val haptic = LocalHapticFeedback.current
     val isDarkMode = LocalDarkTheme.current.isDarkTheme()
@@ -241,7 +243,7 @@ fun BatchUrlImportPage(
                                     )
                                 )
                             }
-                            context.makeToast(context.getString(R.string.task_added))
+                            context.makeToast(resources.getString(R.string.task_added))
                             onNavigateBack()
                         },
                         modifier = Modifier.fillMaxWidth().height(50.dp),

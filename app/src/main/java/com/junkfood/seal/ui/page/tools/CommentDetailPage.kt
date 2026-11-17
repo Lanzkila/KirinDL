@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +75,7 @@ fun CommentDetailPage(
     onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val clipboardManager = LocalClipboardManager.current
     val palette = rememberToolPalette()
 
@@ -111,7 +113,7 @@ fun CommentDetailPage(
                                         action = Intent.ACTION_SEND
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_TEXT, current.videoUrl)
-                                    }.let { Intent.createChooser(it, context.getString(R.string.share)) }
+                                    }.let { Intent.createChooser(it, resources.getString(R.string.share)) }
                                 )
                             }
                         }) {
@@ -238,17 +240,17 @@ fun CommentDetailPage(
                 onExportTxt = {
                     CommentExportUtil.exportAsTxt(current)
                         .onSuccess { path -> shareExportedFile(context, path) }
-                        .onFailure { context.makeToast(context.getString(R.string.export_failed)) }
+                        .onFailure { context.makeToast(resources.getString(R.string.export_failed)) }
                 },
                 onExportCsv = {
                     CommentExportUtil.exportAsCsv(current)
                         .onSuccess { path -> shareExportedFile(context, path) }
-                        .onFailure { context.makeToast(context.getString(R.string.export_failed)) }
+                        .onFailure { context.makeToast(resources.getString(R.string.export_failed)) }
                 },
                 onExportJson = {
                     CommentExportUtil.exportAsJson(current)
                         .onSuccess { path -> shareExportedFile(context, path) }
-                        .onFailure { context.makeToast(context.getString(R.string.export_failed)) }
+                        .onFailure { context.makeToast(resources.getString(R.string.export_failed)) }
                 },
             )
 
