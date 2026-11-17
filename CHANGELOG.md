@@ -7,6 +7,8 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- build: sync Android version code for 3.2.5 (`5535e940`)
+- build: bump KirinDL version to 3.2.5 (`c970f687`)
 - Route Instagram through Gallery-DL and Telegram through yt-dlp (`5359b289`)
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
