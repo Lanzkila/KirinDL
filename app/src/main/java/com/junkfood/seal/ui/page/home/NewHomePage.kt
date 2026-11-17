@@ -910,6 +910,8 @@ fun NewHomePage(
                                     GalleryDlBehaviorPreference.setPendingHomeUrl(resolvedUrl)
                                     onNavigateToGalleryDl()
                                 } else {
+                                    // Telegram public video-post URLs stay on the existing yt-dlp path.
+                                    // yt-dlp's TelegramEmbedIE handles t.me/<channel>/<message-id>; Gallery-DL has no Telegram extractor.
                                     dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
                                 }
                                 urlText = ""
