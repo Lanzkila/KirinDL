@@ -124,6 +124,7 @@ jobs:
               "pages/support.html": "/support.html",
               "pages/contact.html": "/contact.html",
               "pages/privacy.html": "/privacy.html",
+              "pages/issues.html": "/issues.html",
           }
           html_files = [
               path for path in tracked
@@ -222,7 +223,7 @@ jobs:
                               target += "index.html"
                           locations.append(target)
                           check(target in published, f"Sitemap target exists: {node.text.strip()}")
-                  for expected in ("support.html", "contact.html", "privacy.html"):
+                  for expected in ("support.html", "contact.html", "privacy.html", "issues.html"):
                       check(expected in locations, f"Sitemap includes {expected}")
               except Exception as exc:
                   check(False, f"Sitemap validation: {exc}")
@@ -284,25 +285,33 @@ jobs:
         id: ktfmt
         if: steps.gradle.outcome == 'success'
         continue-on-error: true
-        run: ./gradlew :app:ktfmtCheck --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/ktfmt.log"
+        run: |
+          set -o pipefail
+          ./gradlew :app:ktfmtCheck --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/ktfmt.log"
 
       - name: Run Android Lint
         id: lint
         if: steps.gradle.outcome == 'success'
         continue-on-error: true
-        run: ./gradlew :app:lintGenericDebug --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/lint.log"
+        run: |
+          set -o pipefail
+          ./gradlew :app:lintGenericDebug --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/lint.log"
 
       - name: Run Android unit tests
         id: unit_tests
         if: steps.gradle.outcome == 'success'
         continue-on-error: true
-        run: ./gradlew :app:testGenericDebugUnitTest --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/unit-tests.log"
+        run: |
+          set -o pipefail
+          ./gradlew :app:testGenericDebugUnitTest --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/unit-tests.log"
 
       - name: Compile Android debug build
         id: android_build
         if: steps.gradle.outcome == 'success'
         continue-on-error: true
-        run: ./gradlew :app:assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/android-build.log"
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleGenericDebug --stacktrace --no-daemon --no-configuration-cache 2>&1 | tee "$RUNNER_TEMP/kirindl-audit/android-build.log"
 
       - name: Generate assistant-readable audit report
         id: report
@@ -326,10 +335,10 @@ jobs:
           {
             echo "# KirinDL Update Audit"
             echo
-            echo "- Commit: `$GITHUB_SHA`"
-            echo "- Ref: `$GITHUB_REF`"
-            echo "- Event: `$GITHUB_EVENT_NAME`"
-            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
+            printf -- '- Ref: `%s`\n' "$GITHUB_REF"
+            printf -- '- Event: `%s`\n' "$GITHUB_EVENT_NAME"
+            printf -- '- Workflow run: %s\n' "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo
             echo "## Check results"
             echo
