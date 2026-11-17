@@ -84,8 +84,8 @@ import com.junkfood.seal.util.GalleryDlRunner
 import com.junkfood.seal.util.GalleryDlThemePreference
 import com.junkfood.seal.util.GalleryDlThemeStyle
 import com.junkfood.seal.util.SavedSourcesEngine
-import com.junkfood.seal.util.instaloader.InstagramPostSelection
-import com.junkfood.seal.util.instaloader.InstagramPreviewBridge
+// import com.junkfood.seal.util.instaloader.InstagramPostSelection // disabled; Gallery-DL provides preview data
+// import com.junkfood.seal.util.instaloader.InstagramPreviewBridge // disabled; Gallery-DL provides preview data
 import java.text.DateFormat
 import java.util.Date
 import org.koin.androidx.compose.koinViewModel
@@ -186,7 +186,7 @@ fun GalleryDlPage(
     var showDownloadCenter by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf<GalleryConfirmAction?>(null) }
     var pendingBatchText by remember { mutableStateOf<String?>(null) }
-    var selectedInstagramPosts by remember(state.url) { mutableStateOf(emptySet<String>()) }
+    // Instaloader-specific Instagram post selection is disabled; use Gallery-DL's own preview.
 
     LaunchedEffect(Unit) {
         viewModel.refreshFromDisk()
@@ -329,16 +329,17 @@ fun GalleryDlPage(
                             GalleryDlBehaviorPreference.clearSiteExportFilter(state.url)
                             siteFilterRevision++
                         },
-                        selectedInstagramPosts = selectedInstagramPosts,
-                        onInstagramSelectionChanged = { selectedInstagramPosts = it },
-                        onQueueSelectedInstagramPosts = { urls ->
-                            if (urls.isNotEmpty()) {
-                                viewModel.addBatch(urls.joinToString("\n"))
-                                selectedTab = 1
-                                GalleryDlBehaviorPreference.setLastTab(1)
-                                selectedInstagramPosts = emptySet()
-                            }
-                        },
+                        //                         selectedInstagramPosts = selectedInstagramPosts,
+                        //                         onInstagramSelectionChanged = { selectedInstagramPosts = it },
+                        //                         onQueueSelectedInstagramPosts = { urls ->
+                        //                             if (urls.isNotEmpty()) {
+                        //                                 viewModel.addBatch(urls.joinToString("\n"))
+                        //                                 selectedTab = 1
+                        //                                 GalleryDlBehaviorPreference.setLastTab(1)
+                        //                                 selectedInstagramPosts = emptySet()
+                        //                             }
+                        //                         },
+
                     )
                 1 ->
                     GalleryQueueTab(
@@ -598,9 +599,7 @@ private fun GalleryDownloadTab(
     siteFilterSaved: Boolean,
     onRememberSiteFilter: () -> Unit,
     onClearSiteFilter: () -> Unit,
-    selectedInstagramPosts: Set<String>,
-    onInstagramSelectionChanged: (Set<String>) -> Unit,
-    onQueueSelectedInstagramPosts: (List<String>) -> Unit,
+    // Instaloader-specific selection callbacks are disabled.
 ) {
     val downloadAll = isDownloadAllSource(state.url, state.preflightInfo)
 
@@ -704,15 +703,15 @@ private fun GalleryDownloadTab(
 
         state.preflightInfo?.let { info ->
             GalleryExtractorInspector(info = info, state = state, colors = colors)
-            if (info.className == InstagramPreviewBridge.EXTRACTOR_NAME) {
-                InstagramPostSelectionPanel(
-                    items = info.previewItems,
-                    selectedUrls = selectedInstagramPosts,
-                    colors = colors,
-                    onSelectionChanged = onInstagramSelectionChanged,
-                    onQueueSelected = onQueueSelectedInstagramPosts,
-                )
-            }
+            //             if (info.className == InstagramPreviewBridge.EXTRACTOR_NAME) {
+            //                 InstagramPostSelectionPanel(
+            //                     items = info.previewItems,
+            //                     selectedUrls = selectedInstagramPosts,
+            //                     colors = colors,
+            //                     onSelectionChanged = onInstagramSelectionChanged,
+            //                     onQueueSelected = onQueueSelectedInstagramPosts,
+            //                 )
+            //             }
         } ?: when (state.extractorSupported) {
             false -> InlineNotice("No active gallery-dl extractor matched this URL.", colors.error, colors)
             else -> Unit
@@ -844,183 +843,183 @@ private fun GalleryDownloadTab(
     }
 }
 
-@Composable
-private fun InstagramPostSelectionPanel(
-    items: List<GalleryDlRunner.PreviewItem>,
-    selectedUrls: Set<String>,
-    colors: KirinGalleryColors,
-    onSelectionChanged: (Set<String>) -> Unit,
-    onQueueSelected: (List<String>) -> Unit,
-) {
-    val orderedSelection =
-        InstagramPostSelection.orderedSelectedUrls(items.map { it.url }, selectedUrls)
-
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Instagram posts",
-                    color = colors.text,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    "${items.size} shown • Instaloader public-profile preview",
-                    color = colors.muted,
-                    fontSize = 11.sp,
-                )
-            }
-            Text(
-                "${orderedSelection.size} selected",
-                color = colors.accent,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-
-        Text(
-            "Preview only. No Instagram login is used; selected post links are sent to GalleryDL for downloading.",
-            color = colors.muted,
-            fontSize = 11.sp,
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            TextButton(
-                onClick = {
-                    onSelectionChanged(InstagramPostSelection.selectAll(items.map { it.url }))
-                },
-                enabled = items.isNotEmpty(),
-            ) {
-                Text("Select shown")
-            }
-            TextButton(
-                onClick = { onSelectionChanged(emptySet()) },
-                enabled = selectedUrls.isNotEmpty(),
-            ) {
-                Text("Clear")
-            }
-        }
-
-        if (items.isEmpty()) {
-            Text(
-                "No public posts were returned for this profile.",
-                color = colors.muted,
-                fontSize = 12.sp,
-            )
-        } else {
-            items.chunked(3).forEach { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    rowItems.forEach { item ->
-                        val canonicalUrl = InstagramPostSelection.canonicalPostUrl(item.url)
-                        val isSelected = canonicalUrl != null && canonicalUrl in selectedUrls
-
-                        Surface(
-                            modifier =
-                                Modifier.weight(1f).clickable {
-                                    onSelectionChanged(
-                                        InstagramPostSelection.toggle(selectedUrls, item.url)
-                                    )
-                                },
-                            shape = RoundedCornerShape(12.dp),
-                            color = colors.panel,
-                        ) {
-                            Column {
-                                Box(
-                                    modifier =
-                                        Modifier.fillMaxWidth()
-                                            .aspectRatio(1f),
-                                ) {
-                                    if (item.thumbnailUrl.startsWith("https://")) {
-                                        AsyncImage(
-                                            model = item.thumbnailUrl,
-                                            contentDescription = item.title,
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop,
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier =
-                                                Modifier.fillMaxSize()
-                                                    .background(colors.panelAlt),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text("No preview", color = colors.muted, fontSize = 10.sp)
-                                        }
-                                    }
-
-                                    Surface(
-                                        modifier =
-                                            Modifier.align(Alignment.TopEnd)
-                                                .padding(6.dp)
-                                                .size(24.dp),
-                                        shape = CircleShape,
-                                        color =
-                                            if (isSelected) colors.accent
-                                            else Color.Black.copy(alpha = 0.55f),
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            if (isSelected) {
-                                                Icon(
-                                                    Icons.Outlined.Check,
-                                                    contentDescription = "Selected",
-                                                    tint = colors.onAccent,
-                                                    modifier = Modifier.size(15.dp),
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                Text(
-                                    item.title,
-                                    modifier =
-                                        Modifier.fillMaxWidth()
-                                            .padding(horizontal = 8.dp, vertical = 7.dp),
-                                    color = colors.text,
-                                    fontSize = 10.sp,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                    repeat(3 - rowItems.size) {
-                        Spacer(Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-
-        Button(
-            onClick = { onQueueSelected(orderedSelection) },
-            enabled = orderedSelection.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = colors.accent,
-                    contentColor = colors.onAccent,
-                ),
-        ) {
-            Icon(Icons.Outlined.Queue, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Queue selected (${orderedSelection.size})")
-        }
-    }
-}
-
+// @Composable
+// private fun InstagramPostSelectionPanel(
+//     items: List<GalleryDlRunner.PreviewItem>,
+//     selectedUrls: Set<String>,
+//     colors: KirinGalleryColors,
+//     onSelectionChanged: (Set<String>) -> Unit,
+//     onQueueSelected: (List<String>) -> Unit,
+// ) {
+//     val orderedSelection =
+//         InstagramPostSelection.orderedSelectedUrls(items.map { it.url }, selectedUrls)
+//
+//     Column(
+//         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+//         verticalArrangement = Arrangement.spacedBy(8.dp),
+//     ) {
+//         Row(
+//             modifier = Modifier.fillMaxWidth(),
+//             verticalAlignment = Alignment.CenterVertically,
+//             horizontalArrangement = Arrangement.SpaceBetween,
+//         ) {
+//             Column(modifier = Modifier.weight(1f)) {
+//                 Text(
+//                     "Instagram posts",
+//                     color = colors.text,
+//                     fontSize = 16.sp,
+//                     fontWeight = FontWeight.Bold,
+//                 )
+//                 Text(
+//                     "${items.size} shown • Instaloader public-profile preview",
+//                     color = colors.muted,
+//                     fontSize = 11.sp,
+//                 )
+//             }
+//             Text(
+//                 "${orderedSelection.size} selected",
+//                 color = colors.accent,
+//                 fontSize = 11.sp,
+//                 fontWeight = FontWeight.Bold,
+//             )
+//         }
+//
+//         Text(
+//             "Preview only. No Instagram login is used; selected post links are sent to GalleryDL for downloading.",
+//             color = colors.muted,
+//             fontSize = 11.sp,
+//         )
+//
+//         Row(
+//             modifier = Modifier.fillMaxWidth(),
+//             horizontalArrangement = Arrangement.spacedBy(8.dp),
+//         ) {
+//             TextButton(
+//                 onClick = {
+//                     onSelectionChanged(InstagramPostSelection.selectAll(items.map { it.url }))
+//                 },
+//                 enabled = items.isNotEmpty(),
+//             ) {
+//                 Text("Select shown")
+//             }
+//             TextButton(
+//                 onClick = { onSelectionChanged(emptySet()) },
+//                 enabled = selectedUrls.isNotEmpty(),
+//             ) {
+//                 Text("Clear")
+//             }
+//         }
+//
+//         if (items.isEmpty()) {
+//             Text(
+//                 "No public posts were returned for this profile.",
+//                 color = colors.muted,
+//                 fontSize = 12.sp,
+//             )
+//         } else {
+//             items.chunked(3).forEach { rowItems ->
+//                 Row(
+//                     modifier = Modifier.fillMaxWidth(),
+//                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+//                 ) {
+//                     rowItems.forEach { item ->
+//                         val canonicalUrl = InstagramPostSelection.canonicalPostUrl(item.url)
+//                         val isSelected = canonicalUrl != null && canonicalUrl in selectedUrls
+//
+//                         Surface(
+//                             modifier =
+//                                 Modifier.weight(1f).clickable {
+//                                     onSelectionChanged(
+//                                         InstagramPostSelection.toggle(selectedUrls, item.url)
+//                                     )
+//                                 },
+//                             shape = RoundedCornerShape(12.dp),
+//                             color = colors.panel,
+//                         ) {
+//                             Column {
+//                                 Box(
+//                                     modifier =
+//                                         Modifier.fillMaxWidth()
+//                                             .aspectRatio(1f),
+//                                 ) {
+//                                     if (item.thumbnailUrl.startsWith("https://")) {
+//                                         AsyncImage(
+//                                             model = item.thumbnailUrl,
+//                                             contentDescription = item.title,
+//                                             modifier = Modifier.fillMaxSize(),
+//                                             contentScale = ContentScale.Crop,
+//                                         )
+//                                     } else {
+//                                         Box(
+//                                             modifier =
+//                                                 Modifier.fillMaxSize()
+//                                                     .background(colors.panelAlt),
+//                                             contentAlignment = Alignment.Center,
+//                                         ) {
+//                                             Text("No preview", color = colors.muted, fontSize = 10.sp)
+//                                         }
+//                                     }
+//
+//                                     Surface(
+//                                         modifier =
+//                                             Modifier.align(Alignment.TopEnd)
+//                                                 .padding(6.dp)
+//                                                 .size(24.dp),
+//                                         shape = CircleShape,
+//                                         color =
+//                                             if (isSelected) colors.accent
+//                                             else Color.Black.copy(alpha = 0.55f),
+//                                     ) {
+//                                         Box(contentAlignment = Alignment.Center) {
+//                                             if (isSelected) {
+//                                                 Icon(
+//                                                     Icons.Outlined.Check,
+//                                                     contentDescription = "Selected",
+//                                                     tint = colors.onAccent,
+//                                                     modifier = Modifier.size(15.dp),
+//                                                 )
+//                                             }
+//                                         }
+//                                     }
+//                                 }
+//                                 Text(
+//                                     item.title,
+//                                     modifier =
+//                                         Modifier.fillMaxWidth()
+//                                             .padding(horizontal = 8.dp, vertical = 7.dp),
+//                                     color = colors.text,
+//                                     fontSize = 10.sp,
+//                                     maxLines = 2,
+//                                     overflow = TextOverflow.Ellipsis,
+//                                 )
+//                             }
+//                         }
+//                     }
+//                     repeat(3 - rowItems.size) {
+//                         Spacer(Modifier.weight(1f))
+//                     }
+//                 }
+//             }
+//         }
+//
+//         Button(
+//             onClick = { onQueueSelected(orderedSelection) },
+//             enabled = orderedSelection.isNotEmpty(),
+//             modifier = Modifier.fillMaxWidth(),
+//             shape = RoundedCornerShape(12.dp),
+//             colors =
+//                 ButtonDefaults.buttonColors(
+//                     containerColor = colors.accent,
+//                     contentColor = colors.onAccent,
+//                 ),
+//         ) {
+//             Icon(Icons.Outlined.Queue, contentDescription = null)
+//             Spacer(Modifier.width(8.dp))
+//             Text("Queue selected (${orderedSelection.size})")
+//         }
+//     }
+// }
+//
 @Composable
 private fun GalleryStatusStrip(
     state: GalleryDlViewModel.ViewState,
