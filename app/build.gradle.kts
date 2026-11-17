@@ -27,9 +27,9 @@ val youtubedlAndroidRuntimeVersion = libs.versions.youtubedlAndroid.get()
 val pythonRuntimeVersion = "3.11"
 
 val prereleaseVersionSuffix =
-    providers.gradleProperty("kirinPrereleaseSuffix").orNull
-        ?.takeIf { it.matches(Regex("-devpatch[0-9]+")) }
-        ?: "-prerelease"
+    providers.gradleProperty("kirinPrereleaseSuffix").orNull?.takeIf {
+        it.matches(Regex("-devpatch[0-9]+"))
+    } ?: "-prerelease"
 
 android {
     compileSdk = 37
@@ -72,18 +72,15 @@ android {
             "YOUTUBEDL_ANDROID_RUNTIME_VERSION",
             "\"$youtubedlAndroidRuntimeVersion\"",
         )
-        buildConfigField(
-            "String",
-            "PYTHON_RUNTIME_VERSION",
-            "\"$pythonRuntimeVersion\"",
-        )
+        buildConfigField("String", "PYTHON_RUNTIME_VERSION", "\"$pythonRuntimeVersion\"")
 
         ndk {
-            abiFilters += if (splitApks) {
-                listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
-            } else {
-                abiFilterList
-            }
+            abiFilters +=
+                if (splitApks) {
+                    listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                } else {
+                    abiFilterList
+                }
         }
 
         if (splitApks) {
@@ -122,9 +119,7 @@ android {
                     output.versionCode.set(baseAbiCode + (output.versionCode.get() ?: 0))
                 }
 
-                output.outputFileName.set(
-                    "KirinDL-${baseVersionName}-${name ?: "universal"}.apk"
-                )
+                output.outputFileName.set("KirinDL-${baseVersionName}-${name ?: "universal"}.apk")
             }
         }
     }
@@ -219,9 +214,7 @@ ktfmt { kotlinLangStyle() }
 kotlin {
     jvmToolchain(21)
 
-    compilerOptions {
-        freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
-    }
+    compilerOptions { freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn") }
 }
 
 dependencies {
