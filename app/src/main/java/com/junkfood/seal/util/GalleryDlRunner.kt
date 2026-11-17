@@ -87,6 +87,15 @@ object GalleryDlRunner {
                 "This can be an Instagram-side restriction or a profile/feed pagination change; " +
                 "try a direct post or Reel URL, then retry the profile later."
         } else {
+            instagramLoginRequiredHint(context)
+        }
+
+    private fun instagramLoginRequiredHint(context: Context): String =
+        if (GalleryDlConfig.hasInstagramSessionCookie(context)) {
+            "Instagram redirected the request to its login page even though a sessionid cookie is present. " +
+                "The session may have expired or been challenged. Sign in again, export a fresh Netscape " +
+                "cookies.txt, and replace the file in Gallery DL > Cookies."
+        } else {
             "No active Instagram sessionid was found in Gallery DL > Cookies. " +
                 "Export a Netscape cookies.txt from a browser logged into your own Instagram account, " +
                 "then import it in Gallery DL > Cookies."
@@ -192,14 +201,19 @@ object GalleryDlRunner {
                     val preflightStatus =
                         result.optString("preflight_status").ifBlank { "ready" }
                     val rawPreflightError = result.optString("preflight_error")
-                    val preflightError =
-                        if (preflightStatus == "instagram_api_redirect") {
-                            listOf(rawPreflightError, instagramApiRedirectHint(context))
-                                .filter(String::isNotBlank)
-                                .joinToString("\n")
-                        } else {
-                            rawPreflightError
+                    val preflightHint =
+                        when {
+                            preflightStatus == "instagram_api_redirect" ->
+                                instagramApiRedirectHint(context)
+                            preflightStatus == "login_required" &&
+                                trimmedUrl.contains("instagram.com", ignoreCase = true) ->
+                                instagramLoginRequiredHint(context)
+                            else -> ""
                         }
+                    val preflightError =
+                        listOf(rawPreflightError, preflightHint)
+                            .filter(String::isNotBlank)
+                            .joinToString("\n")
 
                     val info =
                         ExtractorInfo(
@@ -418,6 +432,10 @@ object GalleryDlRunner {
                                 when {
                                     result.isInstagramApiRedirect() -> {
                                         "$rawMessage\n${instagramApiRedirectHint(context)}"
+                                    }
+                                    result.optString("error_type") == "login_required" &&
+                                        trimmedUrl.contains("instagram.com", ignoreCase = true) -> {
+                                        "$rawMessage\n${instagramLoginRequiredHint(context)}"
                                     }
                                     ExtractorHealthUtil.looksUnavailable(rawMessage) -> {
                                         ExtractorHealthUtil.unavailableMessage(
