@@ -108,6 +108,14 @@ object GalleryDlRunner {
             prefixedHttpUrl.matches(trimmed)
     }
 
+    // Route every Instagram URL through Gallery-DL, not the retired Instaloader adapter.
+    fun isInstagramUrl(value: String): Boolean {
+        val uri = runCatching { Uri.parse(value.trim()) }.getOrNull() ?: return false
+        if (uri.scheme?.lowercase() !in setOf("http", "https")) return false
+        val host = uri.host?.lowercase() ?: return false
+        return host == "instagram.com" || host.endsWith(".instagram.com")
+    }
+
     suspend fun inspectUrl(context: Context, url: String): Result<ExtractorInfo> =
         runMutex.withLock {
             withContext(Dispatchers.IO) {
