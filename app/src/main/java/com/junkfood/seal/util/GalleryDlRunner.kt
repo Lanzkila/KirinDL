@@ -4,8 +4,8 @@ import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
 import com.junkfood.seal.util.PreferenceUtil.getString
-import com.junkfood.seal.util.instaloader.InstagramPreviewBridge
-import com.junkfood.seal.util.instaloader.InstagramProfileRouting
+// import com.junkfood.seal.util.instaloader.InstagramPreviewBridge // disabled; Gallery-DL owns Instagram extraction
+// import com.junkfood.seal.util.instaloader.InstagramProfileRouting // disabled; Gallery-DL owns Instagram extraction
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import java.io.File
@@ -124,48 +124,50 @@ object GalleryDlRunner {
                         throw IllegalStateException("Install the gallery-dl engine first")
                     }
 
-                    // Use Instaloader only for strict Instagram profile URLs. If public-profile
-                    // preview is unavailable, continue through the original gallery-dl preflight.
-                    if (InstagramProfileRouting.isProfileUrl(trimmedUrl)) {
-                        val instagramPreview =
-                            InstagramPreviewBridge.preview(context, trimmedUrl).getOrNull()
-                        if (instagramPreview != null) {
-                            val previewItems =
-                                instagramPreview.posts.map { post ->
-                                    PreviewItem(
-                                        id = post.id,
-                                        title = post.title,
-                                        url = post.url,
-                                        thumbnailUrl = post.thumbnailUrl,
-                                        creator = post.creator,
-                                    )
-                                }
-                            val username = instagramPreview.username
-                            return@runCatching ExtractorInfo(
-                                supported = true,
-                                baseCategory = "social",
-                                category = "Instagram",
-                                subcategory = "Profile",
-                                className = InstagramPreviewBridge.EXTRACTOR_NAME,
-                                title =
-                                    instagramPreview.fullName.takeIf(String::isNotBlank)
-                                        ?: "@$username",
-                                author = "@$username",
-                                thumbnailUrl =
-                                    previewItems.firstOrNull()?.thumbnailUrl.orEmpty(),
-                                mediaType = "Posts",
-                                isCollection = true,
-                                estimatedItemCount = instagramPreview.mediaCount,
-                                itemCountExact = instagramPreview.mediaCount != null,
-                                scannedItemCount = previewItems.size,
-                                largeGallery = (instagramPreview.mediaCount ?: 0) > 24,
-                                cookiesLoaded = false,
-                                preflightStatus = "ready",
-                                previewItems = previewItems,
-                            )
-                        }
-                    }
-
+                    // Instagram profiles, posts, and Reels must be inspected by Gallery-DL itself.
+                    //                     // Use Instaloader only for strict Instagram profile URLs. If public-profile
+                    //                     // preview is unavailable, continue through the original gallery-dl preflight.
+                    //                     if (InstagramProfileRouting.isProfileUrl(trimmedUrl)) {
+                    //                         val instagramPreview =
+                    //                             InstagramPreviewBridge.preview(context, trimmedUrl).getOrNull()
+                    //                         if (instagramPreview != null) {
+                    //                             val previewItems =
+                    //                                 instagramPreview.posts.map { post ->
+                    //                                     PreviewItem(
+                    //                                         id = post.id,
+                    //                                         title = post.title,
+                    //                                         url = post.url,
+                    //                                         thumbnailUrl = post.thumbnailUrl,
+                    //                                         creator = post.creator,
+                    //                                     )
+                    //                                 }
+                    //                             val username = instagramPreview.username
+                    //                             return@runCatching ExtractorInfo(
+                    //                                 supported = true,
+                    //                                 baseCategory = "social",
+                    //                                 category = "Instagram",
+                    //                                 subcategory = "Profile",
+                    //                                 className = InstagramPreviewBridge.EXTRACTOR_NAME,
+                    //                                 title =
+                    //                                     instagramPreview.fullName.takeIf(String::isNotBlank)
+                    //                                         ?: "@$username",
+                    //                                 author = "@$username",
+                    //                                 thumbnailUrl =
+                    //                                     previewItems.firstOrNull()?.thumbnailUrl.orEmpty(),
+                    //                                 mediaType = "Posts",
+                    //                                 isCollection = true,
+                    //                                 estimatedItemCount = instagramPreview.mediaCount,
+                    //                                 itemCountExact = instagramPreview.mediaCount != null,
+                    //                                 scannedItemCount = previewItems.size,
+                    //                                 largeGallery = (instagramPreview.mediaCount ?: 0) > 24,
+                    //                                 cookiesLoaded = false,
+                    //                                 preflightStatus = "ready",
+                    //                                 previewItems = previewItems,
+                    //                             )
+                    //                         }
+                    //                     }
+                    //
+                    //
                     val compatibility = GalleryDlConfig.prepare(context)
                     val cookiesPath =
                         compatibility.cookiesFile
