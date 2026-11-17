@@ -256,11 +256,7 @@ def _classify_preflight_error(exc, url=""):
     # Instagram can redirect its authenticated profile/feed API calls to the home page.
     # gallery-dl raises AbortExtraction for this redirect even when a session cookie exists.
     # Keep this distinct from an expired login so the UI does not blame the user's cookies.
-    if "instagram.com" in source and (
-        "redirect to home page" in text
-        or "redirect to login page" in text
-        or "/accounts/login" in text
-    ):
+    if "instagram.com" in source and "redirect to home page" in text:
         return "instagram_api_redirect"
 
     if "429" in text or "rate limit" in text or "too many requests" in text:
