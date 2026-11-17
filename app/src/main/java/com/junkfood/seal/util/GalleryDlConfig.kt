@@ -164,29 +164,14 @@ object GalleryDlConfig {
         val cookies = prepare(context).cookiesFile
         if (!cookies.isFile || cookies.length() <= 0L) return false
 
-        val nowSeconds = System.currentTimeMillis() / 1000L
         return runCatching {
-            cookies.useLines { lines ->
-                lines.any { line ->
-                    val cookieLine = line.removePrefix("#HttpOnly_")
-                    if (cookieLine.isBlank() || cookieLine.startsWith("#")) {
-                        return@any false
-                    }
-
-                    val fields = cookieLine.split('\t')
-                    if (fields.size < 7) return@any false
-
-                    val domain = fields[0].trim().removePrefix(".").lowercase()
-                    val isInstagramDomain =
-                        domain == "instagram.com" || domain.endsWith(".instagram.com")
-                    val expires = fields[4].trim().toLongOrNull()
-                    val isUnexpired = expires == 0L || (expires != null && expires > nowSeconds)
-
-                    isInstagramDomain &&
-                        fields[5].trim() == "sessionid" &&
-                        fields[6].isNotBlank() &&
-                        isUnexpired
-                }
+            val nowSeconds = System.currentTimeMillis() / 1000L
+            NetscapeCookieParser.parse(cookies.readText(), nowSeconds).any { cookie ->
+                val domain = cookie.domain.removePrefix(".").lowercase()
+                (domain == "instagram.com" || domain.endsWith(".instagram.com")) &&
+                    cookie.name == "sessionid" &&
+                    cookie.value.isNotBlank() &&
+                    (cookie.expiry == 0L || cookie.expiry > nowSeconds)
             }
         }.getOrDefault(false)
     }
