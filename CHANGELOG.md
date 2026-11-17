@@ -2,6 +2,15 @@
 
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
+<!-- KIRIN-AUTO-CHANGELOG:START -->
+## 2026-11-17
+
+### ✦ Recent changes
+
+- Route Instagram through Gallery-DL and Telegram through yt-dlp (`5359b289`)
+
+<!-- KIRIN-AUTO-CHANGELOG:END -->
+
 ## [3.2.2] - Unreleased
 
 ### ✦ App Update Popup
