@@ -81,6 +81,17 @@ object GalleryDlRunner {
     private fun JSONObject.isInstagramApiRedirect(): Boolean =
         optString("error_type") == "instagram_api_redirect"
 
+    private fun instagramApiRedirectHint(context: Context): String =
+        if (GalleryDlConfig.hasInstagramSessionCookie(context)) {
+            "An Instagram sessionid cookie is present, but Instagram redirected the API request. " +
+                "This can be an Instagram-side restriction or a profile/feed pagination change; " +
+                "try a direct post or Reel URL, then retry the profile later."
+        } else {
+            "No active Instagram sessionid was found in Gallery DL > Cookies. " +
+                "Export a Netscape cookies.txt from a browser logged into your own Instagram account, " +
+                "then import it in Gallery DL > Cookies."
+        }
+
     fun isCandidateUrl(value: String): Boolean {
         val trimmed = value.trim()
         return trimmed.startsWith("https://") ||
@@ -178,6 +189,18 @@ object GalleryDlRunner {
                         )
                     }
 
+                    val preflightStatus =
+                        result.optString("preflight_status").ifBlank { "ready" }
+                    val rawPreflightError = result.optString("preflight_error")
+                    val preflightError =
+                        if (preflightStatus == "instagram_api_redirect") {
+                            listOf(rawPreflightError, instagramApiRedirectHint(context))
+                                .filter(String::isNotBlank)
+                                .joinToString("\n")
+                        } else {
+                            rawPreflightError
+                        }
+
                     val info =
                         ExtractorInfo(
                             supported = result.optBoolean("supported", false),
@@ -200,8 +223,8 @@ object GalleryDlRunner {
                             scannedItemCount = result.optInt("scanned_count", 0),
                             largeGallery = result.optBoolean("large_gallery", false),
                             cookiesLoaded = result.optBoolean("cookies_loaded", false),
-                            preflightStatus = result.optString("preflight_status").ifBlank { "ready" },
-                            preflightError = result.optString("preflight_error"),
+                            preflightStatus = preflightStatus,
+                            preflightError = preflightError,
                             previewItems = parsePreviewItems(result.optJSONArray("preview_items")),
                         )
 
@@ -394,19 +417,7 @@ object GalleryDlRunner {
                             val message =
                                 when {
                                     result.isInstagramApiRedirect() -> {
-                                        val sessionReady =
-                                            GalleryDlConfig.hasInstagramSessionCookie(context)
-                                        val sessionHint =
-                                            if (sessionReady) {
-                                                "An Instagram sessionid cookie is present, but Instagram redirected the API request. " +
-                                                    "This can be an Instagram-side restriction or a profile/feed pagination change; " +
-                                                    "try a direct post or Reel URL, then retry the profile later."
-                                            } else {
-                                                "No active Instagram sessionid was found in Gallery DL > Cookies. " +
-                                                    "Export a Netscape cookies.txt from a browser logged into your own Instagram account, " +
-                                                    "then import it in Gallery DL > Cookies."
-                                            }
-                                        "$rawMessage\n$sessionHint"
+                                        "$rawMessage\n${instagramApiRedirectHint(context)}"
                                     }
                                     ExtractorHealthUtil.looksUnavailable(rawMessage) -> {
                                         ExtractorHealthUtil.unavailableMessage(
