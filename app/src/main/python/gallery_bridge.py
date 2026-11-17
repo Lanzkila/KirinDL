@@ -249,8 +249,16 @@ def _extension_from(url, data):
     return name.rsplit(".", 1)[-1].lower()
 
 
-def _classify_preflight_error(exc):
+def _classify_preflight_error(exc, url=""):
     text = ("%s: %s" % (type(exc).__name__, str(exc))).lower()
+    source = str(url or "").lower()
+
+    # Instagram can redirect its authenticated profile/feed API calls to the home page.
+    # gallery-dl raises AbortExtraction for this redirect even when a session cookie exists.
+    # Keep this distinct from an expired login so the UI does not blame the user's cookies.
+    if "instagram.com" in source and "redirect to home page" in text:
+        return "instagram_api_redirect"
+
     if "429" in text or "rate limit" in text or "too many requests" in text:
         return "rate_limited"
     if (
@@ -260,6 +268,10 @@ def _classify_preflight_error(exc):
         or "not logged in" in text
         or "cookies required" in text
         or "cookie required" in text
+        or "redirect to login page" in text
+        or "redirect to challenge page" in text
+        or "redirect to checkpoint page" in text
+        or "/accounts/login" in text
     ):
         return "login_required"
     return "extractor_error"
@@ -554,7 +566,7 @@ def inspect_url(
                     hit_limit = True
                     break
         except Exception as exc:
-            preflight_status = _classify_preflight_error(exc)
+            preflight_status = _classify_preflight_error(exc, url)
             preflight_error = "%s: %s" % (type(exc).__name__, str(exc))
 
         # Queue-only extractors are valid gallery-dl sources too. Use their queued child URLs as
@@ -668,8 +680,12 @@ def download(
 ):
     """Run one gallery-dl job and return a JSON result to Kotlin."""
     extractor_label = ""
+    engine_version = ""
+    config_loaded = False
+    cookies_loaded = False
     try:
         gallery_dl = _load_engine(engine_dir)
+        engine_version = str(getattr(gallery_dl, "__version__", "") or "")
         from gallery_dl import config, extractor, job, util
 
         output_dir = os.path.abspath(output_dir)
@@ -727,16 +743,18 @@ def download(
             ensure_ascii=False,
         )
     except Exception as exc:
+        error = "%s: %s" % (type(exc).__name__, str(exc))
         return json.dumps(
             {
                 "ok": False,
                 "status": -1,
-                "version": "",
+                "version": engine_version,
                 "files": [],
                 "extractor": extractor_label,
-                "config_loaded": False,
-                "cookies_loaded": False,
-                "error": "%s: %s" % (type(exc).__name__, str(exc)),
+                "config_loaded": config_loaded,
+                "cookies_loaded": cookies_loaded,
+                "error_type": _classify_preflight_error(exc, url),
+                "error": error,
                 "trace": traceback.format_exc(limit=8),
             },
             ensure_ascii=False,

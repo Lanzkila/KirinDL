@@ -154,7 +154,8 @@ import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.GalleryDlStore
 import com.junkfood.seal.util.GalleryDlBehaviorPreference
-import com.junkfood.seal.util.instaloader.InstagramProfileRouting
+import com.junkfood.seal.util.GalleryDlRunner
+// import com.junkfood.seal.util.instaloader.InstagramProfileRouting // disabled; Gallery-DL handles all Instagram URL types
 import com.junkfood.seal.util.HOME_RECENT_LIMIT
 import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
 import com.junkfood.seal.util.HOME_INPUT_ANIMATION
@@ -904,10 +905,13 @@ fun NewHomePage(
                         when {
                             resolvedUrl != null -> {
                                 view.slightHapticFeedback()
-                                if (InstagramProfileRouting.isProfileUrl(resolvedUrl)) {
+                                // All Instagram URL types use the existing Gallery-DL engine.
+                                if (GalleryDlRunner.isInstagramUrl(resolvedUrl)) {
                                     GalleryDlBehaviorPreference.setPendingHomeUrl(resolvedUrl)
                                     onNavigateToGalleryDl()
                                 } else {
+                                    // Telegram public video-post URLs stay on the existing yt-dlp path.
+                                    // yt-dlp's TelegramEmbedIE handles t.me/<channel>/<message-id>; Gallery-DL has no Telegram extractor.
                                     dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
                                 }
                                 urlText = ""

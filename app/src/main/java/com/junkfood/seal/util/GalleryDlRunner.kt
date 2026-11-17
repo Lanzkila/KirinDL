@@ -4,8 +4,8 @@ import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
 import com.junkfood.seal.util.PreferenceUtil.getString
-import com.junkfood.seal.util.instaloader.InstagramPreviewBridge
-import com.junkfood.seal.util.instaloader.InstagramProfileRouting
+// import com.junkfood.seal.util.instaloader.InstagramPreviewBridge // disabled; Gallery-DL owns Instagram extraction
+// import com.junkfood.seal.util.instaloader.InstagramProfileRouting // disabled; Gallery-DL owns Instagram extraction
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import java.io.File
@@ -78,11 +78,42 @@ object GalleryDlRunner {
         val cookiesLoaded: Boolean,
     )
 
+    private fun JSONObject.isInstagramApiRedirect(): Boolean =
+        optString("error_type") == "instagram_api_redirect"
+
+    private fun instagramApiRedirectHint(context: Context): String =
+        if (GalleryDlConfig.hasInstagramSessionCookie(context)) {
+            "An Instagram sessionid cookie is present, but Instagram redirected the API request. " +
+                "This can be an Instagram-side restriction or a profile/feed pagination change; " +
+                "try a direct post or Reel URL, then retry the profile later."
+        } else {
+            instagramLoginRequiredHint(context)
+        }
+
+    private fun instagramLoginRequiredHint(context: Context): String =
+        if (GalleryDlConfig.hasInstagramSessionCookie(context)) {
+            "Instagram redirected the request to its login page even though a sessionid cookie is present. " +
+                "The session may have expired or been challenged. Sign in again, export a fresh Netscape " +
+                "cookies.txt, and replace the file in Gallery DL > Cookies."
+        } else {
+            "No active Instagram sessionid was found in Gallery DL > Cookies. " +
+                "Export a Netscape cookies.txt from a browser logged into your own Instagram account, " +
+                "then import it in Gallery DL > Cookies."
+        }
+
     fun isCandidateUrl(value: String): Boolean {
         val trimmed = value.trim()
         return trimmed.startsWith("https://") ||
             trimmed.startsWith("http://") ||
             prefixedHttpUrl.matches(trimmed)
+    }
+
+    // Route every Instagram URL through Gallery-DL, not the retired Instaloader adapter.
+    fun isInstagramUrl(value: String): Boolean {
+        val uri = runCatching { Uri.parse(value.trim()) }.getOrNull() ?: return false
+        if (uri.scheme?.lowercase() !in setOf("http", "https")) return false
+        val host = uri.host?.lowercase() ?: return false
+        return host == "instagram.com" || host.endsWith(".instagram.com")
     }
 
     suspend fun inspectUrl(context: Context, url: String): Result<ExtractorInfo> =
@@ -101,48 +132,50 @@ object GalleryDlRunner {
                         throw IllegalStateException("Install the gallery-dl engine first")
                     }
 
-                    // Use Instaloader only for strict Instagram profile URLs. If public-profile
-                    // preview is unavailable, continue through the original gallery-dl preflight.
-                    if (InstagramProfileRouting.isProfileUrl(trimmedUrl)) {
-                        val instagramPreview =
-                            InstagramPreviewBridge.preview(context, trimmedUrl).getOrNull()
-                        if (instagramPreview != null) {
-                            val previewItems =
-                                instagramPreview.posts.map { post ->
-                                    PreviewItem(
-                                        id = post.id,
-                                        title = post.title,
-                                        url = post.url,
-                                        thumbnailUrl = post.thumbnailUrl,
-                                        creator = post.creator,
-                                    )
-                                }
-                            val username = instagramPreview.username
-                            return@runCatching ExtractorInfo(
-                                supported = true,
-                                baseCategory = "social",
-                                category = "Instagram",
-                                subcategory = "Profile",
-                                className = InstagramPreviewBridge.EXTRACTOR_NAME,
-                                title =
-                                    instagramPreview.fullName.takeIf(String::isNotBlank)
-                                        ?: "@$username",
-                                author = "@$username",
-                                thumbnailUrl =
-                                    previewItems.firstOrNull()?.thumbnailUrl.orEmpty(),
-                                mediaType = "Posts",
-                                isCollection = true,
-                                estimatedItemCount = instagramPreview.mediaCount,
-                                itemCountExact = instagramPreview.mediaCount != null,
-                                scannedItemCount = previewItems.size,
-                                largeGallery = (instagramPreview.mediaCount ?: 0) > 24,
-                                cookiesLoaded = false,
-                                preflightStatus = "ready",
-                                previewItems = previewItems,
-                            )
-                        }
-                    }
-
+                    // Instagram profiles, posts, and Reels must be inspected by Gallery-DL itself.
+                    //                     // Use Instaloader only for strict Instagram profile URLs. If public-profile
+                    //                     // preview is unavailable, continue through the original gallery-dl preflight.
+                    //                     if (InstagramProfileRouting.isProfileUrl(trimmedUrl)) {
+                    //                         val instagramPreview =
+                    //                             InstagramPreviewBridge.preview(context, trimmedUrl).getOrNull()
+                    //                         if (instagramPreview != null) {
+                    //                             val previewItems =
+                    //                                 instagramPreview.posts.map { post ->
+                    //                                     PreviewItem(
+                    //                                         id = post.id,
+                    //                                         title = post.title,
+                    //                                         url = post.url,
+                    //                                         thumbnailUrl = post.thumbnailUrl,
+                    //                                         creator = post.creator,
+                    //                                     )
+                    //                                 }
+                    //                             val username = instagramPreview.username
+                    //                             return@runCatching ExtractorInfo(
+                    //                                 supported = true,
+                    //                                 baseCategory = "social",
+                    //                                 category = "Instagram",
+                    //                                 subcategory = "Profile",
+                    //                                 className = InstagramPreviewBridge.EXTRACTOR_NAME,
+                    //                                 title =
+                    //                                     instagramPreview.fullName.takeIf(String::isNotBlank)
+                    //                                         ?: "@$username",
+                    //                                 author = "@$username",
+                    //                                 thumbnailUrl =
+                    //                                     previewItems.firstOrNull()?.thumbnailUrl.orEmpty(),
+                    //                                 mediaType = "Posts",
+                    //                                 isCollection = true,
+                    //                                 estimatedItemCount = instagramPreview.mediaCount,
+                    //                                 itemCountExact = instagramPreview.mediaCount != null,
+                    //                                 scannedItemCount = previewItems.size,
+                    //                                 largeGallery = (instagramPreview.mediaCount ?: 0) > 24,
+                    //                                 cookiesLoaded = false,
+                    //                                 preflightStatus = "ready",
+                    //                                 previewItems = previewItems,
+                    //                             )
+                    //                         }
+                    //                     }
+                    //
+                    //
                     val compatibility = GalleryDlConfig.prepare(context)
                     val cookiesPath =
                         compatibility.cookiesFile
@@ -175,6 +208,23 @@ object GalleryDlRunner {
                         )
                     }
 
+                    val preflightStatus =
+                        result.optString("preflight_status").ifBlank { "ready" }
+                    val rawPreflightError = result.optString("preflight_error")
+                    val preflightHint =
+                        when {
+                            preflightStatus == "instagram_api_redirect" ->
+                                instagramApiRedirectHint(context)
+                            preflightStatus == "login_required" &&
+                                trimmedUrl.contains("instagram.com", ignoreCase = true) ->
+                                instagramLoginRequiredHint(context)
+                            else -> ""
+                        }
+                    val preflightError =
+                        listOf(rawPreflightError, preflightHint)
+                            .filter(String::isNotBlank)
+                            .joinToString("\n")
+
                     val info =
                         ExtractorInfo(
                             supported = result.optBoolean("supported", false),
@@ -197,8 +247,8 @@ object GalleryDlRunner {
                             scannedItemCount = result.optInt("scanned_count", 0),
                             largeGallery = result.optBoolean("large_gallery", false),
                             cookiesLoaded = result.optBoolean("cookies_loaded", false),
-                            preflightStatus = result.optString("preflight_status").ifBlank { "ready" },
-                            preflightError = result.optString("preflight_error"),
+                            preflightStatus = preflightStatus,
+                            preflightError = preflightError,
                             previewItems = parsePreviewItems(result.optJSONArray("preview_items")),
                         )
 
@@ -302,44 +352,83 @@ object GalleryDlRunner {
 
                         onProgress?.invoke(0, estimatedTotal, "Preparing")
                         val bridge = getBridge(context)
-                        val raw = coroutineScope {
-                            val watcher =
-                                launch(Dispatchers.IO) {
-                                    var lastCount = -1
-                                    while (true) {
-                                        val count =
-                                            outputDir.walkTopDown().count { file ->
-                                                file.isFile &&
-                                                    !file.name.endsWith(".part") &&
-                                                    !file.name.endsWith(".tmp")
+
+                        suspend fun runGalleryJob(): JSONObject {
+                            val raw =
+                                coroutineScope {
+                                    val watcher =
+                                        launch(Dispatchers.IO) {
+                                            var lastCount = -1
+                                            while (true) {
+                                                val count =
+                                                    outputDir.walkTopDown().count { file ->
+                                                        file.isFile &&
+                                                            !file.name.endsWith(".part") &&
+                                                            !file.name.endsWith(".tmp")
+                                                    }
+                                                if (count != lastCount) {
+                                                    lastCount = count
+                                                    onProgress?.invoke(
+                                                        count,
+                                                        estimatedTotal,
+                                                        "Downloading",
+                                                    )
+                                                }
+                                                delay(400L)
                                             }
-                                        if (count != lastCount) {
-                                            lastCount = count
-                                            onProgress?.invoke(count, estimatedTotal, "Downloading")
                                         }
-                                        delay(400L)
+                                    try {
+                                        bridge.callAttr(
+                                                "download",
+                                                trimmedUrl,
+                                                outputDir.absolutePath,
+                                                engineDir.absolutePath,
+                                                if (
+                                                    GalleryDlBehaviorPreference
+                                                        .isExpertConfigEnabled()
+                                                ) {
+                                                    compatibility.configFile.absolutePath
+                                                } else {
+                                                    ""
+                                                },
+                                                cookiesPath,
+                                                compatibility.cacheFile.absolutePath,
+                                            )
+                                            .toString()
+                                    } finally {
+                                        watcher.cancel()
                                     }
                                 }
-                            try {
-                                bridge.callAttr(
-                                        "download",
-                                        trimmedUrl,
-                                        outputDir.absolutePath,
-                                        engineDir.absolutePath,
-                                        if (GalleryDlBehaviorPreference.isExpertConfigEnabled()) {
-                                            compatibility.configFile.absolutePath
-                                        } else {
-                                            ""
-                                        },
-                                        cookiesPath,
-                                        compatibility.cacheFile.absolutePath,
-                                    )
-                                    .toString()
-                            } finally {
-                                watcher.cancel()
+
+                            // gallery-dl may refresh cookie sessions during a job. The job gets
+                            // a private copy, so persist its latest contents before the sandbox is
+                            // removed or a retry begins.
+                            if (cookiesPath.isNotBlank()) {
+                                GalleryDlConfig.persistUpdatedCookies(context, File(cookiesPath))
+                            }
+                            return JSONObject(raw)
+                        }
+
+                        var result = runGalleryJob()
+
+                        // A valid Instagram session can still hit AbortExtraction when Instagram
+                        // redirects profile/feed API pagination to its home page. Retry once with
+                        // the current Codeberg master only when the installed engine is stale.
+                        if (result.isInstagramApiRedirect()) {
+                            val latestCommit = GalleryDlEngine.latestMasterCommit().getOrNull()
+                            if (
+                                latestCommit != null &&
+                                    GalleryDlEngine.installedSource(context) !=
+                                        "codeberg:$latestCommit"
+                            ) {
+                                onProgress?.invoke(0, estimatedTotal, "Updating Gallery-DL")
+                                GalleryDlEngine.installLatest(context).onSuccess {
+                                    outputDir.listFiles()?.forEach { it.deleteRecursively() }
+                                    onProgress?.invoke(0, estimatedTotal, "Retrying")
+                                    result = runGalleryJob()
+                                }
                             }
                         }
-                        val result = JSONObject(raw)
 
                         if (!result.optBoolean("ok", false)) {
                             val extractor = result.optString("extractor")
@@ -350,15 +439,23 @@ object GalleryDlRunner {
                             val rawMessage =
                                 if (extractor.isBlank()) error else "$extractor: $error"
                             val message =
-                                if (ExtractorHealthUtil.looksUnavailable(rawMessage)) {
-                                    ExtractorHealthUtil.unavailableMessage(
-                                        context,
-                                        ExtractorHealthUtil.Engine.GALLERY_DL,
-                                        trimmedUrl,
-                                        rawMessage,
-                                    )
-                                } else {
-                                    rawMessage
+                                when {
+                                    result.isInstagramApiRedirect() -> {
+                                        "$rawMessage\n${instagramApiRedirectHint(context)}"
+                                    }
+                                    result.optString("error_type") == "login_required" &&
+                                        trimmedUrl.contains("instagram.com", ignoreCase = true) -> {
+                                        "$rawMessage\n${instagramLoginRequiredHint(context)}"
+                                    }
+                                    ExtractorHealthUtil.looksUnavailable(rawMessage) -> {
+                                        ExtractorHealthUtil.unavailableMessage(
+                                            context,
+                                            ExtractorHealthUtil.Engine.GALLERY_DL,
+                                            trimmedUrl,
+                                            rawMessage,
+                                        )
+                                    }
+                                    else -> rawMessage
                                 }
                             throw IOException(message)
                         }

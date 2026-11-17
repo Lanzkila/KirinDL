@@ -156,6 +156,59 @@ object GalleryDlConfig {
             }
         }
 
+    /**
+     * Checks for a usable Instagram session cookie without exposing its value.
+     * Netscape cookies.txt stores domain, flags, path, secure, expiry, name and value.
+     */
+    fun hasInstagramSessionCookie(context: Context): Boolean {
+        val cookies = prepare(context).cookiesFile
+        if (!cookies.isFile || cookies.length() <= 0L) return false
+
+        return runCatching {
+            val nowSeconds = System.currentTimeMillis() / 1000L
+            NetscapeCookieParser.parse(cookies.readText(), nowSeconds).any { cookie ->
+                val domain = cookie.domain.removePrefix(".").lowercase()
+                (domain == "instagram.com" || domain.endsWith(".instagram.com")) &&
+                    cookie.name == "sessionid" &&
+                    cookie.value.isNotBlank() &&
+                    (cookie.expiry == 0L || cookie.expiry > nowSeconds)
+            }
+        }.getOrDefault(false)
+    }
+
+    /**
+     * Persist cookies exported by gallery-dl from a private job copy.
+     * A two-step rename keeps the previously imported file recoverable if replacement fails.
+     */
+    fun persistUpdatedCookies(context: Context, source: File): Result<Unit> =
+        runCatching {
+            if (!source.isFile || source.length() <= 0L) return@runCatching
+
+            val target = prepare(context).cookiesFile
+            if (source.canonicalFile == target.canonicalFile) return@runCatching
+
+            val temporary = File(target.parentFile, "$COOKIES_FILE.updated")
+            val backup = File(target.parentFile, "$COOKIES_FILE.previous")
+            temporary.delete()
+            backup.delete()
+            source.copyTo(temporary, overwrite = true)
+
+            if (!temporary.isFile || temporary.length() <= 0L) {
+                throw IOException("gallery-dl produced an empty updated cookies file")
+            }
+
+            if (target.exists() && !target.renameTo(backup)) {
+                throw IOException("Could not back up the imported cookies file")
+            }
+
+            if (!temporary.renameTo(target)) {
+                if (backup.exists()) backup.renameTo(target)
+                throw IOException("Could not save the updated cookies file")
+            }
+
+            backup.delete()
+        }
+
     fun clearCache(context: Context): Result<Unit> =
         runCatching {
             val cache = prepare(context).cacheFile

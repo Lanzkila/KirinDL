@@ -1,5 +1,3 @@
-# KirinDL Instaloader Integration
+# Legacy Instaloader adapter (disabled)
 
-This directory is reserved for KirinDL-owned Python bridge code that integrates the third-party Instaloader library.
-
-Keep this integration isolated from the existing `gallery_bridge.py`. The Instaloader package itself remains a Chaquopy dependency; this folder is for KirinDL's adapter and preview logic, not a copied third-party package.
+The files in this folder are retained only as commented reference code. The app does not import or execute them. Instagram profile, post, Reel, and other supported URLs are handled by the existing Gallery-DL engine through `gallery_bridge.py`; authentication uses the Gallery-DL cookie file imported in Gallery DL settings.
