@@ -160,7 +160,7 @@ object GalleryDlEngine {
     private fun extractGalleryDlPackageSafely(archive: File, destination: File) {
         destination.deleteRecursively()
         destination.mkdirs()
-        val destinationPath = destination.canonicalFile.toPath()
+        val destinationPath = destination.canonicalPath + File.separator
         var extractedPackageFile = false
 
         ZipInputStream(archive.inputStream().buffered()).use { zip ->
@@ -173,7 +173,7 @@ object GalleryDlEngine {
                 if (markerIndex >= 0) {
                     val relativeName = normalizedName.substring(markerIndex)
                     val out = File(destination, relativeName).canonicalFile
-                    if (!out.toPath().startsWith(destinationPath)) {
+                    if (!out.canonicalPath.startsWith(destinationPath)) {
                         throw SecurityException("Unsafe path in Codeberg gallery-dl archive")
                     }
 
