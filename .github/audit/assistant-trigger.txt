@@ -2,6 +2,6 @@
 # To start a standalone audit from the connected GitHub assistant, update request_id and commit this file to main.
 # A push to main automatically starts .github/workflows/kirindl-update-audit.yml.
 # The repository owner can also start it manually with workflow_dispatch in GitHub Actions.
-request_id=assistant-bootstrap-2026-11-16
+request_id=instagram-abortextraction-audit-2026-11-17-01
 requested_by=assistant
 workflow=.github/workflows/kirindl-update-audit.yml
