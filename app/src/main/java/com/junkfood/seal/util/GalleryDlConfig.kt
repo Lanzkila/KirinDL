@@ -173,7 +173,7 @@ object GalleryDlConfig {
                         return@any false
                     }
 
-                    val fields = cookieLine.split('\\t')
+                    val fields = cookieLine.split('\t')
                     if (fields.size < 7) return@any false
 
                     val domain = fields[0].trim().removePrefix(".").lowercase()
