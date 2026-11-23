@@ -2,10 +2,10 @@
   "schema_version": 1,
   "source": "GitHub repository traffic API",
   "first_sync_at": "2026-11-16T08:06:55Z",
-  "last_updated": "2026-11-22T08:05:56Z",
-  "last_visited": "2026-11-19",
-  "total_views": 39,
-  "total_daily_unique_views": 21,
+  "last_updated": "2026-11-23T09:12:22Z",
+  "last_visited": "2026-11-22",
+  "total_views": 40,
+  "total_daily_unique_views": 22,
   "daily": [
     {
       "date": "2026-11-01",
@@ -111,6 +111,11 @@
       "date": "2026-11-21",
       "views": 0,
       "unique_views": 0
+    },
+    {
+      "date": "2026-11-22",
+      "views": 1,
+      "unique_views": 1
     }
   ],
   "note": "GitHub supplies a rolling 14-day window. The workflow preserves daily snapshots here after each successful sync. Daily unique views can include the same person on multiple days."
