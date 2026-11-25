@@ -7,6 +7,7 @@ All notable changes (starting from v1.7.3) to stable releases will be documented
 
 ### ✦ Recent changes
 
+- fix(release): align Instagram routing fix with v3.2.6 (`4d707b36`)
 - chore(release): update Android version code for 3.2.7 (`460d3828`)
 - chore(release): bump KirinDL to 3.2.7 (`2d324025`)
 - test(instagram): cover video and photo engine routing (`29a95506`)
