@@ -3,14 +3,17 @@
 All notable changes (starting from v1.7.3) to stable releases will be documented in this file.
 
 <!-- KIRIN-AUTO-CHANGELOG:START -->
-## 2026-11-17
+## 2026-11-26
 
 ### ✦ Recent changes
 
-- Fix KirinDL audit and API 24 compatibility (`b69543a9`)
-- build: sync Android version code for 3.2.5 (`5535e940`)
-- build: bump KirinDL version to 3.2.5 (`c970f687`)
-- Route Instagram through Gallery-DL and Telegram through yt-dlp (`5359b289`)
+- chore(release): update Android version code for 3.2.7 (`460d3828`)
+- chore(release): bump KirinDL to 3.2.7 (`2d324025`)
+- test(instagram): cover video and photo engine routing (`29a95506`)
+- fix(instagram): add media-aware engine routing (`98275389`)
+- chore(release): update Android version code for 3.2.6 (`979daf40`)
+- chore(release): bump KirinDL to 3.2.6 (`8376c98a`)
+- fix(instagram): route video and live replay URLs to yt-dlp (`99bd453e`)
 
 <!-- KIRIN-AUTO-CHANGELOG:END -->
 
