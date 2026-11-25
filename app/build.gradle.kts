@@ -60,7 +60,7 @@ android {
         applicationId = "com.kirin.downloader"
         minSdk = 24
         targetSdk = 37
-        versionCode = 302_050_400
+        versionCode = 302_060_400
         check(versionCode == currentVersionCode)
 
         versionName = baseVersionName
