@@ -156,6 +156,7 @@ import com.junkfood.seal.util.FileUtil
 import com.junkfood.seal.util.GalleryDlStore
 import com.junkfood.seal.util.GalleryDlBehaviorPreference
 import com.junkfood.seal.util.GalleryDlRunner
+import com.junkfood.seal.util.InstagramMediaRouting
 // import com.junkfood.seal.util.instaloader.InstagramProfileRouting // disabled; Gallery-DL handles all Instagram URL types
 import com.junkfood.seal.util.HOME_RECENT_LIMIT
 import com.junkfood.seal.util.HOME_TRANSFER_DETAILS
@@ -167,6 +168,7 @@ import com.junkfood.seal.util.SMART_DOWNLOAD_PROFILE
 import com.junkfood.seal.util.SmartDownloadProfiles
 import com.junkfood.seal.util.SiteProfileManager
 import java.io.File
+import java.util.UUID
 import com.junkfood.seal.util.toFileSizeText
 import com.junkfood.seal.util.getErrorReport
 import com.junkfood.seal.util.makeToast
@@ -201,6 +203,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -906,14 +909,53 @@ fun NewHomePage(
                         when {
                             resolvedUrl != null -> {
                                 view.slightHapticFeedback()
-                                // All Instagram URL types use the existing Gallery-DL engine.
-                                if (GalleryDlRunner.isInstagramUrl(resolvedUrl)) {
-                                    GalleryDlBehaviorPreference.setPendingHomeUrl(resolvedUrl)
-                                    onNavigateToGalleryDl()
-                                } else {
-                                    // Telegram public video-post URLs stay on the existing yt-dlp path.
-                                    // yt-dlp's TelegramEmbedIE handles t.me/<channel>/<message-id>; Gallery-DL has no Telegram extractor.
-                                    dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
+                                when (InstagramMediaRouting.routeFor(resolvedUrl)) {
+                                    InstagramMediaRouting.Route.YTDLP -> {
+                                        // Reels, IGTV and Live Replay are video-first URLs: keep them
+                                        // on the existing yt-dlp download/format-selection flow.
+                                        dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
+                                    }
+                                    InstagramMediaRouting.Route.PROBE_WITH_YTDLP -> {
+                                        // /p/ can be a photo, carousel, or video post. Probe it with
+                                        // yt-dlp first so video posts use the video engine while
+                                        // image-only posts remain in Gallery-DL.
+                                        scope.launch {
+                                            val hasVideo = withContext(Dispatchers.IO) {
+                                                DownloadUtil.fetchVideoInfoFromUrl(
+                                                    url = resolvedUrl,
+                                                    taskKey = "InstagramRoute_${UUID.randomUUID()}",
+                                                    preferences = DownloadUtil.DownloadPreferences.createFromPreferences(),
+                                                ).getOrNull()?.let { info ->
+                                                    InstagramMediaRouting.hasVideoStream(
+                                                        formats = info.formats,
+                                                        directVideoCodec = info.vcodec,
+                                                    )
+                                                } == true
+                                            }
+                                            if (hasVideo) {
+                                                dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
+                                            } else {
+                                                GalleryDlBehaviorPreference.setPendingHomeUrl(resolvedUrl)
+                                                onNavigateToGalleryDl()
+                                            }
+                                        }
+                                    }
+                                    InstagramMediaRouting.Route.GALLERY_DL -> {
+                                        // Profiles, photo posts and carousels remain handled by Gallery-DL.
+                                        if (InstagramMediaRouting.isInstagramUrl(resolvedUrl)) {
+                                            GalleryDlBehaviorPreference.setPendingHomeUrl(resolvedUrl)
+                                            onNavigateToGalleryDl()
+                                        } else {
+                                            // Non-Instagram URLs (including supported Telegram posts)
+                                            // stay on the normal yt-dlp route.
+                                            dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
+                                        }
+                                    }
+                                    InstagramMediaRouting.Route.NOT_INSTAGRAM -> {
+                                        // Telegram public video-post URLs stay on the existing yt-dlp path.
+                                        // yt-dlp's TelegramEmbedIE handles t.me/<channel>/<message-id>; Gallery-DL has no Telegram extractor.
+                                        dialogViewModel.postAction(Action.ShowSheet(listOf(resolvedUrl)))
+                                    }
                                 }
                                 urlText = ""
                                 keyboardController?.hide()
