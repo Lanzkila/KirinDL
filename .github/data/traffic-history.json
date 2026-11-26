@@ -2,10 +2,10 @@
   "schema_version": 1,
   "source": "GitHub repository traffic API",
   "first_sync_at": "2026-11-16T08:06:55Z",
-  "last_updated": "2026-11-25T09:54:26Z",
-  "last_visited": "2026-11-24",
-  "total_views": 51,
-  "total_daily_unique_views": 26,
+  "last_updated": "2026-11-26T09:38:53Z",
+  "last_visited": "2026-11-25",
+  "total_views": 52,
+  "total_daily_unique_views": 27,
   "daily": [
     {
       "date": "2026-11-01",
@@ -124,6 +124,11 @@
     },
     {
       "date": "2026-11-24",
+      "views": 1,
+      "unique_views": 1
+    },
+    {
+      "date": "2026-11-25",
       "views": 1,
       "unique_views": 1
     }
